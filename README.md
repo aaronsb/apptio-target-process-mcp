@@ -9,12 +9,24 @@ A Model Context Protocol (MCP) server for interacting with Targetprocess API.
 This repository includes a documentation scraper/searcher for Targetprocess developer documentation as a submodule. You can use it to quickly search through Targetprocess's documentation:
 
 ```bash
-cd resources/target-process-docs
-npm install
-npm start
+# From the project root:
+pushd resources/target-process-docs && npm install && ./refresh-docs.sh && popd  # First time setup
+
+# To search documentation (from any directory):
+pushd resources/target-process-docs && ./search-docs.sh "your search query" && popd
+
+# Example search:
+pushd resources/target-process-docs && ./search-docs.sh "entity states" && popd
 ```
 
-This will start a local server that allows you to search through Targetprocess's developer documentation.
+The search tool is located in resources/target-process-docs. We use pushd/popd commands here because:
+1. The tool requires access to its database files using relative paths
+2. pushd saves your current directory location
+3. Temporarily changes to the tool's directory to run the command
+4. popd automatically returns you to your previous location
+This approach lets you run searches from any directory while ensuring the tool can find its database files.
+
+This tool provides a powerful way to search through Targetprocess's developer documentation locally. The search results include relevant documentation sections with context, making it easier to find specific API details or implementation guidance.
 
 ### CI/CD Pipeline
 

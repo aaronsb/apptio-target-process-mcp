@@ -7,9 +7,25 @@ The repository includes a documentation scraper/searcher for Targetprocess devel
 
 To use:
 1. Ensure the submodule is initialized: `git submodule update --init`
-2. Navigate to the docs directory: `cd resources/target-process-docs`
-3. Install dependencies: `npm install`
-4. Start the search server: `npm start`
+
+2. First time setup (from project root):
+   ```bash
+   pushd resources/target-process-docs && npm install && ./refresh-docs.sh && popd
+   ```
+   This will install dependencies and perform the initial documentation scrape and indexing.
+
+3. To search the documentation (can be run from any directory):
+   ```bash
+   pushd resources/target-process-docs && ./search-docs.sh "your search query" && popd
+   ```
+   Example: `pushd resources/target-process-docs && ./search-docs.sh "entity states" && popd`
+
+Why pushd/popd?
+- The search tool uses relative paths to find its documentation database
+- pushd saves your current directory location
+- Temporarily changes to the tool's directory to run the command
+- popd automatically returns you to your previous location
+This approach means you can run searches from any directory in your project while ensuring the tool works correctly.
 
 This tool is particularly useful when:
 - Implementing new API integrations
