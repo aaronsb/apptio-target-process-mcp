@@ -12,9 +12,9 @@ import { z } from 'zod';
 
 // Environment variables validation
 const requiredEnvVars = {
-  TARGET_PROCESS_DOMAIN: process.env.TARGET_PROCESS_DOMAIN,
-  TARGET_PROCESS_USERNAME: process.env.TARGET_PROCESS_USERNAME,
-  TARGET_PROCESS_PASSWORD: process.env.TARGET_PROCESS_PASSWORD,
+  TP_DOMAIN: process.env.TP_DOMAIN,
+  TP_USERNAME: process.env.TP_USERNAME,
+  TP_PASSWORD: process.env.TP_PASSWORD,
 };
 
 for (const [key, value] of Object.entries(requiredEnvVars)) {
@@ -25,9 +25,9 @@ for (const [key, value] of Object.entries(requiredEnvVars)) {
 
 // Initialize TargetProcess client
 const tp = new Targetprocess(
-  process.env.TARGET_PROCESS_DOMAIN!,
-  process.env.TARGET_PROCESS_USERNAME!,
-  process.env.TARGET_PROCESS_PASSWORD!
+  process.env.TP_DOMAIN!,
+  process.env.TP_USERNAME!,
+  process.env.TP_PASSWORD!
 );
 
 // Input schemas for tools
@@ -86,7 +86,12 @@ class TargetProcessServer {
       },
       {
         capabilities: {
-          tools: {},
+          tools: {
+            search_entities: true,
+            get_entity: true,
+            create_entity: true,
+            update_entity: true
+          },
         },
       }
     );
@@ -387,4 +392,3 @@ class TargetProcessServer {
 }
 
 const server = new TargetProcessServer();
-server.run().catch(console.error);
