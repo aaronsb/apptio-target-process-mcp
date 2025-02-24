@@ -80,8 +80,9 @@ Models the TargetProcess entity hierarchy:
 Handles API communication and operations:
 
 - **client/**: API client implementation
-  - `api.client.ts`: Core API client
-  - `auth.client.ts`: Authentication handling
+  - `api.client.ts`: Core API client implementing direct REST API calls
+  - `auth.client.ts`: Authentication handling via Basic Auth
+  - `tp.service.ts`: TargetProcess service layer with custom entity operations
 
 - **operations/**: API operations
   - `crud.operations.ts`: Create, Read, Update, Delete
