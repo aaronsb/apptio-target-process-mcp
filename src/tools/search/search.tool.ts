@@ -1,14 +1,46 @@
 import { McpError, ErrorCode } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
 import { TPService } from '../../api/client/tp.service.js';
+import { searchPresets, applyPresetFilter } from './presets.js';
 
-// Input schema for search tool
+/**
+ * Search tool for Target Process entities
+ * 
+ * Common usage examples:
+ * 1. Basic search (returns all items of a type):
+ *    search_entities({ type: "UserStory" })
+ * 
+ * 2. Using preset filters:
+ *    search_entities({ 
+ *      type: "Bug", 
+ *      where: searchPresets.open 
+ *    })
+ * 
+ * 3. Using date-based filters:
+ *    search_entities({
+ *      type: "Task",
+ *      where: searchPresets.createdToday
+ *    })
+ * 
+ * 4. Using variables in filters:
+ *    search_entities({
+ *      type: "UserStory",
+ *      where: applyPresetFilter("myTasks", { currentUser: "john@example.com" })
+ *    })
+ * 
+ * 5. Including related data:
+ *    search_entities({
+ *      type: "Bug",
+ *      where: searchPresets.open,
+ *      include: ["Project", "AssignedUser"]
+ *    })
+ */
 export const searchToolSchema = z.object({
   type: z.enum(['UserStory', 'Bug', 'Task', 'Feature']),
-  where: z.string().optional(),
-  include: z.array(z.string()).optional(),
-  take: z.number().min(1).max(1000).optional(),
-  orderBy: z.array(z.string()).optional(),
+  where: z.string().optional().describe('Filter expression or use searchPresets for common filters'),
+  include: z.array(z.string()).optional().describe('Related data to include (e.g., Project, Team, AssignedUser)'),
+  take: z.number().min(1).max(1000).optional().describe('Number of items to return (default: 100)'),
+  orderBy: z.array(z.string()).optional().describe('Fields to sort by (e.g., ["CreateDate desc"])'),
 });
 
 export type SearchToolInput = z.infer<typeof searchToolSchema>;
@@ -60,7 +92,7 @@ export class SearchTool {
   static getDefinition() {
     return {
       name: 'search_entities',
-      description: 'Search Target Process entities with filtering and includes',
+      description: 'Search Target Process entities with powerful filtering capabilities and preset filters for common scenarios',
       inputSchema: {
         type: 'object',
         properties: {
@@ -71,18 +103,25 @@ export class SearchTool {
           },
           where: {
             type: 'string',
-            description: 'Filter expression (Target Process query language)',
+            description: `Filter expression using Target Process query language. Common preset filters available:
+- Status filters: searchPresets.open, .inProgress, .done
+- Assignment filters: searchPresets.myTasks, .unassigned
+- Time-based filters: searchPresets.createdToday, .modifiedToday, .createdThisWeek
+- Priority filters: searchPresets.highPriority
+- Combined filters: searchPresets.myOpenTasks, .highPriorityUnassigned
+
+Example: searchPresets.open or "EntityState.Name eq 'Open'"`,
           },
           include: {
             type: 'array',
             items: {
               type: 'string',
             },
-            description: 'Related data to include (e.g., Project, Team, AssignedUser)',
+            description: 'Related data to include in results (e.g., ["Project", "Team", "AssignedUser"])',
           },
           take: {
             type: 'number',
-            description: 'Number of items to return (max 1000)',
+            description: 'Number of items to return (default: 100)',
             minimum: 1,
             maximum: 1000,
           },
@@ -91,7 +130,7 @@ export class SearchTool {
             items: {
               type: 'string',
             },
-            description: 'Fields to sort by (e.g., ["CreateDate desc", "Name"])',
+            description: 'Sort order for results (e.g., ["CreateDate desc", "Name asc"])',
           },
         },
         required: ['type'],
