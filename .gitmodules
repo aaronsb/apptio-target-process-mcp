@@ -1,0 +1,9 @@
+[submodule "resources/RestAPISamples"]
+	path = resources/RestAPISamples
+	url = https://github.com/TargetProcess/RestAPISamples.git
+[submodule "resources/targetprocess-mashup-helper"]
+	path = resources/targetprocess-mashup-helper
+	url = https://github.com/TargetProcess/targetprocess-mashup-helper.git
+[submodule "resources/TP3MashupLibrary"]
+	path = resources/TP3MashupLibrary
+	url = https://github.com/TargetProcess/TP3MashupLibrary.git
