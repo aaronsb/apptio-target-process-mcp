@@ -47,20 +47,28 @@ export class TPService {
     }
 
     if (typeof value === 'boolean') {
-      return `"${value}"`;
+      return value.toString().toLowerCase();
     }
 
     if (value instanceof Date) {
-      return `Convert.ToDateTime("${value.toISOString().split('T')[0]}")`;
+      return `'${value.toISOString().split('T')[0]}'`;
     }
 
     if (Array.isArray(value)) {
-      return `[${value.map(v => this.formatWhereValue(v)).join(' ')}]`;
+      return `[${value.map(v => this.formatWhereValue(v)).join(',')}]`;
     }
 
-    // Handle strings - escape single quotes and wrap in quotes if needed
-    const strValue = String(value).replace(/'/g, "''");
-    return /[\s,()=<>!]/.test(strValue) ? `"${strValue}"` : strValue;
+    // Handle strings
+    const strValue = String(value);
+    
+    // Remove any existing quotes
+    const unquoted = strValue.replace(/^['"]|['"]$/g, '');
+    
+    // Escape single quotes by doubling them
+    const escaped = unquoted.replace(/'/g, "''");
+    
+    // Always wrap in single quotes as per TargetProcess API requirements
+    return `'${escaped}'`;
   }
 
   /**
@@ -81,54 +89,63 @@ export class TPService {
    */
   private validateWhereClause(where: string): string {
     try {
-      const operators = where.match(/[=<>!]+|in|contains/gi) || [];
-      const openParens = (where.match(/\(/g) || []).length;
-      const closeParens = (where.match(/\)/g) || []).length;
-
-      if (openParens !== closeParens) {
-        throw new McpError(ErrorCode.InvalidRequest, 'Unbalanced parentheses in where clause');
+      // Handle empty/null cases
+      if (!where || !where.trim()) {
+        throw new McpError(ErrorCode.InvalidRequest, 'Empty where clause');
       }
 
-      if (!operators.length) {
-        throw new McpError(ErrorCode.InvalidRequest, 'No valid operators found in where clause');
-      }
+      // Split on 'and' while preserving quoted strings
+      const conditions: string[] = [];
+      let currentCondition = '';
+      let inQuote = false;
+      let quoteChar = '';
 
-      // Split on logical operators while preserving them
-      const parts = where.split(/\b(and|or)\b/i);
-      
-      return parts.map(part => {
-        part = part.trim();
+      for (let i = 0; i < where.length; i++) {
+        const char = where[i];
         
-        // Return logical operators as-is
-        if (/^(and|or)$/i.test(part)) {
-          return part.toLowerCase();
-        }
-
-        // Skip already formatted parts
-        if (part.includes('"') || part.includes("'")) {
-          return part;
-        }
-
-        // Handle special operators
-        if (part.toLowerCase().includes('contains')) {
-          const matches = part.match(/(.+)\.contains\((.*)\)/i);
-          if (matches) {
-            const [, field, value] = matches;
-            return `${this.formatWhereField(field.trim())}.Contains(${this.formatWhereValue(value.trim())})`;
+        if ((char === "'" || char === '"') && where[i - 1] !== '\\') {
+          if (!inQuote) {
+            inQuote = true;
+            quoteChar = char;
+          } else if (char === quoteChar) {
+            inQuote = false;
           }
         }
 
-        // Handle standard operators
-        const matches = part.match(/([^=<>!]+)([=<>!]+|in|not\s+in)(.+)/i);
-        if (matches) {
-          const [, field, operator, value] = matches;
-          const formattedField = this.formatWhereField(field.trim());
-          const formattedValue = this.formatWhereValue(value.trim());
-          return `${formattedField} ${operator.trim()} ${formattedValue}`;
+        if (!inQuote && where.slice(i, i + 4).toLowerCase() === ' and') {
+          conditions.push(currentCondition.trim());
+          currentCondition = '';
+          i += 3; // Skip 'and'
+          continue;
         }
 
-        return part;
-      }).join(' ');
+        currentCondition += char;
+      }
+      conditions.push(currentCondition.trim());
+
+      return conditions.map(condition => {
+        // Handle null checks
+        if (/\bis\s+null\b/i.test(condition)) {
+          const field = condition.split(/\bis\s+null\b/i)[0].trim();
+          return `${this.formatWhereField(field)} is null`;
+        }
+        if (/\bis\s+not\s+null\b/i.test(condition)) {
+          const field = condition.split(/\bis\s+not\s+null\b/i)[0].trim();
+          return `${this.formatWhereField(field)} is not null`;
+        }
+
+        // Match field and operator while preserving quoted values
+        const match = condition.match(/^([^\s]+)\s+(eq|ne|gt|gte|lt|lte|in|contains|not\s+contains)\s+(.+)$/i);
+        if (!match) {
+          throw new McpError(ErrorCode.InvalidRequest, `Invalid condition format: ${condition}`);
+        }
+
+        const [, field, operator, value] = match;
+        const formattedField = this.formatWhereField(field);
+        const formattedValue = this.formatWhereValue(value.trim());
+
+        return `${formattedField} ${operator.toLowerCase()} ${formattedValue}`;
+      }).join(' and ');
     } catch (error) {
       if (error instanceof McpError) throw error;
       throw new McpError(
