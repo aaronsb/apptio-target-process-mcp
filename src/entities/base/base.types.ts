@@ -10,7 +10,7 @@ export interface EntityReference {
 export interface CustomField {
   Name: string;
   Type: string;
-  Value: any;
+  Value: string | number | boolean | null | EntityReference | EntityReference[];
 }
 
 export interface EntityState extends EntityReference {
