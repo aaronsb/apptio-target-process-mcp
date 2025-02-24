@@ -98,6 +98,8 @@ node build/index.js
 
 ## API Capabilities
 
+For detailed examples and common use cases, see [USECASES.md](USECASES.md).
+
 The MCP server provides the following tools for interacting with Targetprocess:
 
 ### search_entities
