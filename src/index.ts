@@ -275,7 +275,7 @@ class TargetProcessServer {
       ],
     }));
 
-    this.server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
+    this.server.setRequestHandler(CallToolRequestSchema, async (request, _extra) => {
       try {
         switch (request.params.name) {
           case 'search_entities':
@@ -307,7 +307,7 @@ class TargetProcessServer {
   }
 
   private async handleSearchEntities(args: unknown) {
-    const { type } = searchEntitiesSchema.parse(args);
+    const { type: _type } = searchEntitiesSchema.parse(args);
     return {
       content: [
         {
@@ -320,7 +320,7 @@ class TargetProcessServer {
   }
 
   private async handleGetEntity(args: unknown) {
-    const { type, id, include } = getEntitySchema.parse(args);
+    const { type, id, include: _include } = getEntitySchema.parse(args);
     
     let result;
     try {
@@ -353,7 +353,8 @@ class TargetProcessServer {
   }
 
   private async handleCreateEntity(args: unknown) {
-    const { type, ...data } = createEntitySchema.parse(args);
+    const { type: _type, ...data } = createEntitySchema.parse(args);
+    const _data = data; // Rename after destructuring
     return {
       content: [
         {
@@ -366,7 +367,7 @@ class TargetProcessServer {
   }
 
   private async handleUpdateEntity(args: unknown) {
-    const { type, id, fields } = updateEntitySchema.parse(args);
+    const { type: _type, id: _id, fields: _fields } = updateEntitySchema.parse(args);
     return {
       content: [
         {
