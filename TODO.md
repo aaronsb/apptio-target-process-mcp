@@ -1,18 +1,20 @@
 # Future Improvements
 
 ## API Integration
+- [x] Add proper error handling to extract and display API error messages
+- [x] Implement retry logic with exponential backoff
+- [ ] Add rate limiting handling
 - [ ] Investigate and fix 400 errors with complex where clauses
 - [ ] Document the exact where clause syntax supported by the TargetProcess API
-- [ ] Add proper error handling to extract and display API error messages
-- [ ] Implement retry logic for failed API requests
-- [ ] Add rate limiting handling
 
 ## Query Capabilities
-- [ ] Fix orderBy functionality in search queries
-- [ ] Add support for complex filtering with multiple conditions
-- [ ] Implement proper escaping for special characters in where clauses
-- [ ] Add validation for query syntax before making API calls
-- [ ] Support more advanced search operators (contains, startswith, etc.)
+- [x] Fix orderBy functionality in search queries
+- [x] Add support for complex filtering with multiple conditions
+- [x] Implement proper escaping for special characters in where clauses
+- [x] Add validation for query syntax before making API calls
+- [x] Support more advanced search operators (contains, startswith, etc.)
+- [ ] Add support for date range queries
+- [ ] Add support for nested entity filtering
 
 ## Documentation
 - [ ] Update USECASES.md with correct query syntax examples

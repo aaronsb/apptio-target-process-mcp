@@ -58,6 +58,65 @@ The original implementation had all functionality in a single `index.ts` file, w
    - Each module has its own documentation
    - Clear patterns for adding new features
 
+## Query System Improvements (2024-02-24)
+
+### Context
+The original query implementation had several limitations and didn't fully support TargetProcess's query capabilities. We needed to improve query handling to better match the API's requirements and support more complex use cases.
+
+### Changes Made
+
+1. **Query Validation and Formatting**
+   - Added proper validation for where clauses
+   - Implemented case-sensitive string handling
+   - Added support for all TargetProcess operators (Contains, In list, etc.)
+   - Improved handling of custom fields with cf_ prefix
+
+2. **Error Handling**
+   - Added retry logic with exponential backoff
+   - Improved error message extraction from API responses
+   - Added validation before API calls to catch issues early
+   - Better handling of 400/401 errors
+
+3. **Type Safety**
+   - Changed any to unknown for better type safety
+   - Added proper type checking for query parameters
+   - Improved TypeScript definitions for query methods
+
+### Technical Decisions
+
+1. **Query Processing**
+   - Split query handling into discrete steps (validate, format, execute)
+   - Added proper escaping for special characters
+   - Implemented proper date and boolean value formatting
+   - Added support for complex conditions with and/or operators
+
+2. **Error Handling**
+   - Don't retry on 400 (bad request) or 401 (unauthorized)
+   - Use exponential backoff for retries
+   - Extract detailed error messages from API responses
+   - Proper error propagation with McpError types
+
+3. **Code Organization**
+   - Removed separate helper file in favor of integrated functionality
+   - Kept all query logic in TPService for better cohesion
+   - Added clear documentation for query methods
+
+### Commit Message
+
+```
+feat: improve query system and error handling
+
+- Add support for all TargetProcess query operators
+- Implement retry logic with exponential backoff
+- Add proper validation and formatting for queries
+- Improve error handling and type safety
+- Remove query helper in favor of integrated functionality
+
+This update improves the reliability and capabilities of
+the query system while maintaining clean code organization
+and type safety.
+```
+
 ### Commit Message
 
 ```
