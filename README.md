@@ -1,6 +1,20 @@
 # Targetprocess MCP Server
 
-A Model Context Protocol (MCP) server for interacting with Targetprocess API.
+The Model Context Protocol (MCP) is a standard that enables AI assistants to interact with external tools and services through a unified interface. MCP servers provide these capabilities by exposing tools and resources that AI assistants can use to accomplish tasks.
+
+This MCP server provides tools for interacting with Targetprocess, a project management and agile planning platform. It enables AI assistants to:
+- Search and retrieve Targetprocess entities (User Stories, Bugs, Tasks, Features)
+- Create and update entities with proper validation
+- Query entities with complex filters and includes
+- Handle authentication and API interactions safely
+
+## Getting Started
+
+Clone the repository recursively to include the documentation search tool:
+```bash
+git clone --recursive https://github.com/aaronsb/apptio-target-process-mcp.git
+cd apptio-target-process-mcp
+```
 
 ## Development Resources
 
@@ -90,11 +104,13 @@ Edit `~/.config/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mc
 
 ### Setup
 
-1. Clone the repository:
+1. Clone the repository recursively:
 ```bash
-git clone https://github.com/modelcontextprotocol/targetprocess-mcp.git
+git clone --recursive https://github.com/modelcontextprotocol/targetprocess-mcp.git
 cd targetprocess-mcp
 ```
+
+Note: The `--recursive` flag is required to also clone the documentation search tool submodule.
 
 2. Install dependencies:
 ```bash
