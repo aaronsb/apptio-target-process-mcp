@@ -96,6 +96,62 @@ npm run build
 node build/index.js
 ```
 
+## API Capabilities
+
+The MCP server provides the following tools for interacting with Targetprocess:
+
+### search_entities
+Search for Targetprocess entities (UserStory, Bug, Task, Feature) with filtering and includes.
+```json
+{
+  "type": "UserStory",          // Required: Entity type to search for
+  "take": 10,                   // Optional: Number of items to return (default: 10, max: 1000)
+  "include": ["Project", "Team"] // Optional: Related data to include
+}
+```
+
+### get_entity
+Get detailed information about a specific entity.
+```json
+{
+  "type": "UserStory",          // Required: Entity type
+  "id": 123456,                 // Required: Entity ID
+  "include": ["Project", "Team"] // Optional: Related data to include
+}
+```
+
+### create_entity
+Create a new entity in Targetprocess.
+```json
+{
+  "type": "UserStory",          // Required: Entity type to create
+  "name": "Story Name",         // Required: Entity name
+  "description": "Details...",  // Optional: Entity description
+  "project": {                  // Required: Project to create in
+    "id": 123
+  },
+  "team": {                     // Optional: Team to assign
+    "id": 456
+  }
+}
+```
+
+### update_entity
+Update an existing entity.
+```json
+{
+  "type": "UserStory",          // Required: Entity type
+  "id": 123456,                 // Required: Entity ID
+  "fields": {                   // Required: Fields to update
+    "name": "New Name",
+    "description": "New description",
+    "status": {
+      "id": 789
+    }
+  }
+}
+```
+
 ## Configuration
 
 The server can be configured either through environment variables or a JSON config file.

@@ -9,26 +9,48 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import { Targetprocess } from "targetprocess-rest-api";
 import { z } from 'zod';
+import fs from 'fs';
+import path from 'path';
+import fetch from 'node-fetch';
 
-// Environment variables validation
-const requiredEnvVars = {
-  TP_DOMAIN: process.env.TP_DOMAIN,
-  TP_USERNAME: process.env.TP_USERNAME,
-  TP_PASSWORD: process.env.TP_PASSWORD,
-};
-
-for (const [key, value] of Object.entries(requiredEnvVars)) {
-  if (!value) {
-    throw new Error(`${key} environment variable is required`);
-  }
+interface TPConfig {
+  domain: string;
+  credentials: {
+    username: string;
+    password: string;
+  };
 }
 
+function loadConfig(): TPConfig {
+  // Try environment variables first
+  if (process.env.TP_DOMAIN && process.env.TP_USERNAME && process.env.TP_PASSWORD) {
+    return {
+      domain: process.env.TP_DOMAIN,
+      credentials: {
+        username: process.env.TP_USERNAME,
+        password: process.env.TP_PASSWORD
+      }
+    };
+  }
+
+  // Fall back to config file
+  const configPath = path.join(process.cwd(), 'config', 'targetprocess.json');
+  if (!fs.existsSync(configPath)) {
+    throw new Error('No configuration found. Please set environment variables (TP_DOMAIN, TP_USERNAME, TP_PASSWORD) or create config/targetprocess.json');
+  }
+
+  return JSON.parse(fs.readFileSync(configPath, 'utf8'));
+}
+
+// Load configuration and initialize clients
+const config = loadConfig();
+const { domain, credentials: { username, password } } = config;
+
 // Initialize TargetProcess client
-const tp = new Targetprocess(
-  process.env.TP_DOMAIN!,
-  process.env.TP_USERNAME!,
-  process.env.TP_PASSWORD!
-);
+const tp = new Targetprocess(domain, username, password);
+
+// Initialize fetch client for raw API calls
+const auth = Buffer.from(`${username}:${password}`).toString('base64');
 
 // Input schemas for tools
 const searchEntitiesSchema = z.object({
@@ -312,37 +334,91 @@ class TargetProcessServer {
   }
 
   private async handleSearchEntities(args: unknown) {
-    const { type: _type } = searchEntitiesSchema.parse(args);
-    return {
-      content: [
-        {
-          type: 'text',
-          text: 'Search functionality not yet implemented in NewOrbit library',
-        },
-      ],
-      isError: true,
-    };
+    const { type, take = 10, include = [] } = searchEntitiesSchema.parse(args);
+    
+    try {
+      const response = await fetch(`https://${domain}/api/v1/${type}s?format=json&take=${take}${include.length ? `&include=[${include.join(',')}]` : ''}`, {
+        headers: {
+          'Authorization': `Basic ${auth}`,
+          'Accept': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(data, null, 2),
+          },
+        ],
+      };
+    } catch (error) {
+      throw new McpError(
+        ErrorCode.InvalidRequest,
+        `Failed to search ${type}s: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
   }
 
   private async handleGetEntity(args: unknown) {
-    const { type, id, include: _include } = getEntitySchema.parse(args);
+    const { type, id, include = [] } = getEntitySchema.parse(args);
     
-    let result;
     try {
-      switch (type) {
-        case 'UserStory':
-          result = await tp.getStory(id);
-          break;
-        case 'Bug':
-          result = await tp.getBug(id);
-          break;
-        case 'Task':
-          result = await tp.getTask(id);
-          break;
-        default:
-          throw new McpError(ErrorCode.InvalidRequest, `Unsupported entity type: ${type}`);
+      const response = await fetch(`https://${domain}/api/v1/${type}s/${id}?format=json${include.length ? `&include=[${include.join(',')}]` : ''}`, {
+        headers: {
+          'Authorization': `Basic ${auth}`,
+          'Accept': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
+      
+      const data = await response.json();
+      
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(data, null, 2),
+          },
+        ],
+      };
+    } catch (error) {
+      throw new McpError(
+        ErrorCode.InvalidRequest,
+        `Failed to get ${type} ${id}: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+  }
 
+  private async handleCreateEntity(args: unknown) {
+    const { type, ...data } = createEntitySchema.parse(args);
+    
+    try {
+      const response = await fetch(`https://${domain}/api/v1/${type}s`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Basic ${auth}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(data)
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      
       return {
         content: [
           {
@@ -352,36 +428,47 @@ class TargetProcessServer {
         ],
       };
     } catch (error) {
-      if (error instanceof McpError) throw error;
-      throw new McpError(ErrorCode.InvalidRequest, `Failed to get ${type}: ${error instanceof Error ? error.message : String(error)}`);
+      throw new McpError(
+        ErrorCode.InvalidRequest,
+        `Failed to create ${type}: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 
-  private async handleCreateEntity(args: unknown) {
-    const { type: _type, ...data } = createEntitySchema.parse(args);
-    const _data = data; // Rename after destructuring
-    return {
-      content: [
-        {
-          type: 'text',
-          text: 'Entity creation not yet implemented in NewOrbit library',
-        },
-      ],
-      isError: true,
-    };
-  }
-
   private async handleUpdateEntity(args: unknown) {
-    const { type: _type, id: _id, fields: _fields } = updateEntitySchema.parse(args);
-    return {
-      content: [
-        {
-          type: 'text',
-          text: 'Entity updates not yet implemented in NewOrbit library',
+    const { type, id, fields } = updateEntitySchema.parse(args);
+    
+    try {
+      const response = await fetch(`https://${domain}/api/v1/${type}s/${id}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Basic ${auth}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
         },
-      ],
-      isError: true,
-    };
+        body: JSON.stringify(fields)
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(result, null, 2),
+          },
+        ],
+      };
+    } catch (error) {
+      throw new McpError(
+        ErrorCode.InvalidRequest,
+        `Failed to update ${type} ${id}: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
   }
 
   async run() {
@@ -392,3 +479,4 @@ class TargetProcessServer {
 }
 
 const server = new TargetProcessServer();
+server.run().catch(console.error);
