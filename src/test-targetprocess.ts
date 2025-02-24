@@ -94,8 +94,8 @@ async function testTargetProcess() {
             project: userStory.Project?.Name
           };
           console.log('User Story:', JSON.stringify(simplifiedUserStory, null, 2));
-        } catch (error: any) {
-          console.log('User Story error:', error.message);
+        } catch (error: unknown) {
+          console.log('User Story error:', error instanceof Error ? error.message : String(error));
         }
 
         // Test adding time
@@ -115,19 +115,19 @@ async function testTargetProcess() {
             description: timeEntry.Description
           };
           console.log('Time Entry:', JSON.stringify(simplifiedTimeEntry, null, 2));
-        } catch (error: any) {
-          console.log('Time Entry error:', error.message);
+        } catch (error: unknown) {
+          console.log('Time Entry error:', error instanceof Error ? error.message : String(error));
         }
       } else {
         console.log('No User Stories found in the system');
       }
-    } catch (error: any) {
-      console.error('Error fetching data:', error.message);
+    } catch (error: unknown) {
+      console.error('Error fetching data:', error instanceof Error ? error.message : String(error));
     }
 
-  } catch (error: any) {
-    console.error('General error:', error.message);
-    if (error.statusCode) {
+  } catch (error: unknown) {
+    console.error('General error:', error instanceof Error ? error.message : String(error));
+    if (error && typeof error === 'object' && 'statusCode' in error) {
       console.error('Status Code:', error.statusCode);
     }
   }

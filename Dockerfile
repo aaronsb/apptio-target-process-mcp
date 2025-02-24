@@ -1,13 +1,22 @@
 # Build stage
-FROM node:20-slim AS builder
+FROM node:20.11-bullseye AS builder
+
+# Install build dependencies
+ENV NODE_ENV=development
+RUN apt-get update && apt-get install -y \
+    git \
+    build-essential \
+    python3 \
+    && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
-COPY package*.json ./
-RUN npm ci
+# Copy all files first since we need them for the prepare script
 COPY . .
-RUN npm run build
+# Install dependencies and build
+RUN npm ci && npm run build
 
 # Production stage
-FROM node:20-slim
+FROM node:20.11-bullseye
+ENV NODE_ENV=production
 WORKDIR /app
 COPY --from=builder /app/build ./build
 COPY --from=builder /app/package*.json ./
