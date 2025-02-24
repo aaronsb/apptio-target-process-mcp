@@ -2,3 +2,20 @@ node_modules/
 build/
 *.log
 .env*
+
+# Config files with sensitive data
+config/*.json
+!config/*.example.json
+
+# Local development files
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Debug logs
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
