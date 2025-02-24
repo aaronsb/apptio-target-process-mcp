@@ -2,6 +2,11 @@
 
 This document outlines the architecture of the TargetProcess MCP server, designed to align with TargetProcess's API structure and entity hierarchy.
 
+## Development Tools
+
+### Documentation Search
+The repository includes a documentation scraper/searcher (`resources/target-process-docs`) that provides a local search interface for Targetprocess's developer documentation. This tool is essential for development as it allows quick access to API documentation, entity relationships, and implementation details.
+
 ## Directory Structure
 
 ```mermaid

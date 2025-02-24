@@ -1,0 +1,3 @@
+[submodule "resources/target-process-docs"]
+	path = resources/target-process-docs
+	url = https://github.com/aaronsb/target-process-docs

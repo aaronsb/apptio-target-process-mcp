@@ -2,7 +2,19 @@
 
 A Model Context Protocol (MCP) server for interacting with Targetprocess API.
 
-## Development Paths
+## Development Resources
+
+### Documentation Search
+
+This repository includes a documentation scraper/searcher for Targetprocess developer documentation as a submodule. You can use it to quickly search through Targetprocess's documentation:
+
+```bash
+cd resources/target-process-docs
+npm install
+npm start
+```
+
+This will start a local server that allows you to search through Targetprocess's developer documentation.
 
 ### CI/CD Pipeline
 
