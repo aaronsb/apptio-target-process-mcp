@@ -1,5 +1,22 @@
 # Development Memory
 
+## Development Resources
+
+### Documentation Search (2024-02-24)
+The repository includes a documentation scraper/searcher for Targetprocess developer documentation as a submodule (`resources/target-process-docs`). This tool provides a local search interface for quickly finding relevant documentation.
+
+To use:
+1. Ensure the submodule is initialized: `git submodule update --init`
+2. Navigate to the docs directory: `cd resources/target-process-docs`
+3. Install dependencies: `npm install`
+4. Start the search server: `npm start`
+
+This tool is particularly useful when:
+- Implementing new API integrations
+- Understanding TargetProcess entity relationships
+- Looking up API endpoints and parameters
+- Researching TargetProcess features and capabilities
+
 ## Modular Architecture Refactoring (2024-02-24)
 
 ### Context
