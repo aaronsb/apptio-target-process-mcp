@@ -1,0 +1,30 @@
+{
+  "name": "TargetProcessMCP",
+  "version": "0.1.0",
+  "description": "A tool server for Apptio Target Process",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "TargetProcessMCP": "./build/index.js"
+  },
+  "files": [
+    "build"
+  ],
+  "scripts": {
+    "build": "tsc && node -e \"require('fs').chmodSync('build/index.js', '755')\"",
+    "prepare": "npm run build",
+    "watch": "tsc --watch",
+    "inspector": "npx @modelcontextprotocol/inspector build/index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "0.6.0",
+    "axios": "^1.7.9",
+    "node-fetch": "^3.3.2",
+    "targetprocess-rest-api": "^1.0.0",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.24",
+    "typescript": "^5.3.3"
+  }
+}
