@@ -1,9 +1,9 @@
 import fetch from 'node-fetch';
 import { McpError, ErrorCode } from '@modelcontextprotocol/sdk/types.js';
-import { BaseEntityData } from '../../entities/base/base.types.js';
+import { URL, URLSearchParams } from 'node:url';
 import { AssignableEntityData } from '../../entities/assignable/assignable.entity.js';
 import { UserStoryData } from '../../entities/assignable/user-story.entity.js';
-import { ApiResponse, ApiEntityResponse, CreateEntityRequest, UpdateEntityRequest } from './api.types.js';
+import { ApiResponse, CreateEntityRequest, UpdateEntityRequest } from './api.types.js';
 
 export interface TPServiceConfig {
   domain: string;

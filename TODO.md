@@ -1,85 +1,78 @@
-# Target Process MCP Server - TODO
+# Future Improvements
 
-## Completed
-- [x] Created basic TypeScript MCP server structure
-- [x] Implemented core entity operations:
-  - Search entities with filtering and includes
-  - Get entity details
-  - Create new entities
-  - Update existing entities
-- [x] Added input validation using Zod schemas
-- [x] Implemented error handling for API responses
+## API Integration
+- [ ] Investigate and fix 400 errors with complex where clauses
+- [ ] Document the exact where clause syntax supported by the TargetProcess API
+- [ ] Add proper error handling to extract and display API error messages
+- [ ] Implement retry logic for failed API requests
+- [ ] Add rate limiting handling
 
-## To Do
-- [ ] Configuration
-  - Need Target Process URL
-  - Need access token for authentication
-  - Add to MCP settings file with environment variables
-- [ ] Testing
-  - Test each operation with real Target Process instance
-  - Verify error handling
-  - Test pagination and filtering
-- [ ] Additional Features
-  - Add support for custom fields
-  - Add bulk operations
-  - Add comment operations
-  - Add time tracking operations
-- [ ] Documentation
-  - Add setup instructions
-  - Document available operations
-  - Add example queries
-  - Document error handling
+## Query Capabilities
+- [ ] Fix orderBy functionality in search queries
+- [ ] Add support for complex filtering with multiple conditions
+- [ ] Implement proper escaping for special characters in where clauses
+- [ ] Add validation for query syntax before making API calls
+- [ ] Support more advanced search operators (contains, startswith, etc.)
 
-## Setup Instructions (Draft)
-1. Generate Target Process access token:
-   - Go to Settings > Access Tokens
-   - Click "Add Access Token"
-   - Name it (e.g., "MCP Integration")
-   - Copy the generated token
-2. Add server configuration to MCP settings:
-   ```json
-   {
-     "mcpServers": {
-       "target-process": {
-         "command": "node",
-         "args": ["/path/to/target-process-server/build/index.js"],
-         "env": {
-           "TARGET_PROCESS_URL": "https://company.tpondemand.com",
-           "TARGET_PROCESS_TOKEN": "your-access-token"
-         },
-         "disabled": false,
-         "autoApprove": []
-       }
-     }
-   }
-   ```
+## Documentation
+- [ ] Update USECASES.md with correct query syntax examples
+- [ ] Add troubleshooting section with common error solutions
+- [ ] Document limitations and differences from TargetProcess web interface
+- [ ] Add examples for each supported query operator
+- [ ] Include real-world use case examples with working queries
 
-## Example Usage (Draft)
-```typescript
-// Search for user stories
-{
-  "type": "UserStory",
-  "where": "Project.Id eq 123",
-  "include": ["Project", "Team", "AssignedUser"],
-  "take": 10,
-  "orderBy": ["CreateDate desc"]
-}
+## Error Handling
+- [ ] Improve error messages to be more user-friendly
+- [ ] Add specific error types for common failure cases
+- [ ] Include suggestions for fixing common errors
+- [ ] Add logging for debugging complex queries
+- [ ] Implement proper stack traces for debugging
 
-// Create a bug
-{
-  "type": "Bug",
-  "name": "Critical issue with login",
-  "description": "Users unable to log in after password reset",
-  "project": { "id": 123 },
-  "team": { "id": 456 }
-}
+## Entity Support
+- [ ] Add support for Team entity type in search
+- [ ] Add support for Project entity type in search
+- [ ] Add support for Release entity type in search
+- [ ] Add support for Iteration entity type in search
+- [ ] Support custom field filtering in queries
 
-// Update status
-{
-  "type": "UserStory",
-  "id": 789,
-  "fields": {
-    "status": { "id": 321 },
-    "assignedUser": { "id": 654 }
-  }
-}
+## Testing
+- [ ] Add tests for complex query scenarios
+- [ ] Add tests for error handling
+- [ ] Add integration tests with real API
+- [ ] Add performance tests for large result sets
+- [ ] Add test coverage for all entity types
+
+## Features
+- [ ] Add bulk operation support
+- [ ] Add batch query support
+- [ ] Support custom field updates
+- [ ] Add support for entity relations
+- [ ] Add support for comments and attachments
+
+## Performance
+- [ ] Implement result caching
+- [ ] Add query optimization
+- [ ] Implement connection pooling
+- [ ] Add request batching
+- [ ] Optimize large result set handling
+
+## Security
+- [ ] Add input sanitization for query parameters
+- [ ] Implement proper credential handling
+- [ ] Add support for token-based authentication
+- [ ] Add request signing
+- [ ] Add audit logging
+
+## Developer Experience
+- [ ] Add query builder helper
+- [ ] Improve TypeScript type definitions
+- [ ] Add more code examples
+- [ ] Create interactive documentation
+- [ ] Add CLI tools for testing queries
+
+## Monitoring
+- [ ] Add performance metrics
+- [ ] Add error tracking
+- [ ] Add usage analytics
+- [ ] Add health checks
+- [ ] Add alerting for API issues

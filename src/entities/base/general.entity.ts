@@ -62,7 +62,7 @@ export abstract class GeneralEntity {
   /**
    * Get a custom field value by name
    */
-  getCustomField<T = any>(name: string): T | undefined {
+  getCustomField<T extends CustomField['Value']>(name: string): T | undefined {
     const field = this.customFields.find(f => f.Name === name);
     return field?.Value as T;
   }
@@ -70,7 +70,7 @@ export abstract class GeneralEntity {
   /**
    * Set a custom field value
    */
-  setCustomField(name: string, value: any, type: string): void {
+  setCustomField(name: string, value: CustomField['Value'], type: string): void {
     const existingIndex = this.customFields.findIndex(f => f.Name === name);
     const field: CustomField = { Name: name, Type: type, Value: value };
     
