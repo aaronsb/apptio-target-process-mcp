@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 
+# Force immediate output
+exec 1>&1
+
 # This script provides a lightweight local development build pipeline
 # that mirrors our CI approach but optimized for speed and local iteration.
 # It performs all build steps from linting through Docker image creation,
