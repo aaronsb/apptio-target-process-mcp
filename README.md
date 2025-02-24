@@ -194,6 +194,16 @@ Update an existing entity.
 }
 ```
 
+## LLM Integration
+
+This MCP server can be used with various AI assistants that support the Model Context Protocol:
+
+- [Cline](https://cline.bot) - A CLI-based AI assistant
+- [Claude Desktop](https://claude.ai/download) - Anthropic's desktop application
+- [Goose](https://block.github.io/goose/) - A local AI assistant
+
+For configuration and setup instructions, see [llms-install.md](llms-install.md).
+
 ## Configuration
 
 The server can be configured either through environment variables or a JSON config file.
