@@ -1,3 +1,104 @@
+# Target Process MCP Server Improvements
+
+## Current Batch (Claude Feedback)
+
+### Entity Type Validation
+- [x] Expand entity type enums in all tool schemas to include Epic, Portfolio Epics, Solutions, etc.
+- [x] Update ResourceType in base.types.ts to ensure it's comprehensive
+- [x] Add dynamic entity type validation that queries the Target Process API
+  - [x] Added getValidEntityTypes method to fetch valid entity types from the API
+  - [x] Update validateEntityType to use dynamic validation with caching
+- [x] Implement better error messages when an invalid entity type is provided
+  - [x] Added validateEntityType method with detailed error messages
+  - [x] Updated all API methods to use validateEntityType
+
+### Query Syntax
+- [ ] Refactor validateWhereClause method to be more flexible
+- [ ] Improve error handling for query parsing with more descriptive messages
+- [ ] Add query validation step before sending to the API
+- [ ] Support both searchPresets pattern and direct queries more robustly
+- [ ] Add examples and documentation for complex query patterns
+
+### Search Parameter Handling
+- [ ] Add a validation layer that checks parameters before sending them to Target Process
+- [ ] Provide clearer feedback on what's wrong with the parameters
+- [ ] Implement parameter normalization to handle common input variations
+- [ ] Add detailed logging for debugging parameter issues
+
+### Preset Query Library
+- [ ] Expand the searchPresets to cover more common scenarios
+- [ ] Add documentation for each preset
+- [ ] Implement a more robust variable substitution system
+- [ ] Add support for combining multiple presets
+
+### Relationship Exploration
+- [ ] Add a new tool for exploring entity relationships
+- [ ] Implement metadata endpoints that return the entity model schema
+- [ ] Create visualization tools for entity relationships
+- [ ] Add helper methods for navigating between related entities
+
+### Batch Queries
+- [ ] Implement a batch query capability for fetching multiple entity types
+- [ ] Add support for relationship-based queries
+- [ ] Optimize performance for large result sets
+- [ ] Add result caching for frequently accessed data
+
+### Pagination Support
+- [ ] Add explicit pagination controls with total count information
+- [ ] Implement cursor-based pagination for large result sets
+- [ ] Add pagination metadata to response objects
+- [ ] Create helper methods for navigating paginated results
+
+### Documentation
+- [ ] Generate OpenAPI specification for the MCP server endpoints
+- [ ] Add comprehensive examples for each tool
+- [ ] Create a user guide with common usage patterns
+- [ ] Document the Target Process data model
+
+### Query Builder
+- [ ] Develop a query builder component to construct valid queries
+- [ ] Add syntax validation for queries
+- [ ] Implement query templates for common patterns
+- [ ] Add support for complex conditions and grouping
+
+### Result Transformation
+- [ ] Add options to transform results into simplified formats
+- [ ] Implement different view modes (hierarchical, flat, graph)
+- [ ] Add filtering and sorting options for results
+- [ ] Create helper methods for extracting specific data
+
+### Mermaid Generation
+- [ ] Add a feature to generate Mermaid diagrams from query results
+- [ ] Implement relationship visualization
+- [ ] Add support for different diagram types
+- [ ] Create customization options for diagrams
+
+## Implementation Phases
+
+### Phase 1: Critical Fixes (Weeks 1-2)
+- [x] Expand entity type support
+- [ ] Fix query syntax handling
+- [x] Improve error messages and parameter validation
+  - [x] Added better error messages for entity type validation
+  - [x] Improved error handling in API methods
+  - [ ] Improve query parameter validation
+- [x] Implement dynamic entity type validation with caching
+
+### Phase 2: Core Enhancements (Weeks 3-4)
+- [ ] Enhance preset query library
+- [ ] Implement relationship exploration
+- [ ] Add basic pagination support
+
+### Phase 3: Advanced Features (Weeks 5-6)
+- [ ] Implement batch queries
+- [ ] Add result transformation options
+- [ ] Create Mermaid diagram generation
+
+### Phase 4: Documentation and Refinement (Weeks 7-8)
+- [ ] Generate OpenAPI documentation
+- [ ] Create comprehensive examples
+- [ ] Refine and optimize based on usage patterns
+
 # Future Improvements
 
 ## API Integration
@@ -24,17 +125,19 @@
 - [ ] Include real-world use case examples with working queries
 
 ## Error Handling
-- [ ] Improve error messages to be more user-friendly
+- [x] Improve error messages to be more user-friendly
+  - [x] Added better error messages for entity type validation
+  - [x] Improved error handling in API methods to preserve original error details
 - [ ] Add specific error types for common failure cases
 - [ ] Include suggestions for fixing common errors
 - [ ] Add logging for debugging complex queries
 - [ ] Implement proper stack traces for debugging
 
 ## Entity Support
-- [ ] Add support for Team entity type in search
-- [ ] Add support for Project entity type in search
-- [ ] Add support for Release entity type in search
-- [ ] Add support for Iteration entity type in search
+- [x] Add support for Team entity type in search
+- [x] Add support for Project entity type in search
+- [x] Add support for Release entity type in search
+- [x] Add support for Iteration entity type in search
 - [ ] Support custom field filtering in queries
 
 ## Testing
