@@ -571,7 +571,7 @@ export class TPService {
           // Try to parse as-is first
           return JSON.parse(text);
         } catch (parseError) {
-          console.log('Failed to parse JSON response, attempting to fix format...');
+          console.error('Failed to parse JSON response, attempting to fix format...');
           
           // If parsing fails, try to fix the JSON by adding missing commas between objects
           const fixedText = text
@@ -607,42 +607,65 @@ export class TPService {
    */
   async getValidEntityTypes(): Promise<string[]> {
     try {
-      console.log('Fetching valid entity types from Target Process API...');
+      console.error('Fetching valid entity types from Target Process API...');
+      console.error(`Using domain: ${this.baseUrl}`);
+      
       const metadata = await this.fetchMetadata();
       const entityTypes: string[] = [];
       
       if (metadata && metadata.Items) {
+        console.error(`Metadata response received with ${metadata.Items.length} items`);
         for (const item of metadata.Items) {
           if (item.Name && !entityTypes.includes(item.Name)) {
             entityTypes.push(item.Name);
           }
         }
+      } else {
+        console.error('Metadata response missing Items array:', JSON.stringify(metadata).substring(0, 200) + '...');
       }
       
       if (entityTypes.length === 0) {
-        console.warn('No entity types found in API response, falling back to static list');
+        console.error('No entity types found in API response, falling back to static list');
+        // Comprehensive list of common Target Process entity types
         return [
           'UserStory', 'Bug', 'Task', 'Feature', 
           'Epic', 'PortfolioEpic', 'Solution', 
           'Request', 'Impediment', 'TestCase', 'TestPlan',
           'Project', 'Team', 'Iteration', 'TeamIteration',
           'Release', 'Program', 'Comment', 'Attachment',
-          'EntityState', 'Priority', 'Process', 'GeneralUser'
+          'EntityState', 'Priority', 'Process', 'GeneralUser',
+          'TestCase', 'TestPlan', 'TestCaseRun', 'Build',
+          'Assignable', 'General', 'Relation', 'Role',
+          'CustomField', 'Milestone', 'TimeSheet', 'Context'
         ];
       }
       
-      console.log(`Found ${entityTypes.length} valid entity types from API`);
+      console.error(`Found ${entityTypes.length} valid entity types from API`);
       return entityTypes.sort();
     } catch (error) {
       console.error('Error fetching valid entity types:', error);
+      // Provide more detailed error information
+      if (error instanceof Error) {
+        console.error(`Error details: ${error.message}`);
+        console.error(`Error stack: ${error.stack}`);
+      }
+      
       if (error instanceof McpError) {
         throw error;
       }
       
-      throw new McpError(
-        ErrorCode.InvalidRequest,
-        `Failed to get valid entity types: ${error instanceof Error ? error.message : String(error)}`
-      );
+      // Fall back to static list on error instead of throwing
+      console.error('Falling back to static entity type list due to error');
+      return [
+        'UserStory', 'Bug', 'Task', 'Feature', 
+        'Epic', 'PortfolioEpic', 'Solution', 
+        'Request', 'Impediment', 'TestCase', 'TestPlan',
+        'Project', 'Team', 'Iteration', 'TeamIteration',
+        'Release', 'Program', 'Comment', 'Attachment',
+        'EntityState', 'Priority', 'Process', 'GeneralUser',
+        'TestCase', 'TestPlan', 'TestCaseRun', 'Build',
+        'Assignable', 'General', 'Relation', 'Role'
+      ];
     }
   }
   
@@ -653,12 +676,12 @@ export class TPService {
   async initializeEntityTypeCache(): Promise<void> {
     try {
       if (!this.validEntityTypesCache) {
-        console.log('Pre-initializing entity type cache...');
+        console.error('Pre-initializing entity type cache...');
         this.cacheInitPromise = this.getValidEntityTypes();
         this.validEntityTypesCache = await this.cacheInitPromise;
         this.cacheTimestamp = Date.now();
         this.cacheInitPromise = null;
-        console.log('Entity type cache initialized successfully');
+        console.error('Entity type cache initialized successfully');
       }
     } catch (error) {
       console.error('Failed to initialize entity type cache:', error);
