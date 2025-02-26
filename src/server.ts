@@ -135,6 +135,7 @@ export class TargetProcessServer {
   async run() {
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
-    console.error('Target Process MCP server running on stdio');
+    const timestamp = new Date().toISOString();
+    console.error(`Target Process MCP server running on stdio (started at ${timestamp})`);
   }
 }
