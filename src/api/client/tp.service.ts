@@ -261,6 +261,79 @@ export class TPService {
     return await response.json() as T;
   }
 
+  // Cache for valid entity types to avoid repeated API calls
+  private validEntityTypesCache: string[] | null = null;
+  private cacheInitPromise: Promise<string[]> | null = null;
+  private readonly cacheExpiryMs = 3600000; // Cache expires after 1 hour
+  private cacheTimestamp: number = 0;
+  
+  /**
+   * Validates that the entity type is supported by Target Process
+   * Uses dynamic validation with caching for better accuracy
+   */
+  private async validateEntityType(type: string): Promise<string> {
+    // Static list of known entity types in Target Process as fallback
+    const staticValidEntityTypes = [
+      'UserStory', 'Bug', 'Task', 'Feature', 
+      'Epic', 'PortfolioEpic', 'Solution', 
+      'Request', 'Impediment', 'TestCase', 'TestPlan',
+      'Project', 'Team', 'Iteration', 'TeamIteration',
+      'Release', 'Program', 'Comment', 'Attachment',
+      'EntityState', 'Priority', 'Process', 'GeneralUser'
+    ];
+    
+    try {
+      // Check if cache is expired
+      const isCacheExpired = Date.now() - this.cacheTimestamp > this.cacheExpiryMs;
+      
+      // Initialize cache if needed
+      if (!this.validEntityTypesCache || isCacheExpired) {
+        // If initialization is already in progress, wait for it
+        if (this.cacheInitPromise) {
+          this.validEntityTypesCache = await this.cacheInitPromise;
+        } else {
+          // Start new initialization
+          this.cacheInitPromise = this.getValidEntityTypes();
+          try {
+            this.validEntityTypesCache = await this.cacheInitPromise;
+            this.cacheTimestamp = Date.now();
+          } catch (error) {
+            console.error('Failed to fetch valid entity types:', error);
+            // Fall back to static list if API call fails
+            this.validEntityTypesCache = staticValidEntityTypes;
+          } finally {
+            this.cacheInitPromise = null;
+          }
+        }
+      }
+      
+      // Validate against the cache
+      if (!this.validEntityTypesCache.includes(type)) {
+        throw new McpError(
+          ErrorCode.InvalidRequest,
+          `Invalid entity type: '${type}'. Valid entity types are: ${this.validEntityTypesCache.join(', ')}`
+        );
+      }
+      
+      return type;
+    } catch (error) {
+      // If error is already a McpError, rethrow it
+      if (error instanceof McpError) {
+        throw error;
+      }
+      
+      // Fall back to static validation if dynamic validation fails
+      if (!staticValidEntityTypes.includes(type)) {
+        throw new McpError(
+          ErrorCode.InvalidRequest,
+          `Invalid entity type: '${type}'. Valid entity types are: ${staticValidEntityTypes.join(', ')}`
+        );
+      }
+      
+      return type;
+    }
+  }
+
   async searchEntities<T>(
     type: string,
     where?: string,
@@ -269,6 +342,9 @@ export class TPService {
     orderBy?: string[]
   ): Promise<T[]> {
     try {
+      // Validate entity type (now async)
+      const validatedType = await this.validateEntityType(type);
+      
       const params = new URLSearchParams({
         format: 'json',
         take: take.toString()
@@ -287,7 +363,7 @@ export class TPService {
       }
 
       return await this.executeWithRetry(async () => {
-        const response = await fetch(`${this.baseUrl}/${type}s?${params}`, {
+        const response = await fetch(`${this.baseUrl}/${validatedType}s?${params}`, {
           headers: {
             'Authorization': `Basic ${this.auth}`,
             'Accept': 'application/json'
@@ -296,11 +372,15 @@ export class TPService {
 
         const data = await this.handleApiResponse<ApiResponse<T>>(
           response,
-          `search ${type}s`
+          `search ${validatedType}s`
         );
         return data.Items || [];
-      }, `search ${type}s`);
+      }, `search ${validatedType}s`);
     } catch (error) {
+      if (error instanceof McpError) {
+        throw error;
+      }
+      
       throw new McpError(
         ErrorCode.InvalidRequest,
         `Failed to search ${type}s: ${error instanceof Error ? error.message : String(error)}`
@@ -317,6 +397,9 @@ export class TPService {
     include?: string[]
   ): Promise<T> {
     try {
+      // Validate entity type (now async)
+      const validatedType = await this.validateEntityType(type);
+      
       const params = new URLSearchParams({
         format: 'json'
       });
@@ -326,7 +409,7 @@ export class TPService {
       }
 
       return await this.executeWithRetry(async () => {
-        const response = await fetch(`${this.baseUrl}/${type}s/${id}?${params}`, {
+        const response = await fetch(`${this.baseUrl}/${validatedType}s/${id}?${params}`, {
           headers: {
             'Authorization': `Basic ${this.auth}`,
             'Accept': 'application/json'
@@ -335,10 +418,14 @@ export class TPService {
 
         return await this.handleApiResponse<T>(
           response,
-          `get ${type} ${id}`
+          `get ${validatedType} ${id}`
         );
-      }, `get ${type} ${id}`);
+      }, `get ${validatedType} ${id}`);
     } catch (error) {
+      if (error instanceof McpError) {
+        throw error;
+      }
+      
       throw new McpError(
         ErrorCode.InvalidRequest,
         `Failed to get ${type} ${id}: ${error instanceof Error ? error.message : String(error)}`
@@ -354,8 +441,11 @@ export class TPService {
     data: CreateEntityRequest
   ): Promise<T> {
     try {
+      // Validate entity type (now async)
+      const validatedType = await this.validateEntityType(type);
+      
       return await this.executeWithRetry(async () => {
-        const response = await fetch(`${this.baseUrl}/${type}s`, {
+        const response = await fetch(`${this.baseUrl}/${validatedType}s`, {
           method: 'POST',
           headers: {
             'Authorization': `Basic ${this.auth}`,
@@ -367,10 +457,14 @@ export class TPService {
 
         return await this.handleApiResponse<T>(
           response,
-          `create ${type}`
+          `create ${validatedType}`
         );
-      }, `create ${type}`);
+      }, `create ${validatedType}`);
     } catch (error) {
+      if (error instanceof McpError) {
+        throw error;
+      }
+      
       throw new McpError(
         ErrorCode.InvalidRequest,
         `Failed to create ${type}: ${error instanceof Error ? error.message : String(error)}`
@@ -387,8 +481,11 @@ export class TPService {
     data: UpdateEntityRequest
   ): Promise<T> {
     try {
+      // Validate entity type (now async)
+      const validatedType = await this.validateEntityType(type);
+      
       return await this.executeWithRetry(async () => {
-        const response = await fetch(`${this.baseUrl}/${type}s/${id}`, {
+        const response = await fetch(`${this.baseUrl}/${validatedType}s/${id}`, {
           method: 'POST',
           headers: {
             'Authorization': `Basic ${this.auth}`,
@@ -400,10 +497,14 @@ export class TPService {
 
         return await this.handleApiResponse<T>(
           response,
-          `update ${type} ${id}`
+          `update ${validatedType} ${id}`
         );
-      }, `update ${type} ${id}`);
+      }, `update ${validatedType} ${id}`);
     } catch (error) {
+      if (error instanceof McpError) {
+        throw error;
+      }
+      
       throw new McpError(
         ErrorCode.InvalidRequest,
         `Failed to update ${type} ${id}: ${error instanceof Error ? error.message : String(error)}`
@@ -460,10 +561,79 @@ export class TPService {
         );
       }, 'fetch metadata');
     } catch (error) {
+      if (error instanceof McpError) {
+        throw error;
+      }
+      
       throw new McpError(
         ErrorCode.InvalidRequest,
         `Failed to fetch metadata: ${error instanceof Error ? error.message : String(error)}`
       );
+    }
+  }
+  
+  /**
+   * Get a list of all valid entity types from the API
+   * This can be used to dynamically validate entity types
+   */
+  async getValidEntityTypes(): Promise<string[]> {
+    try {
+      console.log('Fetching valid entity types from Target Process API...');
+      const metadata = await this.fetchMetadata();
+      const entityTypes: string[] = [];
+      
+      if (metadata && metadata.Items) {
+        for (const item of metadata.Items) {
+          if (item.Name && !entityTypes.includes(item.Name)) {
+            entityTypes.push(item.Name);
+          }
+        }
+      }
+      
+      if (entityTypes.length === 0) {
+        console.warn('No entity types found in API response, falling back to static list');
+        return [
+          'UserStory', 'Bug', 'Task', 'Feature', 
+          'Epic', 'PortfolioEpic', 'Solution', 
+          'Request', 'Impediment', 'TestCase', 'TestPlan',
+          'Project', 'Team', 'Iteration', 'TeamIteration',
+          'Release', 'Program', 'Comment', 'Attachment',
+          'EntityState', 'Priority', 'Process', 'GeneralUser'
+        ];
+      }
+      
+      console.log(`Found ${entityTypes.length} valid entity types from API`);
+      return entityTypes.sort();
+    } catch (error) {
+      console.error('Error fetching valid entity types:', error);
+      if (error instanceof McpError) {
+        throw error;
+      }
+      
+      throw new McpError(
+        ErrorCode.InvalidRequest,
+        `Failed to get valid entity types: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+  }
+  
+  /**
+   * Initialize the entity type cache on server startup
+   * This helps avoid delays on the first API call
+   */
+  async initializeEntityTypeCache(): Promise<void> {
+    try {
+      if (!this.validEntityTypesCache) {
+        console.log('Pre-initializing entity type cache...');
+        this.cacheInitPromise = this.getValidEntityTypes();
+        this.validEntityTypesCache = await this.cacheInitPromise;
+        this.cacheTimestamp = Date.now();
+        this.cacheInitPromise = null;
+        console.log('Entity type cache initialized successfully');
+      }
+    } catch (error) {
+      console.error('Failed to initialize entity type cache:', error);
+      // Don't throw - we'll retry on first use
     }
   }
 }

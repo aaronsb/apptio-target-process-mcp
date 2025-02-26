@@ -4,7 +4,13 @@ import { TPService } from '../../api/client/tp.service.js';
 
 // Input schema for update entity tool
 export const updateEntitySchema = z.object({
-  type: z.enum(['UserStory', 'Bug', 'Task', 'Feature']),
+  type: z.enum([
+    'UserStory', 'Bug', 'Task', 'Feature', 
+    'Epic', 'PortfolioEpic', 'Solution', 
+    'Request', 'Impediment', 'TestCase', 'TestPlan',
+    'Project', 'Team', 'Iteration', 'TeamIteration',
+    'Release', 'Program'
+  ]),
   id: z.number(),
   fields: z.object({
     name: z.string().optional(),
@@ -78,7 +84,13 @@ export class UpdateEntityTool {
         properties: {
           type: {
             type: 'string',
-            enum: ['UserStory', 'Bug', 'Task', 'Feature'],
+            enum: [
+              'UserStory', 'Bug', 'Task', 'Feature', 
+              'Epic', 'PortfolioEpic', 'Solution', 
+              'Request', 'Impediment', 'TestCase', 'TestPlan',
+              'Project', 'Team', 'Iteration', 'TeamIteration',
+              'Release', 'Program'
+            ],
             description: 'Type of entity to update',
           },
           id: {
