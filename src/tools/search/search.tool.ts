@@ -36,7 +36,13 @@ import { searchPresets, applyPresetFilter } from './presets.js';
  *    })
  */
 export const searchToolSchema = z.object({
-  type: z.enum(['UserStory', 'Bug', 'Task', 'Feature']),
+  type: z.enum([
+    'UserStory', 'Bug', 'Task', 'Feature', 
+    'Epic', 'PortfolioEpic', 'Solution', 
+    'Request', 'Impediment', 'TestCase', 'TestPlan',
+    'Project', 'Team', 'Iteration', 'TeamIteration',
+    'Release', 'Program'
+  ]),
   where: z.string().optional().describe('Filter expression or use searchPresets for common filters'),
   include: z.array(z.string()).optional().describe('Related data to include (e.g., Project, Team, AssignedUser)'),
   take: z.number().min(1).max(1000).optional().describe('Number of items to return (default: 100)'),
@@ -98,7 +104,13 @@ export class SearchTool {
         properties: {
           type: {
             type: 'string',
-            enum: ['UserStory', 'Bug', 'Task', 'Feature'],
+            enum: [
+              'UserStory', 'Bug', 'Task', 'Feature', 
+              'Epic', 'PortfolioEpic', 'Solution', 
+              'Request', 'Impediment', 'TestCase', 'TestPlan',
+              'Project', 'Team', 'Iteration', 'TeamIteration',
+              'Release', 'Program'
+            ],
             description: 'Type of entity to search',
           },
           where: {
