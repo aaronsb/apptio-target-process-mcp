@@ -4,7 +4,13 @@ import { TPService } from '../../api/client/tp.service.js';
 
 // Input schema for create entity tool
 export const createEntitySchema = z.object({
-  type: z.enum(['UserStory', 'Bug', 'Task', 'Feature']),
+  type: z.enum([
+    'UserStory', 'Bug', 'Task', 'Feature', 
+    'Epic', 'PortfolioEpic', 'Solution', 
+    'Request', 'Impediment', 'TestCase', 'TestPlan',
+    'Project', 'Team', 'Iteration', 'TeamIteration',
+    'Release', 'Program'
+  ]),
   name: z.string(),
   description: z.string().optional(),
   project: z.object({
@@ -78,7 +84,13 @@ export class CreateEntityTool {
         properties: {
           type: {
             type: 'string',
-            enum: ['UserStory', 'Bug', 'Task', 'Feature'],
+            enum: [
+              'UserStory', 'Bug', 'Task', 'Feature', 
+              'Epic', 'PortfolioEpic', 'Solution', 
+              'Request', 'Impediment', 'TestCase', 'TestPlan',
+              'Project', 'Team', 'Iteration', 'TeamIteration',
+              'Release', 'Program'
+            ],
             description: 'Type of entity to create',
           },
           name: {

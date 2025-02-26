@@ -89,6 +89,22 @@ export class TargetProcessServer {
       await this.server.close();
       process.exit(0);
     });
+    
+    // Initialize entity type cache in the background
+    this.initializeCache();
+  }
+  
+  /**
+   * Initialize caches in the background to improve first-request performance
+   */
+  private async initializeCache(): Promise<void> {
+    try {
+      // Initialize entity type cache
+      await this.service.initializeEntityTypeCache();
+    } catch (error) {
+      console.error('Cache initialization error:', error);
+      // Non-fatal error, server can still function
+    }
   }
 
   private setupHandlers() {
