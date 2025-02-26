@@ -14,6 +14,7 @@ import { SearchTool } from './tools/search/search.tool.js';
 import { GetEntityTool } from './tools/entity/get.tool.js';
 import { CreateEntityTool } from './tools/entity/create.tool.js';
 import { UpdateEntityTool } from './tools/update/update.tool.js';
+import { InspectObjectTool } from './tools/inspect/inspect.tool.js';
 
 function loadConfig(): TPServiceConfig {
   // Try environment variables first
@@ -44,6 +45,7 @@ export class TargetProcessServer {
     get: GetEntityTool;
     create: CreateEntityTool;
     update: UpdateEntityTool;
+    inspect: InspectObjectTool;
   };
 
   constructor() {
@@ -56,7 +58,8 @@ export class TargetProcessServer {
       search: new SearchTool(this.service),
       get: new GetEntityTool(this.service),
       create: new CreateEntityTool(this.service),
-      update: new UpdateEntityTool(this.service)
+      update: new UpdateEntityTool(this.service),
+      inspect: new InspectObjectTool(this.service)
     };
 
     // Initialize server
@@ -71,7 +74,8 @@ export class TargetProcessServer {
             search_entities: true,
             get_entity: true,
             create_entity: true,
-            update_entity: true
+            update_entity: true,
+            inspect_object: true
           },
         },
       }
@@ -94,6 +98,7 @@ export class TargetProcessServer {
         GetEntityTool.getDefinition(),
         CreateEntityTool.getDefinition(),
         UpdateEntityTool.getDefinition(),
+        InspectObjectTool.getDefinition(),
       ],
     }));
 
@@ -108,6 +113,8 @@ export class TargetProcessServer {
             return await this.tools.create.execute(request.params.arguments);
           case 'update_entity':
             return await this.tools.update.execute(request.params.arguments);
+          case 'inspect_object':
+            return await this.tools.inspect.execute(request.params.arguments);
           default:
             throw new McpError(
               ErrorCode.MethodNotFound,
