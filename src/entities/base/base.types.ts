@@ -36,14 +36,25 @@ export type ResourceType =
   | 'Bug'
   | 'Task'
   | 'Feature'
+  | 'Epic'
+  | 'PortfolioEpic'
+  | 'Solution'
+  | 'Request'
+  | 'Impediment'
+  | 'TestCase'
+  | 'TestPlan'
   | 'Project'
   | 'Team'
   | 'Iteration'
+  | 'TeamIteration'
   | 'Release'
+  | 'Program'
   | 'EntityState'
   | 'Priority'
   | 'Process'
-  | 'GeneralUser';
+  | 'GeneralUser'
+  | 'Comment'
+  | 'Attachment';
 
 export interface BaseEntityData {
   Id: number;
