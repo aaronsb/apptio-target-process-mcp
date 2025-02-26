@@ -440,4 +440,30 @@ export class TPService {
     );
     return result;
   }
+
+  /**
+   * Fetch metadata about entity types and their properties
+   */
+  async fetchMetadata(): Promise<any> {
+    try {
+      return await this.executeWithRetry(async () => {
+        const response = await fetch(`${this.baseUrl}/Index/meta`, {
+          headers: {
+            'Authorization': `Basic ${this.auth}`,
+            'Accept': 'application/json'
+          }
+        });
+
+        return await this.handleApiResponse<any>(
+          response,
+          'fetch metadata'
+        );
+      }, 'fetch metadata');
+    } catch (error) {
+      throw new McpError(
+        ErrorCode.InvalidRequest,
+        `Failed to fetch metadata: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+  }
 }
