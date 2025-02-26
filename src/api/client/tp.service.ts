@@ -548,17 +548,46 @@ export class TPService {
   async fetchMetadata(): Promise<any> {
     try {
       return await this.executeWithRetry(async () => {
-        const response = await fetch(`${this.baseUrl}/Index/meta`, {
+        // Explicitly request JSON format in the URL
+        const response = await fetch(`${this.baseUrl}/Index/meta?format=json`, {
           headers: {
             'Authorization': `Basic ${this.auth}`,
             'Accept': 'application/json'
           }
         });
 
-        return await this.handleApiResponse<any>(
-          response,
-          'fetch metadata'
-        );
+        // Check if response is OK before trying to parse JSON
+        if (!response.ok) {
+          const errorMessage = await this.extractErrorMessage(response);
+          throw new McpError(
+            ErrorCode.InvalidRequest,
+            `fetch metadata failed: ${response.status} - ${errorMessage}`
+          );
+        }
+
+        // Get the text response and manually fix the JSON format if needed
+        const text = await response.text();
+        try {
+          // Try to parse as-is first
+          return JSON.parse(text);
+        } catch (parseError) {
+          console.log('Failed to parse JSON response, attempting to fix format...');
+          
+          // If parsing fails, try to fix the JSON by adding missing commas between objects
+          const fixedText = text
+            .replace(/}"/g, '},"')  // Add comma between objects
+            .replace(/}}/g, '}}');  // Fix any double closing braces
+          
+          try {
+            return JSON.parse(fixedText);
+          } catch (fixError) {
+            console.error('Failed to fix and parse JSON response:', fixError);
+            throw new McpError(
+              ErrorCode.InvalidRequest,
+              `Failed to parse metadata response: ${fixError instanceof Error ? fixError.message : String(fixError)}`
+            );
+          }
+        }
       }, 'fetch metadata');
     } catch (error) {
       if (error instanceof McpError) {
