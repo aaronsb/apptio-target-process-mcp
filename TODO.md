@@ -54,6 +54,19 @@
 - [ ] Add comprehensive examples for each tool
 - [ ] Create a user guide with common usage patterns
 - [ ] Document the Target Process data model
+- [ ] Enhance tool descriptions to highlight metadata discovery capabilities
+  - [ ] Update inspect_object description to mention error-based discovery
+  - [ ] Add code comments explaining how errors can be used for exploration
+
+### API Exploration
+- [ ] Add simple API discovery mechanism
+  - [ ] Add "discover_api_structure" action to inspect_object tool
+  - [ ] Extract entity types from error messages
+  - [ ] Update tool description to mention discovery capabilities
+- [ ] Improve entity type discovery mechanisms
+  - [ ] Expose getValidEntityTypes method more prominently for API exploration
+  - [ ] Add helper method for exploring entity type hierarchies
+  - [ ] Document entity type relationships and inheritance
 
 ### Query Builder
 - [ ] Develop a query builder component to construct valid queries
@@ -88,6 +101,9 @@
 - [ ] Enhance preset query library
 - [ ] Implement relationship exploration
 - [ ] Add basic pagination support
+- [ ] Add API discovery capabilities
+  - [ ] Implement "discover_api_structure" action
+  - [ ] Enhance entity type discovery mechanisms
 
 ### Phase 3: Advanced Features (Weeks 5-6)
 - [ ] Implement batch queries
