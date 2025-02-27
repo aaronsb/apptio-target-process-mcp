@@ -31,10 +31,22 @@ function loadConfig(): TPServiceConfig {
   // Fall back to config file
   const configPath = path.join(process.cwd(), 'config', 'targetprocess.json');
   if (!fs.existsSync(configPath)) {
-    throw new Error('No configuration found. Please set environment variables (TP_DOMAIN, TP_USERNAME, TP_PASSWORD) or create config/targetprocess.json');
+    console.error('No configuration found. Please set environment variables (TP_DOMAIN, TP_USERNAME, TP_PASSWORD) or create config/targetprocess.json');
+    throw new McpError(
+      ErrorCode.InternalError,
+      'No configuration found. Please set environment variables (TP_DOMAIN, TP_USERNAME, TP_PASSWORD) or create config/targetprocess.json'
+    );
   }
 
-  return JSON.parse(fs.readFileSync(configPath, 'utf8'));
+  try {
+    return JSON.parse(fs.readFileSync(configPath, 'utf8'));
+  } catch (error) {
+    console.error(`Error parsing config file: ${error instanceof Error ? error.message : String(error)}`);
+    throw new McpError(
+      ErrorCode.InternalError,
+      `Error parsing config file: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
 }
 
 export class TargetProcessServer {
