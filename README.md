@@ -3,10 +3,33 @@
 The Model Context Protocol (MCP) is a standard that enables AI assistants to interact with external tools and services through a unified interface. MCP servers provide these capabilities by exposing tools and resources that AI assistants can use to accomplish tasks.
 
 This MCP server provides tools for interacting with Targetprocess, a project management and agile planning platform. It enables AI assistants to:
-- Search and retrieve Targetprocess entities (User Stories, Bugs, Tasks, Features)
+- Search and retrieve Targetprocess entities (User Stories, Bugs, Tasks, Features, etc.)
 - Create and update entities with proper validation
 - Query entities with complex filters and includes
+- Inspect and discover the Targetprocess data model
 - Handle authentication and API interactions safely
+
+## Key Features
+
+- **Data Model Discovery**: Explore and understand complex Targetprocess implementations
+- **Powerful Querying**: Use complex filters and includes to retrieve exactly the data you need
+- **Entity Management**: Create and update entities with proper validation
+- **Relationship Exploration**: Understand how different entities relate to each other
+- **Error Handling**: Robust error handling with retries and informative messages
+- **Documentation Integration**: Built-in access to Targetprocess documentation
+
+## Use Cases
+
+This MCP server is particularly valuable in corporate settings where Targetprocess might handle millions of records with complex schemas and data models. Common use cases include:
+
+- **Data Model Discovery**: Map and understand complex Targetprocess implementations
+- **Enterprise Analytics**: Extract and analyze data across millions of records
+- **Cross-System Integration**: Use as a bridge between Targetprocess and other systems
+- **Custom Reporting**: Build specialized reports not available in the standard UI
+- **Batch Operations**: Manage large-scale changes across many entities
+- **Schema Exploration**: Discover custom fields and relationships in complex implementations
+
+For detailed examples and implementation guides, see [USECASES.md](USECASES.md).
 
 ## Getting Started
 
@@ -147,7 +170,8 @@ Search for Targetprocess entities (UserStory, Bug, Task, Feature) with filtering
 ```json
 {
   "type": "UserStory",          // Required: Entity type to search for
-  "take": 10,                   // Optional: Number of items to return (default: 10, max: 1000)
+  "where": "EntityState.Name eq 'Open'", // Optional: Filter expression
+  "take": 10,                   // Optional: Number of items to return (default: 100, max: 1000)
   "include": ["Project", "Team"] // Optional: Related data to include
 }
 ```
@@ -193,6 +217,26 @@ Update an existing entity.
   }
 }
 ```
+
+### inspect_object
+Inspect Targetprocess objects and properties through the API.
+```json
+{
+  "action": "list_types",       // Required: Action to perform
+  "entityType": "UserStory",    // Required for some actions: Entity type to inspect
+  "propertyName": "Description" // Required for some actions: Property to inspect
+}
+```
+
+## Performance Considerations
+
+When working with large Targetprocess instances that may contain millions of records:
+
+1. **Use Specific Queries**: Always use the most specific query possible to limit result sets
+2. **Limit Result Size**: Use the `take` parameter to limit the number of results returned
+3. **Include Only Necessary Data**: Only include related data that you actually need
+4. **Consider Pagination**: For large result sets, implement pagination in your application
+5. **Batch Operations**: For bulk operations, consider batching requests to avoid overloading the API
 
 ## LLM Integration
 
