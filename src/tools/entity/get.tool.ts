@@ -13,6 +13,7 @@ export const getEntitySchema = z.object({
   ]),
   id: z.number(),
   include: z.array(z.string()).optional(),
+  allow_informative_errors: z.boolean().optional().default(false),
 });
 
 export type GetEntityInput = z.infer<typeof getEntitySchema>;
@@ -25,22 +26,52 @@ export class GetEntityTool {
 
   async execute(args: unknown) {
     try {
-      const { type, id, include } = getEntitySchema.parse(args);
+      const { type, id, include, allow_informative_errors } = getEntitySchema.parse(args);
 
-      const result = await this.service.getEntity(
-        type,
-        id,
-        include
-      );
+      try {
+        const result = await this.service.getEntity(
+          type,
+          id,
+          include
+        );
 
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify(result, null, 2),
-          },
-        ],
-      };
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(result, null, 2),
+            },
+          ],
+        };
+      } catch (error) {
+        // If informative errors are allowed, extract useful metadata
+        if (allow_informative_errors) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          
+          // Extract entity types from error messages if present
+          const entityTypeMatch = errorMessage.match(/Valid entity types are: (.*)/);
+          const entityTypes = entityTypeMatch && entityTypeMatch[1] 
+            ? entityTypeMatch[1].split(', ') 
+            : [];
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify({
+                  status: 'metadata',
+                  message: 'Operation failed but returned useful metadata',
+                  entityTypes,
+                  originalError: errorMessage
+                }, null, 2),
+              },
+            ],
+          };
+        }
+        
+        // Otherwise, re-throw the error
+        throw error;
+      }
     } catch (error) {
       if (error instanceof z.ZodError) {
         throw new McpError(
@@ -88,6 +119,11 @@ export class GetEntityTool {
             },
             description: 'Related data to include',
           },
+          allow_informative_errors: {
+            type: 'boolean',
+            description: 'When true, returns useful metadata even when operation fails',
+            default: false
+          }
         },
         required: ['type', 'id'],
       },
