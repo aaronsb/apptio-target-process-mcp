@@ -3,7 +3,7 @@ set -e
 
 # Check if config file exists, if not create from example
 if [ ! -f "/app/config/targetprocess.json" ]; then
-    echo "No config file found, creating from example..."
+    echo "No config file found, creating from example..." >&2
     cp /app/config/targetprocess.example.json /app/config/targetprocess.json
     
     # Replace placeholders with environment variables if provided
