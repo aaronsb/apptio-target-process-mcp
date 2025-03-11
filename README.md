@@ -1,5 +1,7 @@
 # Targetprocess MCP Server
 
+[![smithery badge](https://smithery.ai/badge/@aaronsb/apptio-target-process-mcp)](https://smithery.ai/server/@aaronsb/apptio-target-process-mcp)
+
 The Model Context Protocol (MCP) is a standard that enables AI assistants to interact with external tools and services through a unified interface. MCP servers provide these capabilities by exposing tools and resources that AI assistants can use to accomplish tasks.
 
 This MCP server provides tools for interacting with Targetprocess, a project management and agile planning platform. It enables AI assistants to:
