@@ -1,4 +1,7 @@
 {
   "domain": "your-domain.tpondemand.com",
-  "apikey": "your-api-key"
+  "credentials": {
+    "username": "your-username",
+    "password": "your-password"
+  }
 }
