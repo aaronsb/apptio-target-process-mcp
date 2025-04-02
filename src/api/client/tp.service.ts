@@ -20,14 +20,28 @@ interface ApiErrorResponse {
   Description?: string;
 }
 
-export interface TPServiceConfig {
+interface TPServiceCommonConfig {
   domain: string;
+  retry?: RetryConfig;
+}
+
+interface TPServiceApiKeyConfig extends TPServiceCommonConfig {
+  apiKey: string;
+}
+
+interface TPServiceBasicAuthConfig extends TPServiceCommonConfig {
   credentials: {
     username: string;
     password: string;
   };
-  retry?: RetryConfig;
 }
+
+export type TPServiceConfig = TPServiceApiKeyConfig | TPServiceBasicAuthConfig;
+
+function isApiKeyConfig(config: TPServiceConfig): config is TPServiceApiKeyConfig {
+  return (config as TPServiceApiKeyConfig).apiKey !== undefined;
+}
+
 
 /**
  * Service layer for interacting with TargetProcess API
@@ -35,6 +49,7 @@ export interface TPServiceConfig {
 export class TPService {
   private readonly baseUrl: string;
   private readonly auth: string;
+  private authType: 'basic' | 'apikey' = 'basic';
 
   private readonly retryConfig: RetryConfig;
 
@@ -60,13 +75,13 @@ export class TPService {
 
     // Handle strings
     const strValue = String(value);
-    
+
     // Remove any existing quotes
     const unquoted = strValue.replace(/^['"]|['"]$/g, '');
-    
+
     // Escape single quotes by doubling them
     const escaped = unquoted.replace(/'/g, "''");
-    
+
     // Always wrap in single quotes as per TargetProcess API requirements
     return `'${escaped}'`;
   }
@@ -102,7 +117,7 @@ export class TPService {
 
       for (let i = 0; i < where.length; i++) {
         const char = where[i];
-        
+
         if ((char === "'" || char === '"') && where[i - 1] !== '\\') {
           if (!inQuote) {
             inQuote = true;
@@ -189,10 +204,16 @@ export class TPService {
   }
 
   constructor(config: TPServiceConfig) {
-    const { domain, credentials: { username, password }, retry } = config;
-    this.baseUrl = `https://${domain}/api/v1`;
-    this.auth = Buffer.from(`${username}:${password}`).toString('base64');
-    this.retryConfig = retry || {
+    if (isApiKeyConfig(config)) {
+      this.auth = config.apiKey
+      this.authType = 'apikey';
+    } else {
+      this.auth = Buffer.from(`${config.credentials.username}:${config.credentials.password}`).toString('base64');
+      this.authType = 'basic';
+    }
+
+    this.baseUrl = `https://${config.domain}/api/v1`;
+    this.retryConfig = config.retry || {
       maxRetries: 3,
       delayMs: 1000,
       backoffFactor: 2
@@ -211,11 +232,11 @@ export class TPService {
         return await operation();
       } catch (error) {
         lastError = error as Error;
-        
+
         // Don't retry on 400 (bad request) or 401 (unauthorized)
-        if (error instanceof McpError && 
-            (error.message.includes('status: 400') || 
-             error.message.includes('status: 401'))) {
+        if (error instanceof McpError &&
+          (error.message.includes('status: 400') ||
+            error.message.includes('status: 401'))) {
           throw error;
         }
 
@@ -266,7 +287,7 @@ export class TPService {
   private cacheInitPromise: Promise<string[]> | null = null;
   private readonly cacheExpiryMs = 3600000; // Cache expires after 1 hour
   private cacheTimestamp: number = 0;
-  
+
   /**
    * Validates that the entity type is supported by Target Process
    * Uses dynamic validation with caching for better accuracy
@@ -274,18 +295,18 @@ export class TPService {
   private async validateEntityType(type: string): Promise<string> {
     // Static list of known entity types in Target Process as fallback
     const staticValidEntityTypes = [
-      'UserStory', 'Bug', 'Task', 'Feature', 
-      'Epic', 'PortfolioEpic', 'Solution', 
+      'UserStory', 'Bug', 'Task', 'Feature',
+      'Epic', 'PortfolioEpic', 'Solution',
       'Request', 'Impediment', 'TestCase', 'TestPlan',
       'Project', 'Team', 'Iteration', 'TeamIteration',
       'Release', 'Program', 'Comment', 'Attachment',
       'EntityState', 'Priority', 'Process', 'GeneralUser'
     ];
-    
+
     try {
       // Check if cache is expired
       const isCacheExpired = Date.now() - this.cacheTimestamp > this.cacheExpiryMs;
-      
+
       // Initialize cache if needed
       if (!this.validEntityTypesCache || isCacheExpired) {
         // If initialization is already in progress, wait for it
@@ -306,7 +327,7 @@ export class TPService {
           }
         }
       }
-      
+
       // Validate against the cache
       if (!this.validEntityTypesCache.includes(type)) {
         throw new McpError(
@@ -314,14 +335,14 @@ export class TPService {
           `Invalid entity type: '${type}'. Valid entity types are: ${this.validEntityTypesCache.join(', ')}`
         );
       }
-      
+
       return type;
     } catch (error) {
       // If error is already a McpError, rethrow it
       if (error instanceof McpError) {
         throw error;
       }
-      
+
       // Fall back to static validation if dynamic validation fails
       if (!staticValidEntityTypes.includes(type)) {
         throw new McpError(
@@ -329,7 +350,7 @@ export class TPService {
           `Invalid entity type: '${type}'. Valid entity types are: ${staticValidEntityTypes.join(', ')}`
         );
       }
-      
+
       return type;
     }
   }
@@ -344,8 +365,8 @@ export class TPService {
     try {
       // Validate entity type (now async)
       const validatedType = await this.validateEntityType(type);
-      
-      const params = new URLSearchParams({
+
+      const params = this.getQueryParams({
         format: 'json',
         take: take.toString()
       });
@@ -364,10 +385,7 @@ export class TPService {
 
       return await this.executeWithRetry(async () => {
         const response = await fetch(`${this.baseUrl}/${validatedType}s?${params}`, {
-          headers: {
-            'Authorization': `Basic ${this.auth}`,
-            'Accept': 'application/json'
-          }
+          headers: this.getHeaders()
         });
 
         const data = await this.handleApiResponse<ApiResponse<T>>(
@@ -380,7 +398,7 @@ export class TPService {
       if (error instanceof McpError) {
         throw error;
       }
-      
+
       throw new McpError(
         ErrorCode.InvalidRequest,
         `Failed to search ${type}s: ${error instanceof Error ? error.message : String(error)}`
@@ -399,8 +417,8 @@ export class TPService {
     try {
       // Validate entity type (now async)
       const validatedType = await this.validateEntityType(type);
-      
-      const params = new URLSearchParams({
+
+      const params = this.getQueryParams({
         format: 'json'
       });
 
@@ -410,10 +428,7 @@ export class TPService {
 
       return await this.executeWithRetry(async () => {
         const response = await fetch(`${this.baseUrl}/${validatedType}s/${id}?${params}`, {
-          headers: {
-            'Authorization': `Basic ${this.auth}`,
-            'Accept': 'application/json'
-          }
+          headers: this.getHeaders()
         });
 
         return await this.handleApiResponse<T>(
@@ -425,7 +440,7 @@ export class TPService {
       if (error instanceof McpError) {
         throw error;
       }
-      
+
       throw new McpError(
         ErrorCode.InvalidRequest,
         `Failed to get ${type} ${id}: ${error instanceof Error ? error.message : String(error)}`
@@ -443,15 +458,11 @@ export class TPService {
     try {
       // Validate entity type (now async)
       const validatedType = await this.validateEntityType(type);
-      
+
       return await this.executeWithRetry(async () => {
         const response = await fetch(`${this.baseUrl}/${validatedType}s`, {
           method: 'POST',
-          headers: {
-            'Authorization': `Basic ${this.auth}`,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
+          headers: this.getHeaders(),
           body: JSON.stringify(data)
         });
 
@@ -464,7 +475,7 @@ export class TPService {
       if (error instanceof McpError) {
         throw error;
       }
-      
+
       throw new McpError(
         ErrorCode.InvalidRequest,
         `Failed to create ${type}: ${error instanceof Error ? error.message : String(error)}`
@@ -483,15 +494,11 @@ export class TPService {
     try {
       // Validate entity type (now async)
       const validatedType = await this.validateEntityType(type);
-      
+
       return await this.executeWithRetry(async () => {
         const response = await fetch(`${this.baseUrl}/${validatedType}s/${id}`, {
           method: 'POST',
-          headers: {
-            'Authorization': `Basic ${this.auth}`,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
+          headers: this.getHeaders(),
           body: JSON.stringify(data)
         });
 
@@ -504,7 +511,7 @@ export class TPService {
       if (error instanceof McpError) {
         throw error;
       }
-      
+
       throw new McpError(
         ErrorCode.InvalidRequest,
         `Failed to update ${type} ${id}: ${error instanceof Error ? error.message : String(error)}`
@@ -550,10 +557,7 @@ export class TPService {
       return await this.executeWithRetry(async () => {
         // Explicitly request JSON format in the URL
         const response = await fetch(`${this.baseUrl}/Index/meta?format=json`, {
-          headers: {
-            'Authorization': `Basic ${this.auth}`,
-            'Accept': 'application/json'
-          }
+          headers: this.getHeaders()
         });
 
         // Check if response is OK before trying to parse JSON
@@ -572,12 +576,12 @@ export class TPService {
           return JSON.parse(text);
         } catch (parseError) {
           console.error('Failed to parse JSON response, attempting to fix format...');
-          
+
           // If parsing fails, try to fix the JSON by adding missing commas between objects
           const fixedText = text
             .replace(/}"/g, '},"')  // Add comma between objects
             .replace(/}}/g, '}}');  // Fix any double closing braces
-          
+
           try {
             return JSON.parse(fixedText);
           } catch (fixError) {
@@ -593,14 +597,14 @@ export class TPService {
       if (error instanceof McpError) {
         throw error;
       }
-      
+
       throw new McpError(
         ErrorCode.InvalidRequest,
         `Failed to fetch metadata: ${error instanceof Error ? error.message : String(error)}`
       );
     }
   }
-  
+
   /**
    * Get a list of all valid entity types from the API
    * This can be used to dynamically validate entity types
@@ -609,10 +613,10 @@ export class TPService {
     try {
       console.error('Fetching valid entity types from Target Process API...');
       console.error(`Using domain: ${this.baseUrl}`);
-      
+
       const metadata = await this.fetchMetadata();
       const entityTypes: string[] = [];
-      
+
       if (metadata && metadata.Items) {
         console.error(`Metadata response received with ${metadata.Items.length} items`);
         for (const item of metadata.Items) {
@@ -623,13 +627,13 @@ export class TPService {
       } else {
         console.error('Metadata response missing Items array:', JSON.stringify(metadata).substring(0, 200) + '...');
       }
-      
+
       if (entityTypes.length === 0) {
         console.error('No entity types found in API response, falling back to static list');
         // Comprehensive list of common Target Process entity types
         return [
-          'UserStory', 'Bug', 'Task', 'Feature', 
-          'Epic', 'PortfolioEpic', 'Solution', 
+          'UserStory', 'Bug', 'Task', 'Feature',
+          'Epic', 'PortfolioEpic', 'Solution',
           'Request', 'Impediment', 'TestCase', 'TestPlan',
           'Project', 'Team', 'Iteration', 'TeamIteration',
           'Release', 'Program', 'Comment', 'Attachment',
@@ -639,7 +643,7 @@ export class TPService {
           'CustomField', 'Milestone', 'TimeSheet', 'Context'
         ];
       }
-      
+
       console.error(`Found ${entityTypes.length} valid entity types from API`);
       return entityTypes.sort();
     } catch (error) {
@@ -649,16 +653,16 @@ export class TPService {
         console.error(`Error details: ${error.message}`);
         console.error(`Error stack: ${error.stack}`);
       }
-      
+
       if (error instanceof McpError) {
         throw error;
       }
-      
+
       // Fall back to static list on error instead of throwing
       console.error('Falling back to static entity type list due to error');
       return [
-        'UserStory', 'Bug', 'Task', 'Feature', 
-        'Epic', 'PortfolioEpic', 'Solution', 
+        'UserStory', 'Bug', 'Task', 'Feature',
+        'Epic', 'PortfolioEpic', 'Solution',
         'Request', 'Impediment', 'TestCase', 'TestPlan',
         'Project', 'Team', 'Iteration', 'TeamIteration',
         'Release', 'Program', 'Comment', 'Attachment',
@@ -668,7 +672,7 @@ export class TPService {
       ];
     }
   }
-  
+
   /**
    * Initialize the entity type cache on server startup
    * This helps avoid delays on the first API call
@@ -688,4 +692,26 @@ export class TPService {
       // Don't throw - we'll retry on first use
     }
   }
+
+  private getHeaders() {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    }
+
+    if (this.authType === 'basic') {
+      headers['Authorization'] = `Basic ${this.auth}`
+    }
+
+    return headers
+  }
+
+  private getQueryParams(defaults = {}) {
+    const params = new URLSearchParams(defaults)
+    if (this.authType === 'apikey') {
+      params.append('access_token', this.auth)
+    }
+    return params
+  }
 }
+

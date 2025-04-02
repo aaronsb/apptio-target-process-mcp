@@ -5,8 +5,11 @@ set -e
 if [ ! -f "/app/config/targetprocess.json" ]; then
     echo "No config file found, creating from example..." >&2
     cp /app/config/targetprocess.example.json /app/config/targetprocess.json
-    
+
     # Replace placeholders with environment variables if provided
+    if [ ! -z "$TP_API_KEY" ]; then
+        sed -i "s/your-api-key/$TP_API_KEY/g" /app/config/targetprocess.json
+    fi
     if [ ! -z "$TP_DOMAIN" ]; then
         sed -i "s/your-domain.tpondemand.com/$TP_DOMAIN/g" /app/config/targetprocess.json
     fi
