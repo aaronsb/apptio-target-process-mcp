@@ -86,6 +86,25 @@
 - [ ] Add support for different diagram types
 - [ ] Create customization options for diagrams
 
+### MCP Resources Implementation
+- [ ] Add resource capabilities to the server configuration
+- [ ] Implement static resources for common Target Process entities
+  - [ ] Add resource for current user information
+  - [ ] Add resource for system status and metadata
+  - [ ] Add resource for common entity type definitions
+- [ ] Implement resource templates for dynamic Target Process data access
+  - [ ] Add template for accessing specific entities by ID
+  - [ ] Add template for accessing entity collections
+  - [ ] Add template for accessing entity relationships
+- [ ] Implement resource handlers
+  - [ ] Add handler for ListResourcesRequestSchema
+  - [ ] Add handler for ListResourceTemplatesRequestSchema
+  - [ ] Add handler for ReadResourceRequestSchema
+- [ ] Add resource documentation and examples
+  - [ ] Document resource URI formats
+  - [ ] Add examples of resource usage
+  - [ ] Document resource limitations and best practices
+
 ## Implementation Phases
 
 ### Phase 1: Critical Fixes (Weeks 1-2)
@@ -109,6 +128,10 @@
 - [ ] Implement batch queries
 - [ ] Add result transformation options
 - [ ] Create Mermaid diagram generation
+- [ ] Implement MCP Resources
+  - [ ] Add resource capabilities to server configuration
+  - [ ] Implement static resources and resource templates
+  - [ ] Add resource handlers
 
 ### Phase 4: Documentation and Refinement (Weeks 7-8)
 - [ ] Generate OpenAPI documentation
