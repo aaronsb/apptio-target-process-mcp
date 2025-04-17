@@ -41,7 +41,7 @@ export const searchToolSchema = z.object({
     'Epic', 'PortfolioEpic', 'Solution', 
     'Request', 'Impediment', 'TestCase', 'TestPlan',
     'Project', 'Team', 'Iteration', 'TeamIteration',
-    'Release', 'Program'
+    'Release', 'Program', 'TimeSheet'
   ]),
   where: z.string().optional().describe('Filter expression or use searchPresets for common filters'),
   include: z.array(z.string()).optional().describe('Related data to include (e.g., Project, Team, AssignedUser)'),
@@ -109,7 +109,7 @@ export class SearchTool {
               'Epic', 'PortfolioEpic', 'Solution', 
               'Request', 'Impediment', 'TestCase', 'TestPlan',
               'Project', 'Team', 'Iteration', 'TeamIteration',
-              'Release', 'Program'
+              'Release', 'Program', 'TimeSheet'
             ],
             description: 'Type of entity to search',
           },
