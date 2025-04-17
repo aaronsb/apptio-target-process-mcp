@@ -279,7 +279,8 @@ export class TPService {
       'Request', 'Impediment', 'TestCase', 'TestPlan',
       'Project', 'Team', 'Iteration', 'TeamIteration',
       'Release', 'Program', 'Comment', 'Attachment',
-      'EntityState', 'Priority', 'Process', 'GeneralUser'
+      'EntityState', 'Priority', 'Process', 'GeneralUser',
+      'TimeSheet'
     ];
     
     try {
