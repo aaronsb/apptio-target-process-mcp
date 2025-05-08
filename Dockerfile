@@ -1,3 +1,4 @@
+# Dockerfile adapted from PR #7 by smithery-ai
 # Build stage
 FROM node:20.11-bullseye AS builder
 
