@@ -300,7 +300,8 @@ export class TPService {
       'Request', 'Impediment', 'TestCase', 'TestPlan',
       'Project', 'Team', 'Iteration', 'TeamIteration',
       'Release', 'Program', 'Comment', 'Attachment',
-      'EntityState', 'Priority', 'Process', 'GeneralUser'
+      'EntityState', 'Priority', 'Process', 'GeneralUser',
+      'TimeSheet'
     ];
 
     try {
@@ -384,7 +385,9 @@ export class TPService {
       }
 
       return await this.executeWithRetry(async () => {
-        const response = await fetch(`${this.baseUrl}/${validatedType}s?${params}`, {
+        // Special case for TimeSheet entity which uses 'time' endpoint instead of 'TimeSheets'
+        const endpoint = validatedType === 'TimeSheet' ? 'time' : `${validatedType}s`;
+        const response = await fetch(`${this.baseUrl}/${endpoint}?${params}`, {
           headers: this.getHeaders()
         });
 
@@ -427,7 +430,9 @@ export class TPService {
       }
 
       return await this.executeWithRetry(async () => {
-        const response = await fetch(`${this.baseUrl}/${validatedType}s/${id}?${params}`, {
+        // Special case for TimeSheet entity which uses 'time' endpoint instead of 'TimeSheets'
+        const endpoint = validatedType === 'TimeSheet' ? 'time' : `${validatedType}s`;
+        const response = await fetch(`${this.baseUrl}/${endpoint}/${id}?${params}`, {
           headers: this.getHeaders()
         });
 
@@ -460,7 +465,9 @@ export class TPService {
       const validatedType = await this.validateEntityType(type);
 
       return await this.executeWithRetry(async () => {
-        const response = await fetch(`${this.baseUrl}/${validatedType}s`, {
+        // Special case for TimeSheet entity which uses 'time' endpoint instead of 'TimeSheets'
+        const endpoint = validatedType === 'TimeSheet' ? 'time' : `${validatedType}s`;
+        const response = await fetch(`${this.baseUrl}/${endpoint}`, {
           method: 'POST',
           headers: this.getHeaders(),
           body: JSON.stringify(data)
@@ -496,7 +503,9 @@ export class TPService {
       const validatedType = await this.validateEntityType(type);
 
       return await this.executeWithRetry(async () => {
-        const response = await fetch(`${this.baseUrl}/${validatedType}s/${id}`, {
+        // Special case for TimeSheet entity which uses 'time' endpoint instead of 'TimeSheets'
+        const endpoint = validatedType === 'TimeSheet' ? 'time' : `${validatedType}s`;
+        const response = await fetch(`${this.baseUrl}/${endpoint}/${id}`, {
           method: 'POST',
           headers: this.getHeaders(),
           body: JSON.stringify(data)
@@ -714,4 +723,3 @@ export class TPService {
     return params
   }
 }
-
