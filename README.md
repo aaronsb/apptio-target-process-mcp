@@ -2,6 +2,7 @@
 
 The Model Context Protocol (MCP) is a standard that enables AI assistants to interact with external tools and services through a unified interface. MCP servers provide these capabilities by exposing tools and resources that AI assistants can use to accomplish tasks.
 
+
 This MCP server provides tools for interacting with Targetprocess, a project management and agile planning platform. It enables AI assistants to:
 - Search and retrieve Targetprocess entities (User Stories, Bugs, Tasks, Features, etc.)
 - Create and update entities with proper validation
