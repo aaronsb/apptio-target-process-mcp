@@ -54,7 +54,8 @@ export type ResourceType =
   | 'Process'
   | 'GeneralUser'
   | 'Comment'
-  | 'Attachment';
+  | 'Attachment'
+  | 'TimeSheet';
 
 export interface BaseEntityData {
   Id: number;
