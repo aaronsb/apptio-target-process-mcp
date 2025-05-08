@@ -9,7 +9,7 @@ const execAsync = promisify(exec);
 
 // Input schema for inspect object tool
 export const inspectObjectSchema = z.object({
-  action: z.enum(['list_types', 'get_properties', 'get_property_details']),
+  action: z.enum(['list_types', 'get_properties', 'get_property_details', 'discover_api_structure']),
   entityType: z.string().optional(),
   propertyName: z.string().optional(),
 });
@@ -45,6 +45,8 @@ export class InspectObjectTool {
             );
           }
           return await this.getPropertyDetails(entityType, propertyName);
+        case 'discover_api_structure':
+          return await this.discoverApiStructure();
         default:
           throw new McpError(
             ErrorCode.InvalidParams,
@@ -266,18 +268,99 @@ export class InspectObjectTool {
   }
 
   /**
+   * Discover API structure through controlled error triggering
+   * This method intentionally triggers an error to extract entity type information
+   */
+  private async discoverApiStructure() {
+    try {
+      // First try to get entity types directly if possible
+      try {
+        const metadata = await this.service.fetchMetadata();
+        const entityTypes = this.extractEntityTypes(metadata);
+        
+        if (entityTypes.length > 0) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify({
+                  entityTypes
+                }, null, 2),
+              },
+            ],
+          };
+        }
+      } catch (metadataError) {
+        console.error('Failed to fetch metadata directly:', metadataError);
+      }
+      
+      // If direct method failed, try to trigger an informative error
+      // by attempting to get a non-existent entity type
+      try {
+        await this.service.getEntity('NonExistentType', 1);
+        
+        // If no error, return empty result
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({
+                entityTypes: []
+              }, null, 2),
+            },
+          ],
+        };
+      } catch (error) {
+        // Extract entity types from the error message
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        const entityTypeMatch = errorMessage.match(/Valid entity types are: (.*)/);
+        const entityTypes = entityTypeMatch && entityTypeMatch[1] 
+          ? entityTypeMatch[1].split(', ') 
+          : [];
+        
+        // Return just the extracted data
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({
+                entityTypes
+              }, null, 2),
+            },
+          ],
+        };
+      }
+    } catch (error) {
+      // Handle any unexpected errors
+      console.error('Error in discoverApiStructure:', error);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              error: 'Failed to discover API structure',
+              message: error instanceof Error ? error.message : String(error),
+              entityTypes: []
+            }, null, 2),
+          },
+        ],
+      };
+    }
+  }
+
+  /**
    * Get tool definition for MCP
    */
   static getDefinition() {
     return {
       name: 'inspect_object',
-      description: 'Inspect Target Process objects and properties through the API',
+      description: 'Inspect Target Process objects and properties through the API. This tool also provides API discovery capabilities through error messages when used with unsupported entity types.',
       inputSchema: {
         type: 'object',
         properties: {
           action: {
             type: 'string',
-            enum: ['list_types', 'get_properties', 'get_property_details'],
+            enum: ['list_types', 'get_properties', 'get_property_details', 'discover_api_structure'],
             description: 'Action to perform',
           },
           entityType: {
