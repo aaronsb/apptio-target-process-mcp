@@ -17,6 +17,13 @@ import { UpdateEntityTool } from './tools/update/update.tool.js';
 import { InspectObjectTool } from './tools/inspect/inspect.tool.js';
 
 function loadConfig(): TPServiceConfig {
+  if (process.env.TP_API_KEY && process.env.TP_DOMAIN) {
+    return {
+      domain: process.env.TP_DOMAIN,
+      apiKey: process.env.TP_API_KEY
+    }
+  }
+
   // Try environment variables first
   if (process.env.TP_DOMAIN && process.env.TP_USERNAME && process.env.TP_PASSWORD) {
     return {
@@ -94,18 +101,18 @@ export class TargetProcessServer {
     );
 
     this.setupHandlers();
-    
+
     // Error handling
     this.server.onerror = (error) => console.error('[MCP Error]', error);
     process.on('SIGINT', async () => {
       await this.server.close();
       process.exit(0);
     });
-    
+
     // Initialize entity type cache in the background
     this.initializeCache();
   }
-  
+
   /**
    * Initialize caches in the background to improve first-request performance
    */
