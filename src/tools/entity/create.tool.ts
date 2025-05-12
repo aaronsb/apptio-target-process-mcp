@@ -2,27 +2,41 @@ import { McpError, ErrorCode } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
 import { TPService } from '../../api/client/tp.service.js';
 
+// Define the type enum separately for reuse
+const entityTypeEnum = z.enum([
+  'UserStory', 'Bug', 'Task', 'Feature',
+  'Epic', 'PortfolioEpic', 'Solution',
+  'Request', 'Impediment', 'TestCase', 'TestPlan',
+  'Project', 'Team', 'Iteration', 'TeamIteration',
+  'Release', 'Program'
+]);
+
 // Input schema for create entity tool
 export const createEntitySchema = z.object({
-  type: z.enum([
-    'UserStory', 'Bug', 'Task', 'Feature', 
-    'Epic', 'PortfolioEpic', 'Solution', 
-    'Request', 'Impediment', 'TestCase', 'TestPlan',
-    'Project', 'Team', 'Iteration', 'TeamIteration',
-    'Release', 'Program'
-  ]),
+  type: entityTypeEnum,
   name: z.string(),
   description: z.string().optional(),
   project: z.object({
     id: z.number(),
-  }),
+  }).optional(),  // Make project optional - we'll validate based on type later
   team: z.object({
     id: z.number(),
   }).optional(),
   assignedUser: z.object({
     id: z.number(),
   }).optional(),
-});
+}).refine(
+  (data) => {
+    // If creating anything other than a Project, project is required
+    if (data.type !== 'Project' && !data.project) {
+      return false;
+    }
+    return true;
+  },
+  {
+    message: "Project ID is required for all entity types except Project"
+  }
+);
 
 export type CreateEntityInput = z.infer<typeof createEntitySchema>;
 
@@ -36,13 +50,19 @@ export class CreateEntityTool {
     try {
       const { type, ...data } = createEntitySchema.parse(args);
 
-      const apiRequest = {
+      // Prepare API request object
+      const apiRequest: any = {
         Name: data.name,
         Description: data.description,
-        Project: data.project ? { Id: data.project.id } : undefined,
         Team: data.team ? { Id: data.team.id } : undefined,
         AssignedUser: data.assignedUser ? { Id: data.assignedUser.id } : undefined
       };
+
+      // Only include Project property if NOT creating a Project
+      // This avoids circular reference when creating a Project
+      if (type !== 'Project' && data.project) {
+        apiRequest.Project = { Id: data.project.id };
+      }
 
       const result = await this.service.createEntity(
         type,
@@ -85,8 +105,8 @@ export class CreateEntityTool {
           type: {
             type: 'string',
             enum: [
-              'UserStory', 'Bug', 'Task', 'Feature', 
-              'Epic', 'PortfolioEpic', 'Solution', 
+              'UserStory', 'Bug', 'Task', 'Feature',
+              'Epic', 'PortfolioEpic', 'Solution',
               'Request', 'Impediment', 'TestCase', 'TestPlan',
               'Project', 'Team', 'Iteration', 'TeamIteration',
               'Release', 'Program'
@@ -106,7 +126,7 @@ export class CreateEntityTool {
             properties: {
               id: {
                 type: 'number',
-                description: 'Project ID',
+                description: 'Project ID (required for all entity types except Project)',
               },
             },
             required: ['id'],
@@ -130,7 +150,21 @@ export class CreateEntityTool {
             },
           },
         },
-        required: ['type', 'name', 'project'],
+        required: ['type', 'name'],
+        oneOf: [
+          {
+            properties: {
+              type: { enum: ['Project'] }
+            },
+            required: ['type']
+          },
+          {
+            properties: {
+              type: { not: { enum: ['Project'] } }
+            },
+            required: ['project']
+          }
+        ],
       },
     } as const;
   }
