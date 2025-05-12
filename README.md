@@ -14,6 +14,8 @@ The Targetprocess MCP Server enables AI assistants to interact with your Targetp
 
 ## Quick Start
 
+### Docker (Recommended for Containerized Environments)
+
 ```bash
 # Run with Docker
 docker run -i --rm \
@@ -23,7 +25,16 @@ docker run -i --rm \
   ghcr.io/aaronsb/apptio-target-process-mcp
 ```
 
+### NPX (No Installation Required)
+
+```bash
+# Run directly with npx
+TP_DOMAIN=your-domain.tpondemand.com TP_USERNAME=your-username TP_PASSWORD=your-password \
+  npx -y https://github.com/aaronsb/apptio-target-process-mcp.git
+```
+
 [Full installation guide →](docs/integration/installation.md)
+[CLI usage guide →](docs/integration/cli-usage.md)
 
 ## What can I do with it?
 

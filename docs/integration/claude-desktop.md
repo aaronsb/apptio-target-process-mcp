@@ -133,6 +133,38 @@ For security, review the parameters before approving to ensure they're appropria
 
 ## Advanced Usage
 
+### Using NPX (No Docker Required)
+
+For a simpler approach that doesn't require Docker:
+
+1. Update the Claude Desktop configuration to use npx:
+
+```json
+{
+  "mcpServers": {
+    "targetprocess": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "https://github.com/aaronsb/apptio-target-process-mcp.git"
+      ],
+      "env": {
+        "TP_DOMAIN": "your-domain.tpondemand.com",
+        "TP_USERNAME": "your-username",
+        "TP_PASSWORD": "your-password"
+      },
+      "autoApprove": [],
+      "disabled": false
+    }
+  }
+}
+```
+
+This approach:
+- Uses NPX to run the tool directly from GitHub
+- Doesn't require Docker installation
+- Automatically uses the latest version
+
 ### Using Local Installation Instead of Docker
 
 If you've installed the MCP server locally:
