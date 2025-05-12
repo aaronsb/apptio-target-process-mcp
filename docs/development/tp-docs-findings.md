@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-The Target Process Documentation Scraper represents a significant opportunity to enhance the Targetprocess MCP server development. Our evaluation reveals a comprehensive toolset that generates detailed API documentation, OpenAPI specifications, and relationship maps from any Targetprocess instance. This tool can transform our understanding of the Targetprocess API and dramatically improve both development efficiency and feature completeness of the MCP server.
+The Target Process Documentation Scraper ([GitHub Repository](https://github.com/aaronsb/target-process-docs)) represents a significant opportunity to enhance the Targetprocess MCP server development. Our evaluation reveals a comprehensive toolset that generates detailed API documentation, OpenAPI specifications, and relationship maps from any Targetprocess instance. This tool can transform our understanding of the Targetprocess API and dramatically improve both development efficiency and feature completeness of the MCP server.
 
 ## Key Findings
 
