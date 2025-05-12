@@ -20,7 +20,7 @@ Before you begin, ensure you have:
 
 There are multiple ways to install and run the Targetprocess MCP:
 
-### Option 1: Docker (Recommended)
+### Option 1: Docker (Recommended for Containerized Environments)
 
 The easiest way to get started is using the pre-built Docker image:
 
@@ -41,7 +41,32 @@ The easiest way to get started is using the pre-built Docker image:
 3. **Configure your AI assistant**:
    See the [AI assistant-specific guides](#ai-assistant-configuration) for detailed instructions.
 
-### Option 2: Local Development Setup
+### Option 2: NPX (Quick Single-Command Execution)
+
+You can run the Targetprocess MCP directly without installing it using `npx`:
+
+1. **Run with environment variables**:
+   ```bash
+   TP_DOMAIN=your-domain.tpondemand.com TP_USERNAME=your-username TP_PASSWORD=your-password \
+     npx -y https://github.com/aaronsb/apptio-target-process-mcp.git
+   ```
+
+2. **Run with a configuration file**:
+
+   Create a configuration file in one of these locations:
+   - `./targetprocess.json` (current directory)
+   - `./config/targetprocess.json` (config subdirectory)
+   - `~/.targetprocess.json` (user's home directory)
+   - `~/.config/targetprocess/config.json` (user's config directory)
+
+   Then run:
+   ```bash
+   npx -y https://github.com/aaronsb/apptio-target-process-mcp.git
+   ```
+
+For more details, see the [CLI Usage Guide](cli-usage.md).
+
+### Option 3: Local Development Setup
 
 For development or customization:
 
@@ -57,20 +82,34 @@ For development or customization:
    ```
 
 3. **Configure credentials**:
-   ```bash
-   cp config/targetprocess.example.json config/targetprocess.json
-   ```
-   
-   Edit `config/targetprocess.json` with your credentials:
-   ```json
-   {
-     "domain": "your-domain.tpondemand.com",
-     "credentials": {
-       "username": "your-username",
-       "password": "your-password"
+   You can configure credentials in several ways:
+
+   - **Environment variables** (recommended):
+     ```bash
+     export TP_DOMAIN=your-domain.tpondemand.com
+     export TP_USERNAME=your-username
+     export TP_PASSWORD=your-password
+     ```
+
+   - **Configuration file**:
+     ```bash
+     cp config/targetprocess.example.json config/targetprocess.json
+     ```
+
+     Edit `config/targetprocess.json` with your credentials:
+     ```json
+     {
+       "domain": "your-domain.tpondemand.com",
+       "credentials": {
+         "username": "your-username",
+         "password": "your-password"
+       }
      }
-   }
-   ```
+     ```
+
+     You can also place the configuration file in:
+     - `~/.targetprocess.json` (user's home directory)
+     - `~/.config/targetprocess/config.json` (user's config directory)
 
 4. **Build and run**:
    ```bash
@@ -78,7 +117,7 @@ For development or customization:
    node build/index.js
    ```
 
-### Option 3: Local Scripts for Development
+### Option 4: Local Scripts for Development
 
 For local development and testing, use the provided scripts:
 
@@ -100,15 +139,24 @@ The Targetprocess MCP supports the following environment variables:
 | Variable | Description | Required |
 |----------|-------------|----------|
 | `TP_DOMAIN` | Your Targetprocess domain (e.g., company.tpondemand.com) | Yes |
-| `TP_USERNAME` | Your Targetprocess username | Yes |
-| `TP_PASSWORD` | Your Targetprocess password | Yes |
+| `TP_API_KEY` | Your Targetprocess API key (use this or USERNAME/PASSWORD) | No* |
+| `TP_USERNAME` | Your Targetprocess username | No* |
+| `TP_PASSWORD` | Your Targetprocess password | No* |
 | `MCP_PORT` | Port for the MCP server (default: 8080) | No |
 | `MCP_HOST` | Host for the MCP server (default: 0.0.0.0) | No |
 | `LOG_LEVEL` | Logging level (default: info) | No |
 
+\* Either API key authentication (`TP_API_KEY`) or basic authentication (`TP_USERNAME` and `TP_PASSWORD`) is required unless using a configuration file.
+
 ## Configuration File
 
-Instead of environment variables, you can use a configuration file:
+Instead of environment variables, you can use a configuration file at one of these locations (checked in order):
+1. `./targetprocess.json` (current directory)
+2. `./config/targetprocess.json` (config subdirectory)
+3. `~/.targetprocess.json` (user's home directory)
+4. `~/.config/targetprocess/config.json` (user's config directory)
+
+### Basic Authentication Configuration
 
 ```json
 {
@@ -126,6 +174,24 @@ Instead of environment variables, you can use a configuration file:
   }
 }
 ```
+
+### API Key Authentication Configuration
+
+```json
+{
+  "domain": "your-domain.tpondemand.com",
+  "apiKey": "your-api-key",
+  "server": {
+    "port": 8080,
+    "host": "0.0.0.0"
+  },
+  "logging": {
+    "level": "info"
+  }
+}
+```
+
+The `server` and `logging` sections are optional.
 
 ## AI Assistant Configuration
 

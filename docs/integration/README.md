@@ -5,9 +5,10 @@ This directory contains guides for integrating the Targetprocess MCP with variou
 ## Available Guides
 
 - [Installation Guide](installation.md) - Complete installation instructions
+- [CLI Usage Guide](cli-usage.md) - Command line usage including npx
 - [Claude Desktop Integration](claude-desktop.md) - Setting up with Claude Desktop
-- [Cline Integration](cline.md) - Setting up with Cline CLI
-- [Goose Integration](goose.md) - Setting up with Goose
+- [Cline Integration](cline.md) - Setting up with Cline CLI (planned)
+- [Goose Integration](goose.md) - Setting up with Goose (planned)
 - [Troubleshooting](troubleshooting.md) - Common issues and solutions
 
 ## What is the Model Context Protocol (MCP)?
