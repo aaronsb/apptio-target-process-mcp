@@ -17,15 +17,18 @@ import { UpdateEntityTool } from './tools/update/update.tool.js';
 import { InspectObjectTool } from './tools/inspect/inspect.tool.js';
 
 function loadConfig(): TPServiceConfig {
+  // Try API key authentication
   if (process.env.TP_API_KEY && process.env.TP_DOMAIN) {
+    console.error('Using API key authentication from environment variables');
     return {
       domain: process.env.TP_DOMAIN,
       apiKey: process.env.TP_API_KEY
     }
   }
 
-  // Try environment variables first
+  // Try basic authentication with environment variables
   if (process.env.TP_DOMAIN && process.env.TP_USERNAME && process.env.TP_PASSWORD) {
+    console.error('Using basic authentication from environment variables');
     return {
       domain: process.env.TP_DOMAIN,
       credentials: {
@@ -35,23 +38,41 @@ function loadConfig(): TPServiceConfig {
     };
   }
 
-  // Fall back to config file
-  const configPath = path.join(process.cwd(), 'config', 'targetprocess.json');
-  if (!fs.existsSync(configPath)) {
-    console.error('No configuration found. Please set environment variables (TP_DOMAIN, TP_USERNAME, TP_PASSWORD) or create config/targetprocess.json');
-    throw new McpError(
-      ErrorCode.InternalError,
-      'No configuration found. Please set environment variables (TP_DOMAIN, TP_USERNAME, TP_PASSWORD) or create config/targetprocess.json'
-    );
+  // Fall back to config file - check multiple locations
+  const configLocations = [
+    // Current directory
+    path.join(process.cwd(), 'targetprocess.json'),
+    // Config subdirectory
+    path.join(process.cwd(), 'config', 'targetprocess.json'),
+    // User's home directory
+    path.join(process.env.HOME || process.env.USERPROFILE || '', '.targetprocess.json'),
+    // User's config directory
+    path.join(process.env.HOME || process.env.USERPROFILE || '', '.config', 'targetprocess', 'config.json')
+  ];
+
+  let configPath = null;
+  for (const location of configLocations) {
+    if (fs.existsSync(location)) {
+      configPath = location;
+      console.error(`Found configuration file at ${location}`);
+      break;
+    }
+  }
+
+  if (!configPath) {
+    const errorMessage = 'No configuration found. Please set environment variables (TP_DOMAIN, TP_USERNAME, TP_PASSWORD) or create a configuration file in one of these locations:\n' +
+      configLocations.join('\n');
+    console.error(errorMessage);
+    throw new McpError(ErrorCode.InternalError, errorMessage);
   }
 
   try {
     return JSON.parse(fs.readFileSync(configPath, 'utf8'));
   } catch (error) {
-    console.error(`Error parsing config file: ${error instanceof Error ? error.message : String(error)}`);
+    console.error(`Error parsing config file ${configPath}: ${error instanceof Error ? error.message : String(error)}`);
     throw new McpError(
       ErrorCode.InternalError,
-      `Error parsing config file: ${error instanceof Error ? error.message : String(error)}`
+      `Error parsing config file ${configPath}: ${error instanceof Error ? error.message : String(error)}`
     );
   }
 }
