@@ -5,6 +5,7 @@ import { setTimeout } from 'node:timers/promises';
 import { AssignableEntityData } from '../../entities/assignable/assignable.entity.js';
 import { UserStoryData } from '../../entities/assignable/user-story.entity.js';
 import { ApiResponse, CreateEntityRequest, UpdateEntityRequest } from './api.types.js';
+import { EntityRegistry } from '../../core/entity-registry.js';
 
 type OrderByOption = string | { field: string; direction: 'asc' | 'desc' };
 
@@ -293,16 +294,8 @@ export class TPService {
    * Uses dynamic validation with caching for better accuracy
    */
   private async validateEntityType(type: string): Promise<string> {
-    // Static list of known entity types in Target Process as fallback
-    const staticValidEntityTypes = [
-      'UserStory', 'Bug', 'Task', 'Feature',
-      'Epic', 'PortfolioEpic', 'Solution',
-      'Request', 'Impediment', 'TestCase', 'TestPlan',
-      'Project', 'Team', 'Iteration', 'TeamIteration',
-      'Release', 'Program', 'Comment', 'Attachment',
-      'EntityState', 'Priority', 'Process', 'GeneralUser',
-      'TimeSheet'
-    ];
+    // Static list of known entity types from registry as fallback
+    const staticValidEntityTypes = EntityRegistry.getAllEntityTypes();
 
     try {
       // Check if cache is expired
@@ -639,21 +632,19 @@ export class TPService {
 
       if (entityTypes.length === 0) {
         console.error('No entity types found in API response, falling back to static list');
-        // Comprehensive list of common Target Process entity types
-        return [
-          'UserStory', 'Bug', 'Task', 'Feature',
-          'Epic', 'PortfolioEpic', 'Solution',
-          'Request', 'Impediment', 'TestCase', 'TestPlan',
-          'Project', 'Team', 'Iteration', 'TeamIteration',
-          'Release', 'Program', 'Comment', 'Attachment',
-          'EntityState', 'Priority', 'Process', 'GeneralUser',
-          'TestCase', 'TestPlan', 'TestCaseRun', 'Build',
-          'Assignable', 'General', 'Relation', 'Role',
-          'CustomField', 'Milestone', 'TimeSheet', 'Context'
-        ];
+        return EntityRegistry.getAllEntityTypes();
       }
 
       console.error(`Found ${entityTypes.length} valid entity types from API`);
+      
+      // Register any custom entity types discovered from the API
+      for (const entityType of entityTypes) {
+        if (!EntityRegistry.isValidEntityType(entityType)) {
+          console.error(`Registering custom entity type: ${entityType}`);
+          EntityRegistry.registerCustomEntityType(entityType);
+        }
+      }
+      
       return entityTypes.sort();
     } catch (error) {
       console.error('Error fetching valid entity types:', error);
@@ -669,16 +660,7 @@ export class TPService {
 
       // Fall back to static list on error instead of throwing
       console.error('Falling back to static entity type list due to error');
-      return [
-        'UserStory', 'Bug', 'Task', 'Feature',
-        'Epic', 'PortfolioEpic', 'Solution',
-        'Request', 'Impediment', 'TestCase', 'TestPlan',
-        'Project', 'Team', 'Iteration', 'TeamIteration',
-        'Release', 'Program', 'Comment', 'Attachment',
-        'EntityState', 'Priority', 'Process', 'GeneralUser',
-        'TestCase', 'TestPlan', 'TestCaseRun', 'Build',
-        'Assignable', 'General', 'Relation', 'Role'
-      ];
+      return EntityRegistry.getAllEntityTypes();
     }
   }
 

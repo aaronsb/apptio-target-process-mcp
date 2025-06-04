@@ -1,16 +1,11 @@
 import { McpError, ErrorCode } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
 import { TPService } from '../../api/client/tp.service.js';
+import { EntityRegistry } from '../../core/entity-registry.js';
 
 // Input schema for update entity tool
 export const updateEntitySchema = z.object({
-  type: z.enum([
-    'UserStory', 'Bug', 'Task', 'Feature', 
-    'Epic', 'PortfolioEpic', 'Solution', 
-    'Request', 'Impediment', 'TestCase', 'TestPlan',
-    'Project', 'Team', 'Iteration', 'TeamIteration',
-    'Release', 'Program'
-  ]),
+  type: z.string().describe('Entity type to update (e.g., UserStory, Bug, Task, Feature, Epic, Project, Team)'),
   id: z.number(),
   fields: z.object({
     name: z.string().optional(),
@@ -84,14 +79,7 @@ export class UpdateEntityTool {
         properties: {
           type: {
             type: 'string',
-            enum: [
-              'UserStory', 'Bug', 'Task', 'Feature', 
-              'Epic', 'PortfolioEpic', 'Solution', 
-              'Request', 'Impediment', 'TestCase', 'TestPlan',
-              'Project', 'Team', 'Iteration', 'TeamIteration',
-              'Release', 'Program'
-            ],
-            description: 'Type of entity to update',
+            description: 'Type of entity to update (e.g., UserStory, Bug, Task, Feature, Epic, Project, Team)',
           },
           id: {
             type: 'number',

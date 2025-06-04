@@ -9,9 +9,9 @@ const execAsync = promisify(exec);
 
 // Input schema for inspect object tool
 export const inspectObjectSchema = z.object({
-  action: z.enum(['list_types', 'get_properties', 'get_property_details', 'discover_api_structure']),
-  entityType: z.string().optional(),
-  propertyName: z.string().optional(),
+  action: z.string().describe('Action to perform: list_types, get_properties, get_property_details, or discover_api_structure'),
+  entityType: z.string().optional().describe('Type of entity to inspect (required for get_properties and get_property_details)'),
+  propertyName: z.string().optional().describe('Name of property to get details for (required for get_property_details)'),
 });
 
 export type InspectObjectInput = z.infer<typeof inspectObjectSchema>;
@@ -25,6 +25,15 @@ export class InspectObjectTool {
   async execute(args: unknown) {
     try {
       const { action, entityType, propertyName } = inspectObjectSchema.parse(args);
+
+      // Validate action
+      const validActions = ['list_types', 'get_properties', 'get_property_details', 'discover_api_structure'];
+      if (!validActions.includes(action)) {
+        throw new McpError(
+          ErrorCode.InvalidParams,
+          `Invalid action: ${action}. Valid actions are: ${validActions.join(', ')}`
+        );
+      }
 
       switch (action) {
         case 'list_types':
@@ -360,8 +369,7 @@ export class InspectObjectTool {
         properties: {
           action: {
             type: 'string',
-            enum: ['list_types', 'get_properties', 'get_property_details', 'discover_api_structure'],
-            description: 'Action to perform',
+            description: 'Action to perform: list_types, get_properties, get_property_details, or discover_api_structure',
           },
           entityType: {
             type: 'string',

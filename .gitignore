@@ -15,3 +15,5 @@ config/*.json
 .idea/
 .vscode/
 *.iml
+
+**/.claude/settings.local.json
