@@ -4,10 +4,16 @@ set -e
 # Force immediate output
 exec 1>&1
 
-# This script provides a lightweight local development build pipeline
-# that mirrors our CI approach but optimized for speed and local iteration.
-# It performs all build steps from linting through Docker image creation,
-# providing minimal but clear status output.
+# Docker build script for Targetprocess MCP
+# 
+# This script runs a complete build pipeline including:
+# - Install dependencies
+# - Run linting
+# - Run tests
+# - Build TypeScript
+# - Build Docker image
+# 
+# Usage: ./scripts/docker-build.sh [--verbose]
 
 # Parse command line arguments
 VERBOSE=false

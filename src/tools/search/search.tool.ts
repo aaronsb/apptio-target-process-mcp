@@ -2,6 +2,7 @@ import { McpError, ErrorCode } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
 import { TPService } from '../../api/client/tp.service.js';
 import { searchPresets, applyPresetFilter } from './presets.js';
+import { EntityRegistry } from '../../core/entity-registry.js';
 
 /**
  * Search tool for Target Process entities
@@ -35,14 +36,9 @@ import { searchPresets, applyPresetFilter } from './presets.js';
  *      include: ["Project", "AssignedUser"]
  *    })
  */
+
 export const searchToolSchema = z.object({
-  type: z.enum([
-    'UserStory', 'Bug', 'Task', 'Feature', 
-    'Epic', 'PortfolioEpic', 'Solution', 
-    'Request', 'Impediment', 'TestCase', 'TestPlan',
-    'Project', 'Team', 'Iteration', 'TeamIteration',
-    'Release', 'Program', 'TimeSheet'
-  ]),
+  type: z.string().describe('Entity type to search for (e.g., UserStory, Bug, Task, Feature, Epic, Project, Team, etc.)'),
   where: z.string().optional().describe('Filter expression or use searchPresets for common filters'),
   include: z.array(z.string()).optional().describe('Related data to include (e.g., Project, Team, AssignedUser)'),
   take: z.number().min(1).max(1000).optional().describe('Number of items to return (default: 100)'),
@@ -104,14 +100,7 @@ export class SearchTool {
         properties: {
           type: {
             type: 'string',
-            enum: [
-              'UserStory', 'Bug', 'Task', 'Feature', 
-              'Epic', 'PortfolioEpic', 'Solution', 
-              'Request', 'Impediment', 'TestCase', 'TestPlan',
-              'Project', 'Team', 'Iteration', 'TeamIteration',
-              'Release', 'Program', 'TimeSheet'
-            ],
-            description: 'Type of entity to search',
+            description: 'Type of entity to search (e.g., UserStory, Bug, Task, Feature, Epic, Project, Team)',
           },
           where: {
             type: 'string',

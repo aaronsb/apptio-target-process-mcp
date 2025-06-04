@@ -1,19 +1,11 @@
 import { McpError, ErrorCode } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
 import { TPService } from '../../api/client/tp.service.js';
-
-// Define the type enum separately for reuse
-const entityTypeEnum = z.enum([
-  'UserStory', 'Bug', 'Task', 'Feature',
-  'Epic', 'PortfolioEpic', 'Solution',
-  'Request', 'Impediment', 'TestCase', 'TestPlan',
-  'Project', 'Team', 'Iteration', 'TeamIteration',
-  'Release', 'Program'
-]);
+import { EntityRegistry } from '../../core/entity-registry.js';
 
 // Input schema for create entity tool
 export const createEntitySchema = z.object({
-  type: entityTypeEnum,
+  type: z.string().describe('Entity type to create (e.g., UserStory, Bug, Task, Feature, Epic, Project, Team)'),
   name: z.string(),
   description: z.string().optional(),
   project: z.object({
@@ -49,6 +41,14 @@ export class CreateEntityTool {
   async execute(args: unknown) {
     try {
       const { type, ...data } = createEntitySchema.parse(args);
+      
+      // Validate entity type against registry
+      if (!EntityRegistry.isValidEntityType(type)) {
+        throw new McpError(
+          ErrorCode.InvalidParams,
+          `Invalid entity type: ${type}. Valid types include: ${EntityRegistry.getAllEntityTypes().slice(0, 10).join(', ')}, etc.`
+        );
+      }
 
       // Prepare API request object
       const apiRequest: any = {
@@ -104,14 +104,7 @@ export class CreateEntityTool {
         properties: {
           type: {
             type: 'string',
-            enum: [
-              'UserStory', 'Bug', 'Task', 'Feature',
-              'Epic', 'PortfolioEpic', 'Solution',
-              'Request', 'Impediment', 'TestCase', 'TestPlan',
-              'Project', 'Team', 'Iteration', 'TeamIteration',
-              'Release', 'Program'
-            ],
-            description: 'Type of entity to create',
+            description: 'Type of entity to create (e.g., UserStory, Bug, Task, Feature, Epic, Project, Team)',
           },
           name: {
             type: 'string',
@@ -151,20 +144,6 @@ export class CreateEntityTool {
           },
         },
         required: ['type', 'name'],
-        oneOf: [
-          {
-            properties: {
-              type: { enum: ['Project'] }
-            },
-            required: ['type']
-          },
-          {
-            properties: {
-              type: { not: { enum: ['Project'] } }
-            },
-            required: ['project']
-          }
-        ],
       },
     } as const;
   }

@@ -4,12 +4,17 @@ import {
   CallToolRequestSchema,
   ErrorCode,
   ListToolsRequestSchema,
+  ListResourcesRequestSchema,
+  ReadResourceRequestSchema,
   McpError,
 } from '@modelcontextprotocol/sdk/types.js';
 import fs from 'fs';
 import path from 'path';
 
 import { TPService, TPServiceConfig } from './api/client/tp.service.js';
+import { TPContextBuilder, TPContextInfo } from './context/context-builder.js';
+import { ResourceProvider } from './resources/resource-provider.js';
+import { EntityRegistry } from './core/entity-registry.js';
 import { SearchTool } from './tools/search/search.tool.js';
 import { GetEntityTool } from './tools/entity/get.tool.js';
 import { CreateEntityTool } from './tools/entity/create.tool.js';
@@ -80,6 +85,9 @@ function loadConfig(): TPServiceConfig {
 export class TargetProcessServer {
   private server: Server;
   private service: TPService;
+  private contextBuilder: TPContextBuilder;
+  private context: TPContextInfo | null = null;
+  private resourceProvider: ResourceProvider;
   private tools: {
     search: SearchTool;
     get: GetEntityTool;
@@ -92,6 +100,8 @@ export class TargetProcessServer {
     // Initialize service
     const config = loadConfig();
     this.service = new TPService(config);
+    this.contextBuilder = new TPContextBuilder(this.service);
+    this.resourceProvider = new ResourceProvider(this.service, this.context);
 
     // Initialize tools
     this.tools = {
@@ -117,6 +127,7 @@ export class TargetProcessServer {
             update_entity: true,
             inspect_object: true
           },
+          resources: {},
         },
       }
     );
@@ -130,33 +141,72 @@ export class TargetProcessServer {
       process.exit(0);
     });
 
-    // Initialize entity type cache in the background
+    // Initialize caches and context in the background
     this.initializeCache();
   }
 
   /**
-   * Initialize caches in the background to improve first-request performance
+   * Initialize caches and context in the background to improve first-request performance
    */
   private async initializeCache(): Promise<void> {
     try {
       // Initialize entity type cache
       await this.service.initializeEntityTypeCache();
+      
+      // Build TargetProcess context
+      console.error('Building TargetProcess context...');
+      this.context = await this.contextBuilder.buildContext();
+      
+      // Update resource provider with context
+      this.resourceProvider = new ResourceProvider(this.service, this.context);
+      console.error('TargetProcess context built successfully');
     } catch (error) {
-      console.error('Cache initialization error:', error);
+      console.error('Cache/context initialization error:', error);
       // Non-fatal error, server can still function
     }
   }
 
   private setupHandlers() {
-    this.server.setRequestHandler(ListToolsRequestSchema, async () => ({
-      tools: [
-        SearchTool.getDefinition(),
-        GetEntityTool.getDefinition(),
-        CreateEntityTool.getDefinition(),
-        UpdateEntityTool.getDefinition(),
-        InspectObjectTool.getDefinition(),
-      ],
+    this.server.setRequestHandler(ListToolsRequestSchema, async () => {
+      // Get enhanced tool definitions with TP context
+      const contextDescription = this.context 
+        ? this.contextBuilder.generateContextDescription(this.context)
+        : '';
+
+      return {
+        tools: [
+          this.getEnhancedSearchDefinition(contextDescription),
+          this.getEnhancedGetDefinition(contextDescription),
+          this.getEnhancedCreateDefinition(contextDescription),
+          this.getEnhancedUpdateDefinition(contextDescription),
+          this.getEnhancedInspectDefinition(contextDescription),
+        ],
+      };
+    });
+
+    this.server.setRequestHandler(ListResourcesRequestSchema, async () => ({
+      resources: this.resourceProvider.getAvailableResources(),
     }));
+
+    this.server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
+      try {
+        const content = await this.resourceProvider.getResourceContent(request.params.uri);
+        return {
+          contents: [
+            {
+              uri: content.uri,
+              mimeType: content.mimeType,
+              text: content.text,
+            },
+          ],
+        };
+      } catch (error) {
+        throw new McpError(
+          ErrorCode.InvalidRequest,
+          `Failed to read resource: ${error instanceof Error ? error.message : String(error)}`
+        );
+      }
+    });
 
     this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
       try {
@@ -193,6 +243,151 @@ export class TargetProcessServer {
         };
       }
     });
+  }
+
+  private getEnhancedSearchDefinition(contextDescription: string) {
+    const baseDefinition = SearchTool.getDefinition();
+    if (contextDescription && this.context) {
+      // Use discovered entity types if available
+      const entityTypes = this.context.entityTypes.length > 0 
+        ? this.context.entityTypes 
+        : EntityRegistry.getAllEntityTypes();
+
+      // Add available entity types to the description
+      const entityTypesList = entityTypes.slice(0, 15).join(', ') + (entityTypes.length > 15 ? ', ...' : '');
+      
+      return {
+        ...baseDefinition,
+        description: `${baseDefinition.description}\n\n${contextDescription}`,
+        inputSchema: {
+          ...baseDefinition.inputSchema,
+          properties: {
+            ...baseDefinition.inputSchema.properties,
+            type: {
+              ...baseDefinition.inputSchema.properties.type,
+              description: `Type of entity to search. Available types: ${entityTypesList}`,
+            },
+          },
+        },
+      };
+    }
+    return baseDefinition;
+  }
+
+  private getEnhancedGetDefinition(contextDescription: string) {
+    const baseDefinition = GetEntityTool.getDefinition();
+    if (contextDescription && this.context) {
+      // Use discovered entity types if available
+      const entityTypes = this.context.entityTypes.length > 0 
+        ? this.context.entityTypes 
+        : EntityRegistry.getAllEntityTypes();
+
+      // Add available entity types to the description
+      const entityTypesList = entityTypes.slice(0, 15).join(', ') + (entityTypes.length > 15 ? ', ...' : '');
+      
+      return {
+        ...baseDefinition,
+        description: `${baseDefinition.description}\n\n${contextDescription}`,
+        inputSchema: {
+          ...baseDefinition.inputSchema,
+          properties: {
+            ...baseDefinition.inputSchema.properties,
+            type: {
+              ...baseDefinition.inputSchema.properties.type,
+              description: `Type of entity to retrieve. Available types: ${entityTypesList}`,
+            },
+          },
+        },
+      };
+    }
+    return baseDefinition;
+  }
+
+  private getEnhancedCreateDefinition(contextDescription: string) {
+    const baseDefinition = CreateEntityTool.getDefinition();
+    if (contextDescription && this.context) {
+      // Use discovered entity types if available
+      const entityTypes = this.context.entityTypes.length > 0 
+        ? this.context.entityTypes 
+        : EntityRegistry.getAllEntityTypes();
+
+      // Add available entity types to the description
+      const entityTypesList = entityTypes.slice(0, 15).join(', ') + (entityTypes.length > 15 ? ', ...' : '');
+      
+      return {
+        ...baseDefinition,
+        description: `${baseDefinition.description}\n\n${contextDescription}`,
+        inputSchema: {
+          ...baseDefinition.inputSchema,
+          properties: {
+            ...baseDefinition.inputSchema.properties,
+            type: {
+              ...baseDefinition.inputSchema.properties.type,
+              description: `Type of entity to create. Available types: ${entityTypesList}`,
+            },
+          },
+        },
+      };
+    }
+    return baseDefinition;
+  }
+
+  private getEnhancedUpdateDefinition(contextDescription: string) {
+    const baseDefinition = UpdateEntityTool.getDefinition();
+    if (contextDescription && this.context) {
+      // Use discovered entity types if available
+      const entityTypes = this.context.entityTypes.length > 0 
+        ? this.context.entityTypes 
+        : EntityRegistry.getAllEntityTypes();
+
+      // Add available entity types to the description
+      const entityTypesList = entityTypes.slice(0, 15).join(', ') + (entityTypes.length > 15 ? ', ...' : '');
+      
+      return {
+        ...baseDefinition,
+        description: `${baseDefinition.description}\n\n${contextDescription}`,
+        inputSchema: {
+          ...baseDefinition.inputSchema,
+          properties: {
+            ...baseDefinition.inputSchema.properties,
+            type: {
+              ...baseDefinition.inputSchema.properties.type,
+              description: `Type of entity to update. Available types: ${entityTypesList}`,
+            },
+          },
+        },
+      };
+    }
+    return baseDefinition;
+  }
+
+  private getEnhancedInspectDefinition(contextDescription: string) {
+    const baseDefinition = InspectObjectTool.getDefinition();
+    if (contextDescription && this.context) {
+      // Use discovered entity types if available
+      const entityTypes = this.context.entityTypes.length > 0 
+        ? this.context.entityTypes 
+        : EntityRegistry.getAllEntityTypes();
+
+      // Add available entity types to the description
+      const entityTypesList = entityTypes.slice(0, 15).join(', ') + (entityTypes.length > 15 ? ', ...' : '');
+      
+      return {
+        ...baseDefinition,
+        description: `${baseDefinition.description}\n\n${contextDescription}`,
+        inputSchema: {
+          ...baseDefinition.inputSchema,
+          properties: {
+            ...baseDefinition.inputSchema.properties,
+            entityType: {
+              ...baseDefinition.inputSchema.properties.entityType,
+              description: `Type of entity to inspect. Available types: ${entityTypesList}`,
+            },
+          },
+        },
+      };
+    }
+    return baseDefinition;
   }
 
   async run() {

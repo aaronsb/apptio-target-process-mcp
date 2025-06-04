@@ -14,4 +14,13 @@ export default {
       },
     ],
   },
+  testMatch: [
+    '**/src/**/__tests__/**/*.ts',
+    '**/src/**/*.test.ts'
+  ],
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    '/build/',
+    '/dist/'
+  ]
 };
