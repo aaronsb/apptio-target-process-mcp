@@ -36,6 +36,36 @@ TP_DOMAIN=your-domain.tpondemand.com TP_USERNAME=your-username TP_PASSWORD=your-
 [Full installation guide →](docs/integration/installation.md)
 [CLI usage guide →](docs/integration/cli-usage.md)
 
+### Claude Code Integration
+
+```bash
+# Quick setup for development
+./scripts/dev-setup.sh
+
+# Or manual setup
+npm install && npm run build
+claude mcp add targetprocess node ./build/index.js \
+  -e TP_DOMAIN=your-domain.tpondemand.com \
+  -e TP_USERNAME=your-username \
+  -e TP_PASSWORD=your-password
+```
+
+[Claude Code integration guide →](docs/integration/claude-code.md)
+
+### IBM watsonx Orchestrate Integration
+
+```bash
+# Import as a toolkit in watsonx Orchestrate
+orchestrate toolkits import \
+  --kind mcp \
+  --name targetprocess \
+  --package-root /path/to/apptio-target-process-mcp \
+  --command '["node", "build/index.js"]' \
+  --tools "*"
+```
+
+[Toolkit integration guide →](docs/integration/toolkit-integration.md)
+
 ## What can I do with it?
 
 ```
