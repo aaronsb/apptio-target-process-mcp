@@ -151,7 +151,7 @@ export interface SemanticOperation<TParams = any> {
   /**
    * Get the Zod schema for parameter validation
    */
-  getSchema?(): z.ZodSchema<TParams>;
+  getSchema?(): z.ZodType<any, any, any>;
 }
 
 /**
@@ -239,4 +239,38 @@ export interface WorkflowOrchestrator {
     params: Record<string, any>,
     context: ExecutionContext
   ): Promise<Array<{ operation: string; params: any }>>;
+}
+
+/**
+ * Personality configuration that defines available operations and preferences
+ */
+export interface PersonalityConfig {
+  id: string;
+  name: string;
+  description: string;
+  availableOperations: string[];  // Operations this personality can access
+  preferences: {
+    [key: string]: any;
+  };
+  capabilities?: {
+    [key: string]: boolean;
+  };
+  workflowHints?: {
+    [situation: string]: string[];  // Next suggested operations
+  };
+}
+
+/**
+ * Personality loader interface
+ */
+export interface IPersonalityLoader {
+  getPersonality(id: string): PersonalityConfig | undefined;
+  getAllPersonalities(): PersonalityConfig[];
+  getAvailableOperations(personalityId: string): string[];
+  buildExecutionContext(
+    personalityId: string,
+    userData: any,
+    workspaceData?: any,
+    conversationData?: any
+  ): ExecutionContext;
 }

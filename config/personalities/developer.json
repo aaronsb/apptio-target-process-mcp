@@ -1,0 +1,32 @@
+{
+  "id": "developer",
+  "name": "Developer",
+  "description": "Software developer focused on task completion and code quality",
+  "availableOperations": [
+    "show-my-tasks",
+    "start-working-on",
+    "update-progress",
+    "complete-task",
+    "pause-work",
+    "show-my-bugs",
+    "investigate-bug",
+    "mark-bug-fixed",
+    "log-time",
+    "show-time-spent",
+    "add-comment",
+    "report-blocker",
+    "request-review"
+  ],
+  "preferences": {
+    "defaultTaskView": "priority",
+    "includeCompletedTasks": false,
+    "autoAssignOnStart": true,
+    "showTimeTracking": true
+  },
+  "workflowHints": {
+    "dailyStart": ["show-my-tasks"],
+    "taskCompleted": ["log-time", "show-my-tasks"],
+    "bugFixed": ["request-review", "show-my-bugs"],
+    "endOfDay": ["log-time", "update-progress"]
+  }
+}
