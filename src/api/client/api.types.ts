@@ -21,6 +21,21 @@ export interface CreateEntityRequest {
   AssignedUser?: {
     Id: number;
   };
+  // Time entity specific fields
+  Spent?: number;
+  User?: {
+    Id: number;
+  };
+  Assignable?: {
+    Id: number;
+  };
+  Date?: string;
+  // Comment entity specific fields
+  General?: {
+    Id: number;
+  };
+  // Allow additional dynamic properties for other entity types
+  [key: string]: any;
 }
 
 export interface UpdateEntityRequest {

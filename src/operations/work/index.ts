@@ -6,6 +6,10 @@ import {
 } from '../../core/interfaces/semantic-operation.interface.js';
 import { ShowMyTasksOperation } from './show-my-tasks.js';
 import { StartWorkingOnOperation } from './start-working-on.js';
+import { CompleteTaskOperation } from './complete-task.js';
+import { ShowMyBugsOperation } from './show-my-bugs.js';
+import { LogTimeOperation } from './log-time.js';
+import { AddCommentOperation } from './add-comment.js';
 
 /**
  * Work Operations Module
@@ -45,19 +49,22 @@ export class WorkOperations implements FeatureModule {
     // Task Management Operations
     this.operations['show-my-tasks'] = new ShowMyTasksOperation(this.tpService);
     this.operations['start-working-on'] = new StartWorkingOnOperation(this.tpService);
+    this.operations['complete-task'] = new CompleteTaskOperation(this.tpService);
+    
+    // Bug Management Operations
+    this.operations['show-my-bugs'] = new ShowMyBugsOperation(this.tpService);
+    
+    // Time Management Operations
+    this.operations['log-time'] = new LogTimeOperation(this.tpService);
+    
+    // Collaboration Operations
+    this.operations['add-comment'] = new AddCommentOperation(this.tpService);
     
     // TODO: Implement these operations
     // this.operations['update-progress'] = new UpdateProgressOperation(this.tpService);
-    // this.operations['complete-task'] = new CompleteTaskOperation(this.tpService);
     // this.operations['pause-work'] = new PauseWorkOperation(this.tpService);
-    
-    // Bug Management Operations
-    // this.operations['show-my-bugs'] = new ShowMyBugsOperation(this.tpService);
     // this.operations['investigate-bug'] = new InvestigateBugOperation(this.tpService);
     // this.operations['mark-bug-fixed'] = new MarkBugFixedOperation(this.tpService);
-    
-    // Time Management Operations
-    // this.operations['log-time'] = new LogTimeOperation(this.tpService);
     // this.operations['show-time-spent'] = new ShowTimeSpentOperation(this.tpService);
   }
 }
