@@ -48,9 +48,30 @@ export class ShowMyTasksOperation implements SemanticOperation<ShowMyTasksParams
     // For now, let's get all tasks and filter in code
     // TODO: Find correct syntax for AssignedUser filtering
 
-    // Add state filter - this is false by default
+    // Add state filter - discover final states dynamically
     if (!params.includeCompleted) {
-      whereConditions.push(`EntityState.Name ne 'Done'`);
+      try {
+        const finalStates = await this.service.searchEntities(
+          'EntityState',
+          `(EntityType.Name eq 'Task') and (IsFinal eq true)`,
+          ['EntityType', 'IsFinal'],
+          10
+        );
+        
+        if (finalStates.length > 0) {
+          const finalStateNames = finalStates.map((s: any) => s.Name);
+          finalStateNames.forEach(stateName => {
+            whereConditions.push(`EntityState.Name ne '${stateName}'`);
+          });
+        } else {
+          // Fallback to common completed state if discovery fails
+          whereConditions.push(`EntityState.Name ne 'Done'`);
+        }
+      } catch (stateError) {
+        // Fallback to common completed state if discovery fails
+        console.warn('Failed to discover final states:', stateError);
+        whereConditions.push(`EntityState.Name ne 'Done'`);
+      }
     }
 
     // Add project filter if specified
@@ -58,15 +79,46 @@ export class ShowMyTasksOperation implements SemanticOperation<ShowMyTasksParams
       whereConditions.push(`Project.Name contains '${params.projectFilter}'`);
     }
 
-    // Add priority filter
+    // Add priority filter - discover available priorities dynamically
     if (params.priority !== 'all') {
-      const priorityMap = {
-        high: [1, 2],
-        medium: [3],
-        low: [4, 5]
-      };
-      const priorities = priorityMap[params.priority];
-      whereConditions.push(`Priority.Id in [${priorities.join(',')}]`);
+      try {
+        const priorities = await this.service.searchEntities(
+          'Priority',
+          undefined,
+          ['Name', 'Importance'],
+          20
+        );
+        
+        // Group priorities by user's filter preference based on Importance
+        let targetPriorities: string[] = [];
+        if (params.priority === 'high') {
+          // Find highest importance (usually lowest number)
+          const sortedByImportance = priorities.sort((a: any, b: any) => 
+            (a.Importance || 999) - (b.Importance || 999)
+          );
+          targetPriorities = sortedByImportance.slice(0, 2).map((p: any) => p.Name);
+        } else if (params.priority === 'medium') {
+          // Find middle importance levels
+          const sortedByImportance = priorities.sort((a: any, b: any) => 
+            (a.Importance || 999) - (b.Importance || 999)
+          );
+          const midIndex = Math.floor(sortedByImportance.length / 2);
+          targetPriorities = sortedByImportance.slice(midIndex, midIndex + 1).map((p: any) => p.Name);
+        } else if (params.priority === 'low') {
+          // Find lower importance levels
+          const sortedByImportance = priorities.sort((a: any, b: any) => 
+            (a.Importance || 999) - (b.Importance || 999)
+          );
+          targetPriorities = sortedByImportance.slice(-2).map((p: any) => p.Name);
+        }
+        
+        if (targetPriorities.length > 0) {
+          whereConditions.push(`Priority.Name in ['${targetPriorities.join("','")}']`);
+        }
+      } catch (priorityError) {
+        // If priority discovery fails, continue without priority filter
+        console.warn('Failed to discover priorities:', priorityError);
+      }
     }
 
     try {
@@ -157,13 +209,13 @@ export class ShowMyTasksOperation implements SemanticOperation<ShowMyTasksParams
       suggestions.push('inspect_object type:Task - Learn about task properties');
     } else {
       // Have tasks - suggest actions
-      const openTasks = tasks.filter(t => t.EntityState?.Name === 'Open' || t.EntityState?.Name === 'Planned');
+      const openTasks = tasks.filter(t => t.EntityState?.IsInitial || (!t.EntityState?.IsFinal && !t.EntityState?.IsInitial));
       if (openTasks.length > 0) {
         suggestions.push(`start-working-on ${openTasks[0].Id} - Begin work on highest priority task`);
       }
 
-      // In-progress tasks
-      const inProgress = tasks.filter(t => t.EntityState?.Name === 'In Dev');
+      // In-progress tasks (not initial, not final)
+      const inProgress = tasks.filter(t => !t.EntityState?.IsInitial && !t.EntityState?.IsFinal);
       if (inProgress.length > 0) {
         suggestions.push('update-progress - Update task progress');
         suggestions.push('log-time - Record time spent');
