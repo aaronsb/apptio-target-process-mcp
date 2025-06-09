@@ -2,14 +2,15 @@
 
 ## What is this?
 
-The Targetprocess MCP Server enables AI assistants to interact with your Targetprocess data, letting you query, create, and manage work items through natural language. Ask questions about your projects, update work items, and get insights without switching contexts.
+The Targetprocess MCP Server enables AI assistants to interact with your Targetprocess data through intelligent semantic operations. Beyond basic data access, it provides workflow-aware tools that understand context, suggest next steps, and adapt to your Targetprocess configuration automatically.
 
 ## Why use it?
 
-- **Talk to Your Data**: Ask questions about user stories, bugs, and projects in natural language
-- **Stay in Flow**: Update work items without switching to the Targetprocess UI
-- **Discover Relationships**: Understand how projects, features, and stories connect
-- **Automate Reporting**: Generate custom reports and dashboards through conversation
+- **Intelligent Workflows**: Semantic operations that understand your work context and suggest logical next steps
+- **Dynamic Discovery**: Automatically adapts to your Targetprocess configuration without hard-coded assumptions
+- **Role-Based Tools**: Operations filtered by your role (developer, project manager, tester, etc.)
+- **Smart Error Handling**: Transforms API failures into actionable guidance and learning opportunities
+- **Stay in Flow**: Complete full workflows without switching to the Targetprocess UI
 - **Enterprise Ready**: Handles complex schemas and millions of records with robust authentication and error handling
 
 ## Quick Start
@@ -93,12 +94,24 @@ orchestrate toolkits import \
 
 ## Features
 
+### Semantic Operations (Workflow Intelligence)
+- **show_my_tasks**: View assigned tasks with smart filtering and priority analysis
+- **start_working_on**: Begin work on tasks with automatic state transitions
+- **complete_task**: Mark tasks complete with integrated time logging and comments
+- **show_my_bugs**: Analyze assigned bugs with dynamic severity categorization
+- **log_time**: Record time with intelligent entity type discovery and validation
+- **add_comment**: Add contextual comments with workflow-aware follow-up suggestions
+
+### Core API Tools
 - **Entity Management**: Create, read, update, and search Targetprocess entities
 - **Complex Queries**: Filter items by custom fields, status, relationships, and more
 - **Data Discovery**: Explore entity types, properties, and relationships
 - **Rich Includes**: Retrieve related data in a single request
-- **Enterprise Support**: Handles complex schemas with millions of records
-- **Error Resilience**: Robust error handling and clear feedback
+
+### Enterprise Features
+- **Role-Based Access**: Tools filtered by personality configuration (developer, PM, tester)
+- **Dynamic Discovery**: Adapts to custom Targetprocess configurations automatically
+- **Error Resilience**: Transforms API failures into actionable guidance
 - **Documentation Access**: Built-in access to Targetprocess documentation
 - **LLM Integration**: Works with Claude, ChatGPT, and other AI assistants
 
