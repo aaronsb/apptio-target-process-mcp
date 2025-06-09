@@ -1,0 +1,28 @@
+{
+  "id": "project-manager",
+  "name": "Project Manager",
+  "description": "Project manager focused on team coordination and delivery",
+  "availableOperations": [
+    "show-team-tasks",
+    "show-sprint-status",
+    "reassign-task",
+    "update-task-priority",
+    "show-project-metrics",
+    "show-team-velocity",
+    "show-blockers",
+    "schedule-meeting",
+    "create-sprint-report",
+    "manage-backlog"
+  ],
+  "preferences": {
+    "defaultView": "team",
+    "includeAllStates": true,
+    "showMetrics": true,
+    "trackVelocity": true
+  },
+  "workflowHints": {
+    "dailyStart": ["show-team-tasks", "show-blockers"],
+    "sprintPlanning": ["manage-backlog", "show-team-velocity"],
+    "sprintEnd": ["create-sprint-report", "show-project-metrics"]
+  }
+}
