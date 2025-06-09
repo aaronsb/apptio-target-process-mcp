@@ -1,0 +1,65 @@
+import { TPService } from '../../api/client/tp.service.js';
+import { 
+  FeatureModule, 
+  ExecutionContext,
+  SemanticOperation 
+} from '../../core/interfaces/semantic-operation.interface.js';
+import { ShowMyTasksOperation } from './show-my-tasks.js';
+import { StartWorkingOnOperation } from './start-working-on.js';
+
+/**
+ * Work Operations Module
+ * 
+ * Provides semantic operations for managing work items (tasks, bugs, features)
+ * across all roles. Includes task state management, progress tracking, and
+ * time management operations.
+ */
+export class WorkOperations implements FeatureModule {
+  public operations: Record<string, SemanticOperation> = {};
+
+  constructor(private tpService: TPService) {
+    this.initializeOperations();
+  }
+
+  get metadata() {
+    return {
+      id: 'work-operations',
+      name: 'Work Operations',
+      description: 'Task, bug, and work item management operations',
+      category: 'operations',
+      requiredPersonalities: ['developer', 'tester', 'project-manager', 'product-manager', 'administrator']
+    };
+  }
+
+  async initialize(context: ExecutionContext): Promise<void> {
+    // Initialize any required state or connections
+    console.log(`Initializing Work Operations for user: ${context.user.name}`);
+  }
+
+  async cleanup(): Promise<void> {
+    // Cleanup resources if needed
+    console.log('Cleaning up Work Operations module');
+  }
+
+  private initializeOperations(): void {
+    // Task Management Operations
+    this.operations['show-my-tasks'] = new ShowMyTasksOperation(this.tpService);
+    this.operations['start-working-on'] = new StartWorkingOnOperation(this.tpService);
+    
+    // TODO: Implement these operations
+    // this.operations['update-progress'] = new UpdateProgressOperation(this.tpService);
+    // this.operations['complete-task'] = new CompleteTaskOperation(this.tpService);
+    // this.operations['pause-work'] = new PauseWorkOperation(this.tpService);
+    
+    // Bug Management Operations
+    // this.operations['show-my-bugs'] = new ShowMyBugsOperation(this.tpService);
+    // this.operations['investigate-bug'] = new InvestigateBugOperation(this.tpService);
+    // this.operations['mark-bug-fixed'] = new MarkBugFixedOperation(this.tpService);
+    
+    // Time Management Operations
+    // this.operations['log-time'] = new LogTimeOperation(this.tpService);
+    // this.operations['show-time-spent'] = new ShowTimeSpentOperation(this.tpService);
+  }
+}
+
+export default WorkOperations;
