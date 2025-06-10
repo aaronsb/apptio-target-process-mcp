@@ -1,0 +1,39 @@
+# Pre-commit hooks for TargetProcess MCP
+# Run: pre-commit install
+# Usage: pre-commit run --all-files
+
+repos:
+  # Security scanning
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.20.1
+    hooks:
+      - id: gitleaks
+
+  # Code quality
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+
+  # TypeScript/JavaScript
+  - repo: local
+    hooks:
+      - id: typescript-compile
+        name: TypeScript Compilation Check
+        entry: npm run build
+        language: system
+        types: [typescript]
+        pass_filenames: false
+        
+      - id: eslint
+        name: ESLint
+        entry: npm run lint
+        language: system
+        types: [typescript]
+        pass_filenames: false

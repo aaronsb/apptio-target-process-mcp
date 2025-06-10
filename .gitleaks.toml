@@ -1,0 +1,36 @@
+# Gitleaks configuration for TargetProcess MCP
+# Prevents accidental commit of secrets and credentials
+
+[extend]
+# Use default gitleaks rules as baseline
+useDefault = true
+
+[allowlist]
+description = "Allowlisted findings for TargetProcess MCP"
+
+# Allow example values in documentation
+regexes = [
+    '''(your-domain\.tpondemand\.com|your-username|your-password|example\.com)''',
+    '''\$\{[A-Z_]+\}'''
+]
+
+# Allow example files
+paths = [
+    "config/.*\\.example\\..*",
+    "docs/.*\\.md$", 
+    "README\\.md$",
+    "CLAUDE\\.md$"
+]
+
+# Historical commits with test credentials (already removed from codebase)
+commits = [
+    "c7d1eefd21f19750b7eab5672a13c2a865d03ec8",
+    "78c9068bbd0bd2bf540f1ecc90e800553f60e5f1", 
+    "a1143dba005fa8cbb83d0c8bfb283d7c2c49de9c"
+]
+
+[rules.generic-api-key]
+description = "Detect generic API keys but allow documented examples"
+secretGroup = 1
+regex = '''(?i)(?:key|api|token|secret|password)\s*[=:]\s*['"]?([a-z0-9]{10,})['"]?'''
+keywords = ["key", "api", "token", "secret", "password"]
