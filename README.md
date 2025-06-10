@@ -18,11 +18,22 @@ The Targetprocess MCP Server enables AI assistants to interact with your Targetp
 ### Docker (Recommended for Containerized Environments)
 
 ```bash
-# Run with Docker
+# Basic usage
 docker run -i --rm \
   -e TP_DOMAIN=your-domain.tpondemand.com \
   -e TP_USERNAME=your-username \
   -e TP_PASSWORD=your-password \
+  ghcr.io/aaronsb/apptio-target-process-mcp
+
+# With semantic operations and strict mode (recommended for MCP clients)
+docker run -i --rm \
+  -e TP_DOMAIN=your-domain.tpondemand.com \
+  -e TP_USERNAME=your-username \
+  -e TP_PASSWORD=your-password \
+  -e TP_USER_ROLE=developer \
+  -e TP_USER_ID=your-user-id \
+  -e TP_USER_EMAIL=your-email \
+  -e MCP_STRICT_MODE=true \
   ghcr.io/aaronsb/apptio-target-process-mcp
 ```
 
@@ -52,6 +63,28 @@ claude mcp add targetprocess node ./build/index.js \
 ```
 
 [Claude Code integration guide →](docs/integration/claude-code.md)
+
+### MCP Client Configuration
+
+**Strict Mode:** For MCP clients that require clean JSON-RPC on stdio (like Claude Desktop), enable strict mode to redirect all logging to stderr:
+
+```bash
+# Environment variable
+MCP_STRICT_MODE=true
+
+# Auto-detection also works for:
+# - Claude Desktop (stdio transport)
+# - Non-TTY environments
+# - When --stdio flag is present
+```
+
+**Semantic Operations:** Enable intelligent workflow tools with role-based filtering:
+
+```bash
+TP_USER_ROLE=developer        # Options: developer, project-manager, tester
+TP_USER_ID=your-user-id       # For task assignments and time tracking
+TP_USER_EMAIL=your-email      # Identity for semantic operations
+```
 
 ### IBM watsonx Orchestrate Integration
 
