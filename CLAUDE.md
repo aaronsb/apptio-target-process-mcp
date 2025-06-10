@@ -182,7 +182,15 @@ export class NewEntity extends AssignableEntity {
 }
 ```
 
-### Adding a new tool
+### Adding a new semantic operation
+
+1. Create operation class implementing `SemanticOperation<TParams>` interface
+2. Add to appropriate feature module (e.g., `/src/operations/work/`)
+3. Register in feature module's `initializeOperations()` method
+4. Add to personality configuration in `/config/personalities/`
+5. Include dynamic discovery patterns and intelligent error handling
+
+### Adding a new raw tool
 
 1. Create a tool implementation in the tools directory
 2. Define input validation using Zod
@@ -228,6 +236,37 @@ claude mcp add targetprocess node ./build/index.js \
 ```
 
 After adding, restart Claude Code to access the Targetprocess tools.
+
+## Semantic Operations Configuration
+
+The server supports role-based semantic operations that provide workflow intelligence:
+
+### Environment Configuration
+
+```bash
+# Role-based tool filtering
+TP_USER_ROLE=developer  # Options: developer, project-manager, tester
+
+# User identity for assignments and time tracking
+TP_USER_ID=101734
+TP_USER_EMAIL=user@company.com
+```
+
+### Available Semantic Operations
+
+**Developer Role:**
+- `show_my_tasks` - View assigned tasks with priority filtering
+- `start_working_on` - Begin work with state transitions  
+- `complete_task` - Mark complete with time logging
+- `show_my_bugs` - Analyze bugs with severity insights
+- `log_time` - Record time with intelligent discovery
+- `add_comment` - Add contextual comments
+
+**Key Features:**
+- Dynamic discovery of entity states, priorities, severities
+- Intelligent error handling with actionable guidance
+- Context-aware workflow suggestions
+- Graceful fallback for API discovery failures
 
 ## IBM watsonx Orchestrate Integration
 

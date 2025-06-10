@@ -1,5 +1,17 @@
 # Targetprocess MCP Server Refactoring Plan
 
+## Architectural Vision
+
+This refactoring will implement a **semantic operation architecture** inspired by the WordPress MCP, transforming the server from a technical API wrapper into an intelligent assistant that understands project management workflows.
+
+### Key Architectural Patterns
+
+1. **Semantic Operations** - Map user intent to workflows, not CRUD operations
+2. **Personality-Based Tool Exposure** - Role-specific toolkits via personalities.json
+3. **Composable Workflows** - Tools provide semantic hints for natural workflow progression
+
+See [Semantic Architecture Plan](docs/development/semantic-architecture-plan.md) for detailed design.
+
 ## Completed Groundwork
 
 ### 1. ✅ Test Infrastructure
@@ -138,15 +150,36 @@ Break down the monolithic `TPService` class:
    - Feature flag rollout
    - Gradual migration
 
-## Timeline Estimate
+## Semantic Architecture Implementation
 
-- Phase 1: 2-3 weeks (critical for maintainability)
-- Phase 2: 1-2 weeks (improves reliability)
-- Phase 3: 1 week (better operations)
-- Phase 4: 2 weeks (ensures quality)
-- Phase 5: 2 weeks (enhances user experience)
+### Phase 1: Foundation
+1. Implement personality configuration system
+2. Create feature registry and semantic operation interfaces
+3. Build context management for execution state
+4. Set up role-based tool filtering
 
-Total: 8-10 weeks for complete refactoring
+### Phase 2: Core Semantic Operations
+1. Implement developer operations
+   - show-my-tasks (with semantic hints)
+   - start-working-on
+   - complete-task
+   - update-progress
+2. Implement product owner operations
+   - manage-backlog
+   - prioritize-features
+   - plan-iteration
+
+### Phase 3: Integration
+1. Wire semantic layer to existing tools
+2. Implement natural language intent mapping
+3. Add workflow orchestration
+4. Create personality-specific tool filtering
+
+### Phase 4: Intelligence Layer
+1. Context inference from conversation
+2. Smart operation suggestions
+3. Workflow optimization
+4. Learning from usage patterns
 
 ## Quick Wins (Can do immediately)
 
