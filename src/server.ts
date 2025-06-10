@@ -8,6 +8,7 @@ import {
   ReadResourceRequestSchema,
   McpError,
 } from '@modelcontextprotocol/sdk/types.js';
+import { logger, createLogger } from './utils/logger.js';
 import fs from 'fs';
 import path from 'path';
 
