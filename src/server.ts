@@ -20,6 +20,9 @@ import { GetEntityTool } from './tools/entity/get.tool.js';
 import { CreateEntityTool } from './tools/entity/create.tool.js';
 import { UpdateEntityTool } from './tools/update/update.tool.js';
 import { InspectObjectTool } from './tools/inspect/inspect.tool.js';
+import { operationRegistry } from './core/operation-registry.js';
+import { personalityLoader } from './core/personality-loader.js';
+import { WorkOperations } from './operations/work/index.js';
 
 function loadConfig(): TPServiceConfig {
   // Try API key authentication
@@ -94,16 +97,25 @@ export class TargetProcessServer {
     create: CreateEntityTool;
     update: UpdateEntityTool;
     inspect: InspectObjectTool;
+    [key: string]: any; // Allow dynamic semantic tools
   };
+  private userRole: string;
 
   constructor() {
+    // Load user role from environment
+    this.userRole = process.env.TP_USER_ROLE || 'developer';
+    console.error(`User role configured as: ${this.userRole}`);
+
     // Initialize service
     const config = loadConfig();
     this.service = new TPService(config);
     this.contextBuilder = new TPContextBuilder(this.service);
     this.resourceProvider = new ResourceProvider(this.service, this.context);
 
-    // Initialize tools
+    // Initialize semantic features
+    this.initializeSemanticFeatures();
+
+    // Initialize core tools
     this.tools = {
       search: new SearchTool(this.service),
       get: new GetEntityTool(this.service),
@@ -111,6 +123,9 @@ export class TargetProcessServer {
       update: new UpdateEntityTool(this.service),
       inspect: new InspectObjectTool(this.service)
     };
+
+    // Initialize role-based semantic tools
+    this.initializeSemanticTools();
 
     // Initialize server
     this.server = new Server(
@@ -120,13 +135,7 @@ export class TargetProcessServer {
       },
       {
         capabilities: {
-          tools: {
-            search_entities: true,
-            get_entity: true,
-            create_entity: true,
-            update_entity: true,
-            inspect_object: true
-          },
+          tools: this.getToolCapabilities(),
           resources: {},
         },
       }
@@ -166,6 +175,215 @@ export class TargetProcessServer {
     }
   }
 
+  /**
+   * Initialize semantic features and register them with the operation registry
+   */
+  private initializeSemanticFeatures(): void {
+    try {
+      // Register work operations module
+      const workOperations = new WorkOperations(this.service);
+      operationRegistry.registerFeature(workOperations);
+      
+      // Future modules can be registered here
+      // const collaborationOperations = new CollaborationOperations(this.service);
+      // operationRegistry.registerFeature(collaborationOperations);
+      
+      console.error('Semantic features initialized successfully');
+    } catch (error) {
+      console.error('Failed to initialize semantic features:', error);
+    }
+  }
+
+  /**
+   * Initialize role-based semantic tools
+   */
+  private initializeSemanticTools(): void {
+    try {
+      // Get operations for the current user role
+      const availableOperations = operationRegistry.getOperationsForPersonality(this.userRole);
+      
+      console.error(`Initializing ${availableOperations.length} semantic tools for role: ${this.userRole}`);
+      
+      // Create individual MCP tools for each semantic operation
+      availableOperations.forEach(operation => {
+        const toolName = operation.metadata.id.replace(/-/g, '_'); // Convert to snake_case for MCP
+        this.tools[toolName] = this.createSemanticTool(operation);
+        console.error(`Registered semantic tool: ${toolName}`);
+      });
+      
+    } catch (error) {
+      console.error('Failed to initialize semantic tools:', error);
+    }
+  }
+
+  /**
+   * Create a focused MCP tool for a specific semantic operation
+   */
+  private createSemanticTool(operation: any) {
+    return {
+      name: operation.metadata.id.replace(/-/g, '_'),
+      description: operation.metadata.description,
+      inputSchema: this.createSemanticToolSchema(operation),
+      handler: async (args: any) => {
+        try {
+          // Build execution context using configured identity
+          const userId = parseInt(process.env.TP_USER_ID || '0');
+          const userEmail = process.env.TP_USER_EMAIL || '';
+          
+          if (!userId) {
+            return {
+              content: [{
+                type: 'text',
+                text: 'Error: No user identity configured. Please set TP_USER_ID in your environment.'
+              }]
+            };
+          }
+          
+          // TODO: Fetch actual user name from API based on ID
+          const userName = userEmail.split('@')[0] || 'User';
+          
+          const context = personalityLoader.buildExecutionContext(
+            this.userRole,
+            { id: userId, name: userName, email: userEmail },
+            {},
+            {}
+          );
+
+          // Execute the operation
+          const result = await operation.execute(context, args);
+          
+          // Debug logging
+          console.error('Semantic operation result:', JSON.stringify(result, null, 2));
+          
+          // Format result for MCP
+          const formattedText = this.formatSemanticResult(result);
+          console.error('Formatted text:', formattedText);
+          
+          return {
+            content: [{
+              type: 'text',
+              text: formattedText
+            }]
+          };
+        } catch (error) {
+          return {
+            content: [{
+              type: 'text', 
+              text: `Error: ${error instanceof Error ? error.message : String(error)}`
+            }]
+          };
+        }
+      }
+    };
+  }
+
+  /**
+   * Create JSON Schema for a semantic operation
+   */
+  private createSemanticToolSchema(operation: any) {
+    if (operation.getSchema) {
+      const zodSchema = operation.getSchema();
+      
+      // Basic Zod to JSON Schema conversion
+      // This is simplified - a full implementation would use zodToJsonSchema library
+      const shape = (zodSchema as any)._def?.shape?.() || {};
+      const properties: any = {};
+      const required: string[] = [];
+      
+      Object.entries(shape).forEach(([key, value]: [string, any]) => {
+        const def = value._def;
+        
+        // Determine type
+        let type = 'string';
+        if (def?.typeName === 'ZodNumber') type = 'number';
+        else if (def?.typeName === 'ZodBoolean') type = 'boolean';
+        else if (def?.typeName === 'ZodEnum') {
+          properties[key] = {
+            type: 'string',
+            enum: def.values,
+            description: def.description
+          };
+          return;
+        }
+        
+        properties[key] = {
+          type,
+          description: def?.description
+        };
+        
+        // Check if required (not optional)
+        if (def?.typeName !== 'ZodOptional' && def?.typeName !== 'ZodDefault') {
+          required.push(key);
+        }
+      });
+      
+      return {
+        type: 'object',
+        properties,
+        required: required.length > 0 ? required : undefined,
+        additionalProperties: false
+      };
+    }
+    
+    return {
+      type: 'object',
+      properties: {},
+      additionalProperties: true
+    };
+  }
+
+  /**
+   * Get tool capabilities dynamically based on available tools
+   */
+  private getToolCapabilities() {
+    const capabilities: Record<string, boolean> = {
+      search_entities: true,
+      get_entity: true,
+      create_entity: true,
+      update_entity: true,
+      inspect_object: true
+    };
+
+    // Add semantic tool capabilities
+    Object.keys(this.tools).forEach(toolName => {
+      if (!['search', 'get', 'create', 'update', 'inspect'].includes(toolName)) {
+        capabilities[toolName] = true;
+      }
+    });
+
+    return capabilities;
+  }
+
+  /**
+   * Format semantic operation result for display
+   */
+  private formatSemanticResult(result: any): string {
+    const parts: string[] = [];
+
+    // Main content
+    if (result.content) {
+      result.content.forEach((content: any) => {
+        if (content.type === 'text' && content.text) {
+          parts.push(content.text);
+        } else if (content.type === 'structured-data' && content.data) {
+          parts.push(JSON.stringify(content.data, null, 2));
+        } else if (content.type === 'error' && content.text) {
+          parts.push(`Error: ${content.text}`);
+        }
+      });
+    }
+
+    // Suggestions
+    if (result.suggestions && result.suggestions.length > 0) {
+      parts.push('\n💡 **Suggested Next Actions:**');
+      result.suggestions.forEach((suggestion: string) => {
+        parts.push(`  • ${suggestion}`);
+      });
+    }
+
+    return parts.join('\n');
+  }
+
   private setupHandlers() {
     this.server.setRequestHandler(ListToolsRequestSchema, async () => {
       // Get enhanced tool definitions with TP context
@@ -173,15 +391,29 @@ export class TargetProcessServer {
         ? this.contextBuilder.generateContextDescription(this.context)
         : '';
 
-      return {
-        tools: [
-          this.getEnhancedSearchDefinition(contextDescription),
-          this.getEnhancedGetDefinition(contextDescription),
-          this.getEnhancedCreateDefinition(contextDescription),
-          this.getEnhancedUpdateDefinition(contextDescription),
-          this.getEnhancedInspectDefinition(contextDescription),
-        ],
-      };
+      const tools = [
+        this.getEnhancedSearchDefinition(contextDescription),
+        this.getEnhancedGetDefinition(contextDescription),
+        this.getEnhancedCreateDefinition(contextDescription),
+        this.getEnhancedUpdateDefinition(contextDescription),
+        this.getEnhancedInspectDefinition(contextDescription),
+      ];
+
+      // Add semantic tools for the current role
+      Object.keys(this.tools).forEach(toolName => {
+        if (!['search', 'get', 'create', 'update', 'inspect'].includes(toolName)) {
+          const tool = (this.tools as any)[toolName];
+          if (tool && tool.description) {
+            tools.push({
+              name: toolName as any,
+              description: tool.description,
+              inputSchema: tool.inputSchema
+            });
+          }
+        }
+      });
+
+      return { tools };
     });
 
     this.server.setRequestHandler(ListResourcesRequestSchema, async () => ({
@@ -210,7 +442,10 @@ export class TargetProcessServer {
 
     this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
       try {
-        switch (request.params.name) {
+        const toolName = request.params.name;
+        
+        // Handle core tools
+        switch (toolName) {
           case 'search_entities':
             return await this.tools.search.execute(request.params.arguments);
           case 'get_entity':
@@ -221,12 +456,17 @@ export class TargetProcessServer {
             return await this.tools.update.execute(request.params.arguments);
           case 'inspect_object':
             return await this.tools.inspect.execute(request.params.arguments);
-          default:
-            throw new McpError(
-              ErrorCode.MethodNotFound,
-              `Unknown tool: ${request.params.name}`
-            );
         }
+
+        // Handle semantic tools
+        if (this.tools[toolName] && this.tools[toolName].handler) {
+          return await this.tools[toolName].handler(request.params.arguments);
+        }
+
+        throw new McpError(
+          ErrorCode.MethodNotFound,
+          `Unknown tool: ${toolName}`
+        );
       } catch (error) {
         if (error instanceof McpError) {
           throw error;
