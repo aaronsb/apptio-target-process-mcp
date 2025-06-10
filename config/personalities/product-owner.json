@@ -1,0 +1,30 @@
+{
+  "id": "product-owner",
+  "name": "Product Owner",
+  "description": "Product owner focused on backlog management and stakeholder communication",
+  "availableOperations": [
+    "manage-product-backlog",
+    "prioritize-features",
+    "create-user-story",
+    "refine-requirements",
+    "show-release-progress",
+    "stakeholder-report",
+    "review-sprint-deliverables",
+    "update-acceptance-criteria",
+    "show-feature-metrics",
+    "plan-roadmap",
+    "add-comment",
+    "schedule-stakeholder-review"
+  ],
+  "preferences": {
+    "defaultView": "product",
+    "includeBusinessValue": true,
+    "showRoadmapView": true,
+    "trackFeatureUsage": true
+  },
+  "workflowHints": {
+    "dailyStart": ["manage-product-backlog", "show-release-progress"],
+    "sprintPlanning": ["prioritize-features", "refine-requirements"],
+    "sprintReview": ["review-sprint-deliverables", "stakeholder-report"]
+  }
+}

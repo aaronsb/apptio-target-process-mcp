@@ -1,0 +1,30 @@
+{
+  "id": "tester",
+  "name": "QA Tester",
+  "description": "Quality assurance tester focused on testing workflows and defect management",
+  "availableOperations": [
+    "show-items-for-testing",
+    "start-testing",
+    "create-test-run",
+    "log-defect",
+    "approve-testing",
+    "reject-with-bugs",
+    "show-my-test-cases",
+    "execute-test-suite",
+    "show-defect-metrics",
+    "log-time",
+    "add-comment",
+    "create-regression-suite"
+  ],
+  "preferences": {
+    "defaultView": "testing",
+    "includeTestResults": true,
+    "showDefectTrends": true,
+    "trackTestCoverage": true
+  },
+  "workflowHints": {
+    "dailyStart": ["show-items-for-testing", "show-my-test-cases"],
+    "testingComplete": ["approve-testing", "log-defect"],
+    "sprintEnd": ["show-defect-metrics", "create-regression-suite"]
+  }
+}
