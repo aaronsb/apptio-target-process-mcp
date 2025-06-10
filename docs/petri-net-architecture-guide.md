@@ -315,7 +315,7 @@ The key is applying these principles judiciously—not every system needs this l
 
 ### Context-Aware Computing
 - **Dey, A.K.** (2001). "Understanding and using context." *Personal and Ubiquitous Computing*, 5(1), 4-7. [Foundational work on context-aware system design] - [DOI: 10.1007/s007790170019](https://doi.org/10.1007/s007790170019)
-- **Chen, G., & Kotz, D.** (2000). "A survey of context-aware mobile computing research." *Technical Report TR2000-381*, Dartmouth College. [Context-aware system architecture patterns] - [Available at Dartmouth](https://www.cs.dartmouth.edu/~dfk/papers/chen:survey-tr.pdf)
+- **Chen, G., & Kotz, D.** (2000). "A survey of context-aware mobile computing research." *Technical Report TR2000-381*, Dartmouth College. [Context-aware system architecture patterns] - [Available at Dartmouth](https://digitalcommons.dartmouth.edu/cgi/viewcontent.cgi?article=1187&context=cs_tr)
 
 ### Industry Applications
 - **Russell, N., ter Hofstede, A.H.M., Edmond, D., & van der Aalst, W.M.P.** (2005). "Workflow data patterns: Identification, representation and tool support." *Conceptual Modeling–ER 2005*, 353-368. [Practical workflow patterns in enterprise tools] - [DOI: 10.1007/11568322_23](https://doi.org/10.1007/11568322_23)
