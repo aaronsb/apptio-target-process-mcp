@@ -2,7 +2,6 @@ import { McpError, ErrorCode } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
 import { TPService } from '../../api/client/tp.service.js';
 import { searchPresets, applyPresetFilter } from './presets.js';
-import { EntityRegistry } from '../../core/entity-registry.js';
 
 /**
  * Search tool for Target Process entities
@@ -39,7 +38,7 @@ import { EntityRegistry } from '../../core/entity-registry.js';
 
 export const searchToolSchema = z.object({
   type: z.string().describe('Entity type to search for (e.g., UserStory, Bug, Task, Feature, Epic, Project, Team, etc.)'),
-  where: z.string().optional().describe('Filter expression or use searchPresets for common filters'),
+  where: z.string().optional().describe('Filter expression using TargetProcess query language.\n\nPreset filters: searchPresets.open, .notDone, .myOpenTasks, .activeItems, etc.\n\nQuery syntax:\n- Use "eq" for equals: EntityState.Name eq "Open"\n- Use "ne" for not equals: EntityState.Name ne "Done"\n- Use "and"/"or": Priority.Name eq "High" and EntityState.Name ne "Done"\n- Date macros: CreateDate gt @Today\n\nExample: searchPresets.activeItems or "EntityState.Name ne \'Done\'"'),
   include: z.array(z.string()).optional().describe('Related data to include (e.g., Project, Team, AssignedUser)'),
   take: z.number().min(1).max(1000).optional().describe('Number of items to return (default: 100)'),
   orderBy: z.array(z.string()).optional().describe('Fields to sort by (e.g., ["CreateDate desc"])'),
@@ -57,9 +56,29 @@ export class SearchTool {
     try {
       const { type, where, include, take, orderBy } = searchToolSchema.parse(args);
 
+      // Process search presets if used
+      let processedWhere = where;
+      if (where && where.startsWith('searchPresets.')) {
+        const presetName = where.replace('searchPresets.', '') as keyof typeof searchPresets;
+        if (presetName in searchPresets) {
+          processedWhere = searchPresets[presetName];
+          
+          // Apply variable substitution if needed (basic implementation)
+          if (processedWhere.includes('${currentUser}')) {
+            // For now, use a placeholder - should be enhanced with actual user context
+            processedWhere = processedWhere.replace('${currentUser}', 'system');
+          }
+        } else {
+          throw new McpError(
+            ErrorCode.InvalidParams,
+            `Unknown search preset: ${presetName}. Available presets: ${Object.keys(searchPresets).join(', ')}`
+          );
+        }
+      }
+
       const results = await this.service.searchEntities(
         type,
-        where,
+        processedWhere,
         include,
         take,
         orderBy

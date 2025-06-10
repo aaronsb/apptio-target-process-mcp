@@ -6,6 +6,8 @@ export const searchPresets = {
   open: 'EntityState.Name eq "Open"',
   inProgress: 'EntityState.Name eq "In Progress"',
   done: 'EntityState.Name eq "Done"',
+  notDone: 'EntityState.Name ne "Done"',
+  notClosed: 'EntityState.Name ne "Closed"',
   
   // Assignment-based filters
   myTasks: 'AssignedUser.Email eq "${currentUser}"',
@@ -22,13 +24,14 @@ export const searchPresets = {
   modifiedToday: 'ModifyDate gt @Today',
   createdThisWeek: 'CreateDate gt @StartOfWeek',
   modifiedThisWeek: 'ModifyDate gt @StartOfWeek',
-  createdLastWeek: 'CreateDate gt @StartOfLastWeek and CreateDate lt @StartOfWeek',
-  modifiedLastWeek: 'ModifyDate gt @StartOfLastWeek and ModifyDate lt @StartOfWeek',
   
   // Combined filters
   myOpenTasks: 'AssignedUser.Email eq "${currentUser}" and EntityState.Name eq "Open"',
   highPriorityUnassigned: 'Priority.Name eq "High" and AssignedUser is null',
-  myRecentTasks: 'AssignedUser.Email eq "${currentUser}" and ModifyDate gt @Today'
+  myRecentTasks: 'AssignedUser.Email eq "${currentUser}" and ModifyDate gt @Today',
+  
+  // Active work filters
+  activeItems: 'EntityState.Name ne "Done" and EntityState.Name ne "Closed"'
 } as const;
 
 /**
