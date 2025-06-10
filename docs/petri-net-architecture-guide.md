@@ -299,30 +299,30 @@ The key is applying these principles judiciously—not every system needs this l
 ## References and Further Reading
 
 ### Foundational Theory
-- **Van der Aalst, W.M.P.** (2016). *Process Mining: Data Science in Action*. Springer. [Comprehensive coverage of workflow patterns and Petri net applications in enterprise systems]
-- **Murata, T.** (1989). "Petri nets: Properties, analysis and applications." *Proceedings of the IEEE*, 77(4), 541-580. [Seminal work on Petri net theory and applications]
-- **Van der Aalst, W.M.P., & ter Hofstede, A.H.M.** (2005). "YAWL: Yet another workflow language." *Information Systems*, 30(4), 245-275. [Practical workflow language based on Petri net principles]
+- **Van der Aalst, W.M.P.** (2016). *Process Mining: Data Science in Action*. Springer. [Comprehensive coverage of workflow patterns and Petri net applications in enterprise systems] - [DOI: 10.1007/978-3-662-49851-4](https://doi.org/10.1007/978-3-662-49851-4)
+- **Murata, T.** (1989). "Petri nets: Properties, analysis and applications." *Proceedings of the IEEE*, 77(4), 541-580. [Seminal work on Petri net theory and applications] - [DOI: 10.1109/5.24143](https://doi.org/10.1109/5.24143)
+- **Van der Aalst, W.M.P., & ter Hofstede, A.H.M.** (2005). "YAWL: Yet another workflow language." *Information Systems*, 30(4), 245-275. [Practical workflow language based on Petri net principles] - [DOI: 10.1016/j.is.2004.02.002](https://doi.org/10.1016/j.is.2004.02.002)
 
 ### Adaptive User Interfaces
 - **Oppermann, R., & Rasher, R.** (1997). "Adaptability and adaptivity in learning support systems." *Knowledge Transfer*, 2, 173-179. [Context-aware interface design principles]
-- **Jameson, A.** (2003). "Adaptive interfaces and agents." *Human-Computer Interaction: Design Issues, Solutions, and Applications*, 105-130. [Theoretical foundation for adaptive interface systems]
-- **Benyon, D., & Murray, D.** (1993). "Adaptive systems: From intelligent tutoring to autonomous agents." *Knowledge-based Systems*, 6(4), 197-219. [Early work on context-sensitive system behavior]
+- **Jameson, A.** (2003). "Adaptive interfaces and agents." *Human-Computer Interaction: Design Issues, Solutions, and Applications*, 105-130. [Theoretical foundation for adaptive interface systems] - [Available at ResearchGate](https://www.researchgate.net/publication/220604952_Adaptive_Interfaces_and_Agents)
+- **Benyon, D., & Murray, D.** (1993). "Adaptive systems: From intelligent tutoring to autonomous agents." *Knowledge-based Systems*, 6(4), 197-219. [Early work on context-sensitive system behavior] - [DOI: 10.1016/0950-7051(93)90012-P](https://doi.org/10.1016/0950-7051(93)90012-P)
 
 ### Enterprise Workflow Management
-- **Georgakopoulos, D., Hornick, M., & Sheth, A.** (1995). "An overview of workflow management: From process modeling to workflow automation infrastructure." *Distributed and Parallel Databases*, 3(2), 119-153. [Enterprise workflow challenges and solutions]
-- **Van der Aalst, W.M.P.** (2013). "Business process management: A comprehensive survey." *ISRN Software Engineering*, 2013. [Modern enterprise workflow patterns and anti-patterns]
-- **Dumas, M., La Rosa, M., Mendling, J., & Reijers, H.A.** (2018). *Fundamentals of Business Process Management*. Springer. [Contemporary enterprise process design principles]
+- **Georgakopoulos, D., Hornick, M., & Sheth, A.** (1995). "An overview of workflow management: From process modeling to workflow automation infrastructure." *Distributed and Parallel Databases*, 3(2), 119-153. [Enterprise workflow challenges and solutions] - [DOI: 10.1007/BF01277643](https://doi.org/10.1007/BF01277643)
+- **Van der Aalst, W.M.P.** (2013). "Business process management: A comprehensive survey." *ISRN Software Engineering*, 2013. [Modern enterprise workflow patterns and anti-patterns] - [DOI: 10.1155/2013/507984](https://doi.org/10.1155/2013/507984)
+- **Dumas, M., La Rosa, M., Mendling, J., & Reijers, H.A.** (2018). *Fundamentals of Business Process Management*. Springer. [Contemporary enterprise process design principles] - [DOI: 10.1007/978-3-662-56509-4](https://doi.org/10.1007/978-3-662-56509-4)
 
 ### Context-Aware Computing
-- **Dey, A.K.** (2001). "Understanding and using context." *Personal and Ubiquitous Computing*, 5(1), 4-7. [Foundational work on context-aware system design]
-- **Chen, G., & Kotz, D.** (2000). "A survey of context-aware mobile computing research." *Technical Report TR2000-381*, Dartmouth College. [Context-aware system architecture patterns]
+- **Dey, A.K.** (2001). "Understanding and using context." *Personal and Ubiquitous Computing*, 5(1), 4-7. [Foundational work on context-aware system design] - [DOI: 10.1007/s007790170019](https://doi.org/10.1007/s007790170019)
+- **Chen, G., & Kotz, D.** (2000). "A survey of context-aware mobile computing research." *Technical Report TR2000-381*, Dartmouth College. [Context-aware system architecture patterns] - [Available at Dartmouth](https://www.cs.dartmouth.edu/~dfk/papers/chen:survey-tr.pdf)
 
 ### Industry Applications
-- **Russell, N., ter Hofstede, A.H.M., Edmond, D., & van der Aalst, W.M.P.** (2005). "Workflow data patterns: Identification, representation and tool support." *Conceptual Modeling–ER 2005*, 353-368. [Practical workflow patterns in enterprise tools]
-- **Van der Aalst, W.M.P., ter Hofstede, A.H.M., Kiepuszewski, B., & Barros, A.P.** (2003). "Workflow patterns." *Distributed and Parallel Databases*, 14(1), 5-51. [Comprehensive catalog of workflow patterns including multi-entry scenarios]
+- **Russell, N., ter Hofstede, A.H.M., Edmond, D., & van der Aalst, W.M.P.** (2005). "Workflow data patterns: Identification, representation and tool support." *Conceptual Modeling–ER 2005*, 353-368. [Practical workflow patterns in enterprise tools] - [DOI: 10.1007/11568322_23](https://doi.org/10.1007/11568322_23)
+- **Van der Aalst, W.M.P., ter Hofstede, A.H.M., Kiepuszewski, B., & Barros, A.P.** (2003). "Workflow patterns." *Distributed and Parallel Databases*, 14(1), 5-51. [Comprehensive catalog of workflow patterns including multi-entry scenarios] - [DOI: 10.1023/A:1022883727209](https://doi.org/10.1023/A:1022883727209)
 
 ### Implementation Frameworks
-- **OASIS WSBPEL Technical Committee** (2007). "Web Services Business Process Execution Language Version 2.0." [Industry standard for flexible workflow implementation]
-- **Object Management Group** (2011). "Business Process Model and Notation (BPMN) Version 2.0." [Visual modeling standards for complex enterprise workflows]
+- **OASIS WSBPEL Technical Committee** (2007). "Web Services Business Process Execution Language Version 2.0." [Industry standard for flexible workflow implementation] - [Available at OASIS](http://docs.oasis-open.org/wsbpel/2.0/wsbpel-v2.0.html)
+- **Object Management Group** (2011). "Business Process Model and Notation (BPMN) Version 2.0." [Visual modeling standards for complex enterprise workflows] - [Available at OMG](https://www.omg.org/spec/BPMN/2.0/)
 
 These references provide both theoretical foundations and practical guidance for implementing Petri net-inspired workflow and interface patterns in enterprise environments.
