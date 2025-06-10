@@ -40,8 +40,14 @@ docker run -i --rm \
 ### NPX (No Installation Required)
 
 ```bash
-# Run directly with npx
+# Basic usage
 TP_DOMAIN=your-domain.tpondemand.com TP_USERNAME=your-username TP_PASSWORD=your-password \
+  npx -y https://github.com/aaronsb/apptio-target-process-mcp.git
+
+# With semantic operations and strict mode (recommended for MCP clients)
+TP_DOMAIN=your-domain.tpondemand.com TP_USERNAME=your-username TP_PASSWORD=your-password \
+TP_USER_ROLE=developer TP_USER_ID=your-user-id TP_USER_EMAIL=your-email \
+MCP_STRICT_MODE=true \
   npx -y https://github.com/aaronsb/apptio-target-process-mcp.git
 ```
 
@@ -54,12 +60,22 @@ TP_DOMAIN=your-domain.tpondemand.com TP_USERNAME=your-username TP_PASSWORD=your-
 # Quick setup for development
 ./scripts/dev-setup.sh
 
-# Or manual setup
+# Basic manual setup
 npm install && npm run build
 claude mcp add targetprocess node ./build/index.js \
   -e TP_DOMAIN=your-domain.tpondemand.com \
   -e TP_USERNAME=your-username \
   -e TP_PASSWORD=your-password
+
+# With semantic operations (recommended)
+claude mcp add targetprocess node ./build/index.js \
+  -e TP_DOMAIN=your-domain.tpondemand.com \
+  -e TP_USERNAME=your-username \
+  -e TP_PASSWORD=your-password \
+  -e TP_USER_ROLE=developer \
+  -e TP_USER_ID=your-user-id \
+  -e TP_USER_EMAIL=your-email \
+  -e MCP_STRICT_MODE=true
 ```
 
 [Claude Code integration guide →](docs/integration/claude-code.md)
@@ -82,9 +98,15 @@ MCP_STRICT_MODE=true
 
 ```bash
 TP_USER_ROLE=developer        # Options: developer, project-manager, tester
-TP_USER_ID=your-user-id       # For task assignments and time tracking
+TP_USER_ID=your-user-id       # For task assignments and time tracking  
 TP_USER_EMAIL=your-email      # Identity for semantic operations
 ```
+
+**Why Enable Semantic Operations?**
+- **Context-Aware Tools**: Get `show_my_tasks`, `start_working_on`, `complete_task` instead of just raw API calls
+- **Intelligent Discovery**: Operations adapt to your TargetProcess configuration without hard-coded assumptions
+- **Workflow Guidance**: Smart error handling transforms failures into actionable next steps
+- **Role-Based Filtering**: Only see tools relevant to your role (developer, PM, tester)
 
 ### IBM watsonx Orchestrate Integration
 
