@@ -1,11 +1,19 @@
-import fetch, { Response } from 'node-fetch';
 import { McpError, ErrorCode } from '@modelcontextprotocol/sdk/types.js';
-import { URLSearchParams } from 'node:url';
-import { setTimeout } from 'node:timers/promises';
 import { AssignableEntityData } from '../../entities/assignable/assignable.entity.js';
 import { UserStoryData } from '../../entities/assignable/user-story.entity.js';
 import { ApiResponse, CreateEntityRequest, UpdateEntityRequest } from './api.types.js';
 import { EntityRegistry } from '../../core/entity-registry.js';
+import { 
+  AttachmentInfo, 
+  AttachmentDownloadResponse, 
+  AttachmentUploadResponse,
+  ALLOWED_MIME_TYPES,
+  MAX_FILE_SIZE 
+} from '../../types/attachment.js';
+
+declare const Buffer: {
+  from(str: string): { toString(encoding: string): string };
+};
 
 type OrderByOption = string | { field: string; direction: 'asc' | 'desc' };
 
@@ -43,20 +51,12 @@ function isApiKeyConfig(config: TPServiceConfig): config is TPServiceApiKeyConfi
   return (config as TPServiceApiKeyConfig).apiKey !== undefined;
 }
 
-
-/**
- * Service layer for interacting with TargetProcess API
- */
 export class TPService {
   private readonly baseUrl: string;
   private readonly auth: string;
   private authType: 'basic' | 'apikey' = 'basic';
-
   private readonly retryConfig: RetryConfig;
 
-  /**
-   * Formats a value for use in a where clause based on its type
-   */
   private formatWhereValue(value: unknown): string {
     if (value === null) {
       return 'null';
@@ -202,14 +202,13 @@ export class TPService {
     });
 
     return `[${validIncludes.join(',')}]`;
-  }
-
-  constructor(config: TPServiceConfig) {
+  }  constructor(config: TPServiceConfig) {
     if (isApiKeyConfig(config)) {
       this.auth = config.apiKey
       this.authType = 'apikey';
     } else {
-      this.auth = Buffer.from(`${config.credentials.username}:${config.credentials.password}`).toString('base64');
+      const credentials = `${config.credentials.username}:${config.credentials.password}`;
+      this.auth = Buffer.from(credentials).toString('base64');
       this.authType = 'basic';
     }
 
@@ -230,23 +229,27 @@ export class TPService {
 
     for (let attempt = 1; attempt <= this.retryConfig.maxRetries; attempt++) {
       try {
-        return await operation();
-      } catch (error) {
+        return await operation();      } catch (error: unknown) {
         lastError = error as Error;
+
+        // Handle unknown error types safely
+        const errorMessage = error instanceof Error ? error.message : String(error);
 
         // Don't retry on 400 (bad request) or 401 (unauthorized)
         if (error instanceof McpError &&
-          (error.message.includes('status: 400') ||
-            error.message.includes('status: 401'))) {
+          (errorMessage.includes('status: 400') ||
+            errorMessage.includes('status: 401'))) {
           throw error;
+        }
+
+        if (errorMessage.includes('status: 400') || errorMessage.includes('status: 401')) {
+          throw new McpError(ErrorCode.InvalidRequest, errorMessage);
         }
 
         if (attempt === this.retryConfig.maxRetries) {
           break;
-        }
-
-        // Wait before retrying
-        await setTimeout(delay);
+        }        // Wait before retrying
+        await new Promise(resolve => setTimeout(resolve, delay));
         delay *= this.retryConfig.backoffFactor;
       }
     }
@@ -302,8 +305,7 @@ export class TPService {
       const isCacheExpired = Date.now() - this.cacheTimestamp > this.cacheExpiryMs;
 
       // Initialize cache if needed
-      if (!this.validEntityTypesCache || isCacheExpired) {
-        // If initialization is already in progress, wait for it
+      if (!this.validEntityTypesCache || isCacheExpired) {        // If initialization is already in progress, wait for it
         if (this.cacheInitPromise) {
           this.validEntityTypesCache = await this.cacheInitPromise;
         } else {
@@ -683,7 +685,6 @@ export class TPService {
       // Don't throw - we'll retry on first use
     }
   }
-
   private getHeaders() {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -692,16 +693,554 @@ export class TPService {
 
     if (this.authType === 'basic') {
       headers['Authorization'] = `Basic ${this.auth}`
+    } else if (this.authType === 'apikey') {
+      // For attachment downloads, we need the access token in Authorization header
+      headers['Authorization'] = `Bearer ${this.auth}`
     }
 
     return headers
   }
-
   private getQueryParams(defaults = {}) {
     const params = new URLSearchParams(defaults)
     if (this.authType === 'apikey') {
       params.append('access_token', this.auth)
     }
     return params
+  }
+  /**
+   * Get headers specifically for attachment downloads
+   * Uses session-based approach for Basic Auth users
+   */
+  private getAttachmentHeaders() {
+    const headers: Record<string, string> = {
+      'Accept': '*/*',
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+    }
+
+    if (this.authType === 'basic') {
+      headers['Authorization'] = `Basic ${this.auth}`
+      // For Basic Auth, also try to maintain session cookies
+      headers['Cookie'] = '' // Will be populated by successful API calls
+    } else if (this.authType === 'apikey') {
+      headers['Authorization'] = `Bearer ${this.auth}`
+    }
+
+    return headers
+  }
+
+  /**
+   * Perform a login to establish session cookies for attachment downloads
+   */
+  private async establishSession(): Promise<string> {
+    try {
+      // Try to access a simple API endpoint to establish session
+      const loginUrl = `${this.baseUrl.replace('/api/v1', '')}/login`;
+      const response = await fetch(loginUrl, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Basic ${this.auth}`,
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+      });
+
+      // Extract cookies from response
+      const setCookieHeader = response.headers.get('set-cookie');
+      if (setCookieHeader) {
+        // Parse and return cookies
+        return setCookieHeader.split(',').map(cookie => cookie.split(';')[0]).join('; ');
+      }
+      
+      return '';
+    } catch (error) {
+      console.warn('Could not establish session:', error);
+      return '';
+    }
+  }/**
+   * Download an attachment by its ID
+   * Updated with research findings from Target Process GitHub samples
+   */
+  async downloadAttachment(attachmentId: number, format: 'url' | 'base64' = 'url'): Promise<AttachmentDownloadResponse> {
+    try {
+      // First get attachment info
+      const attachmentInfo = await this.getAttachmentInfo(attachmentId);      if (format === 'base64') {
+        // Try multiple download methods with Basic Auth enhancements
+        const downloadMethods = [
+          () => this.downloadViaAttachmentAspx(attachmentId, attachmentInfo),
+          () => this.downloadViaApiFile(attachmentId, attachmentInfo),
+          () => this.downloadViaUploadFile(attachmentId, attachmentInfo)
+        ];        for (const method of downloadMethods) {
+          try {
+            const result = await method();
+            if (result) {
+              // Check if we got XML metadata instead of actual file
+              const metadata = this.parseAttachmentMetadata(result);
+              
+              if (metadata.uniqueFileName) {
+                console.log(`📋 Got metadata, attempting to download actual file: ${metadata.uniqueFileName}`);
+                try {
+                  const actualFile = await this.downloadActualFile(metadata.uniqueFileName);
+                  
+                  return {
+                    attachmentId,
+                    filename: metadata.actualName || attachmentInfo.Name,
+                    mimeType: attachmentInfo.MimeType || this.detectMimeType(metadata.actualName || attachmentInfo.Name),
+                    size: Math.round((actualFile.length * 3) / 4) || attachmentInfo.Size,
+                    downloadUrl: this.generateDownloadUrl(attachmentId),
+                    description: attachmentInfo.Description,
+                    uploadDate: attachmentInfo.Date,
+                    base64Content: actualFile,
+                    owner: attachmentInfo.Owner ? {
+                      id: attachmentInfo.Owner.Id,
+                      name: `${attachmentInfo.Owner.FirstName || ''} ${attachmentInfo.Owner.LastName || ''}`.trim()
+                    } : undefined
+                  };
+                } catch (fileError) {
+                  console.warn(`Failed to download actual file, using metadata: ${fileError}`);
+                  // Fall back to metadata if actual file download fails
+                }
+              }
+              
+              // Return original result if no metadata found or actual file download failed
+              return {
+                attachmentId,
+                filename: attachmentInfo.Name,
+                mimeType: attachmentInfo.MimeType || this.detectMimeType(attachmentInfo.Name),
+                size: Math.round((result.length * 3) / 4) || attachmentInfo.Size,
+                downloadUrl: this.generateDownloadUrl(attachmentId),
+                description: attachmentInfo.Description,
+                uploadDate: attachmentInfo.Date,
+                base64Content: result,
+                owner: attachmentInfo.Owner ? {
+                  id: attachmentInfo.Owner.Id,
+                  name: `${attachmentInfo.Owner.FirstName || ''} ${attachmentInfo.Owner.LastName || ''}`.trim()
+                } : undefined
+              };
+            }
+          } catch (methodError) {
+            console.warn(`Download method failed, trying next: ${methodError}`);
+            continue;
+          }
+        }
+        
+        // If all base64 methods fail, log the issue but continue with URL response
+        console.warn(`All base64 download methods failed for attachment ${attachmentId}. This may require an Access Token - see Target Process documentation.`);
+      }
+      
+      // For URL format or if base64 download failed, return URL-based download
+      const downloadUrl = this.generateDownloadUrl(attachmentId);
+      
+      return {
+        attachmentId,
+        filename: attachmentInfo.Name,
+        mimeType: attachmentInfo.MimeType || this.detectMimeType(attachmentInfo.Name),
+        size: attachmentInfo.Size,
+        downloadUrl,
+        description: attachmentInfo.Description,
+        uploadDate: attachmentInfo.Date,
+        owner: attachmentInfo.Owner ? {
+          id: attachmentInfo.Owner.Id,
+          name: `${attachmentInfo.Owner.FirstName || ''} ${attachmentInfo.Owner.LastName || ''}`.trim()
+        } : undefined
+      };
+    } catch (error) {
+      if (error instanceof McpError) {
+        throw error;
+      }
+
+      throw new McpError(
+        ErrorCode.InvalidRequest,
+        `Failed to download attachment ${attachmentId}: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+  }
+  /**
+   * Upload an attachment to an entity
+   */
+  async uploadAttachment(
+    entityType: string,
+    entityId: number,
+    fileData: string, // base64 encoded
+    filename: string,
+    description?: string,
+    mimeType?: string
+  ): Promise<AttachmentUploadResponse> {
+    try {
+      // Validate entity type
+      const validatedType = await this.validateEntityType(entityType);
+      
+      // Calculate file size from base64 (rough estimation)
+      const estimatedSize = (fileData.length * 3) / 4;
+      
+      if (estimatedSize > MAX_FILE_SIZE) {
+        throw new McpError(
+          ErrorCode.InvalidRequest,
+          `File size (~${Math.round(estimatedSize)} bytes) exceeds maximum allowed size (${MAX_FILE_SIZE} bytes)`
+        );
+      }
+
+      // Detect MIME type if not provided
+      const detectedMimeType = mimeType || this.detectMimeType(filename);
+      
+      // Validate MIME type
+      if (!ALLOWED_MIME_TYPES.includes(detectedMimeType as any)) {
+        throw new McpError(
+          ErrorCode.InvalidRequest,
+          `File type '${detectedMimeType}' is not allowed. Allowed types: ${ALLOWED_MIME_TYPES.join(', ')}`
+        );
+      }
+
+      return await this.executeWithRetry(async () => {
+        // For now, return a simplified response since FormData/Blob might not be available
+        // This would need to be implemented based on the specific Target Process upload API
+        throw new McpError(
+          ErrorCode.InvalidRequest,
+          'File upload functionality is not yet fully implemented. Please use Target Process web interface for file uploads.'
+        );      }, `upload attachment to ${validatedType} ${entityId}`);
+    } catch (error: unknown) {
+      if (error instanceof McpError) {
+        return {
+          success: false,
+          message: error.message,
+          error: error.message
+        };
+      }
+
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      return {
+        success: false,
+        message: `Failed to upload attachment: ${errorMessage}`,
+        error: errorMessage
+      };
+    }
+  }
+
+  /**
+   * Get attachment info by ID
+   */
+  async getAttachmentInfo(attachmentId: number): Promise<AttachmentInfo> {
+    try {
+      return await this.executeWithRetry(async () => {
+        const params = this.getQueryParams({
+          format: 'json'
+        });
+
+        const response = await fetch(`${this.baseUrl}/Attachments/${attachmentId}?${params}`, {
+          headers: this.getHeaders()
+        });
+
+        return await this.handleApiResponse<AttachmentInfo>(
+          response,
+          `get attachment info ${attachmentId}`
+        );
+      }, `get attachment info ${attachmentId}`);
+    } catch (error) {
+      if (error instanceof McpError) {
+        throw error;
+      }
+
+      throw new McpError(
+        ErrorCode.InvalidRequest,
+        `Failed to get attachment info ${attachmentId}: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+  }
+  /**
+   * Get attachments for a specific entity
+   */
+  async getAttachmentsForEntity(entityType: string, entityId: number): Promise<AttachmentInfo[]> {
+    try {
+      // Get entity with attachments included
+      const entity = await this.getEntity(entityType, entityId, ['Attachments']);
+      
+      // Check if Attachments exists and is an array
+      if (entity && (entity as any).Attachments) {
+        const attachments = (entity as any).Attachments;
+        
+        // If it's an array, return it
+        if (Array.isArray(attachments)) {
+          return attachments;
+        }
+        
+        // If it's an object with Items property (common TP API pattern)
+        if (attachments.Items && Array.isArray(attachments.Items)) {
+          return attachments.Items;
+        }
+        
+        // If it's a single attachment, wrap in array
+        if (typeof attachments === 'object' && attachments.Id) {
+          return [attachments];
+        }
+      }
+      
+      return [];
+    } catch (error) {
+      if (error instanceof McpError) {
+        throw error;
+      }
+
+      throw new McpError(
+        ErrorCode.InvalidRequest,
+        `Failed to get attachments for ${entityType} ${entityId}: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+  }
+
+  /**
+   * Detect MIME type from filename extension
+   */
+  private detectMimeType(filename: string): string {
+    const ext = filename.toLowerCase().split('.').pop();
+    
+    const mimeMap: Record<string, string> = {
+      'jpg': 'image/jpeg',
+      'jpeg': 'image/jpeg',
+      'png': 'image/png',
+      'gif': 'image/gif',
+      'webp': 'image/webp',
+      'svg': 'image/svg+xml',
+      'pdf': 'application/pdf',
+      'txt': 'text/plain',
+      'csv': 'text/csv',
+      'doc': 'application/msword',
+      'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'xls': 'application/vnd.ms-excel',
+      'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'ppt': 'application/vnd.ms-powerpoint',
+      'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      'zip': 'application/zip',
+      'rar': 'application/x-rar-compressed',
+      '7z': 'application/x-7z-compressed',
+      'js': 'text/javascript',
+      'ts': 'text/typescript',
+      'html': 'text/html',
+      'css': 'text/css',
+      'json': 'application/json',
+      'xml': 'application/xml'    };
+
+    return mimeMap[ext || ''] || 'application/octet-stream';
+  }
+  /**
+   * Generate download URL for attachment
+   * Based on Target Process GitHub samples research
+   */
+  private generateDownloadUrl(attachmentId: number): string {
+    // Primary method: Attachment.aspx endpoint with correct parameter name
+    return `${this.baseUrl.replace('/api/v1', '')}/Attachment.aspx?AttachmentID=${attachmentId}`;
+  }/**
+   * Download via attachment.aspx endpoint (Method 1)
+   * Enhanced for Basic Auth with session management
+   */  private async downloadViaAttachmentAspx(attachmentId: number, attachmentInfo: any): Promise<string> {
+    const baseUrl = this.baseUrl.replace('/api/v1', '');
+    
+    // For Basic Auth, try different URL patterns with correct parameter names
+    const downloadUrls = [
+      `${baseUrl}/Attachment.aspx?AttachmentID=${attachmentId}`,
+      `${baseUrl}/attachment.aspx?AttachmentID=${attachmentId}`,
+      `${baseUrl}/Attachment.aspx?ID=${attachmentId}`,
+      `${baseUrl}/attachment.aspx?ID=${attachmentId}`,
+      `${baseUrl}/AttachmentDownload.aspx?AttachmentID=${attachmentId}`,
+      `${baseUrl}/api/v1/Attachments/${attachmentId}/File`
+    ];
+
+    // Try to establish session first
+    const sessionCookies = this.authType === 'basic' ? await this.establishSession() : '';
+    
+    for (const downloadUrl of downloadUrls) {
+      try {
+        console.log(`🔍 Attempting download via: ${downloadUrl}`);
+        
+        const headers = this.getAttachmentHeaders();
+        if (sessionCookies) {
+          headers['Cookie'] = sessionCookies;
+        }
+        
+        const response = await fetch(downloadUrl, { headers });
+
+        console.log(`📊 Response status: ${response.status}, Content-Type: ${response.headers.get('content-type')}`);
+
+        if (response.ok) {
+          const contentType = response.headers.get('content-type') || '';
+          
+          // Check if we got HTML (login page) instead of binary data
+          if (contentType.includes('text/html')) {
+            const text = await response.text();
+            console.log(`⚠️ Got HTML response (first 200 chars): ${text.substring(0, 200)}...`);
+            
+            if (text.includes('Targetprocess Login') || text.includes('login-page')) {
+              console.log(`❌ Login redirect detected for ${downloadUrl}`);
+              continue; // Try next URL
+            }
+          }
+          
+          const arrayBuffer = await response.arrayBuffer();
+          const uint8Array = new Uint8Array(arrayBuffer);
+          
+          if (uint8Array.length > 0) {
+            console.log(`✅ Successfully downloaded ${uint8Array.length} bytes via ${downloadUrl}`);
+            return btoa(String.fromCharCode(...uint8Array));
+          }
+        }
+        
+        console.log(`❌ Failed with ${downloadUrl}: ${response.status} ${response.statusText}`);
+      } catch (error) {
+        console.log(`❌ Error with ${downloadUrl}:`, error);
+        continue;
+      }
+    }
+    
+    throw new Error('All download URLs failed - attachment may require different authentication');
+  }  /**
+   * Download via API File endpoint (Method 2)
+   * Enhanced with multiple fallback strategies
+   */
+  private async downloadViaApiFile(attachmentId: number, attachmentInfo: any): Promise<string> {
+    const endpoints = [
+      `${this.baseUrl}/Attachments/${attachmentId}/File`,
+      `${this.baseUrl}/Attachments/${attachmentId}`,
+      `${this.baseUrl}/Attachments/${attachmentId}/Download`
+    ];
+
+    for (const endpoint of endpoints) {
+      try {
+        const response = await fetch(endpoint, {
+          headers: this.getAttachmentHeaders()
+        });
+
+        if (response.ok) {
+          const contentType = response.headers.get('content-type') || '';
+          
+          if (contentType.includes('text/html')) {
+            const text = await response.text();
+            if (text.includes('Targetprocess Login') || text.includes('login-page')) {
+              continue; // Try next endpoint
+            }
+          }
+          
+          const arrayBuffer = await response.arrayBuffer();
+          const uint8Array = new Uint8Array(arrayBuffer);
+          
+          if (uint8Array.length > 0) {
+            return btoa(String.fromCharCode(...uint8Array));
+          }
+        }
+      } catch (error) {
+        console.log(`Failed ${endpoint}:`, error);
+        continue;
+      }
+    }
+    
+    throw new Error('All API File endpoints failed');
+  }  /**
+   * Parse XML metadata to extract UniqueFileName for actual file download
+   */
+  private parseAttachmentMetadata(base64Data: string): { uniqueFileName?: string; actualName?: string } {
+    try {
+      // Decode base64 using atob (browser compatible)
+      const xmlString = atob(base64Data);
+      
+      // Extract UniqueFileName from XML
+      const uniqueFileNameMatch = xmlString.match(/<UniqueFileName>([^<]+)<\/UniqueFileName>/);
+      const nameMatch = xmlString.match(/<Attachment[^>]*Name="([^"]+)"/);
+      
+      return {
+        uniqueFileName: uniqueFileNameMatch ? uniqueFileNameMatch[1] : undefined,
+        actualName: nameMatch ? nameMatch[1] : undefined
+      };
+    } catch (error) {
+      console.log('Failed to parse metadata:', error);
+      return {};
+    }
+  }
+  /**
+   * Download actual file content using UniqueFileName
+   */
+  private async downloadActualFile(uniqueFileName: string): Promise<string> {
+    const baseUrl = this.baseUrl.replace('/api/v1', '');
+    
+    // Try different download URL patterns for maximum compatibility
+    const downloadUrls = [
+      `${baseUrl}/UploadFile.ashx?file=${encodeURIComponent(uniqueFileName)}`,
+      `${baseUrl}/uploadfile.ashx?file=${encodeURIComponent(uniqueFileName)}`,
+    ];
+    
+    // Add Access Token parameter if using API key auth
+    if (this.authType === 'apikey') {
+      downloadUrls.forEach((url, index) => {
+        downloadUrls[index] = `${url}&access_token=${encodeURIComponent(this.auth)}`;
+      });
+    }
+    
+    for (const downloadUrl of downloadUrls) {
+      try {
+        console.log(`🔍 Downloading actual file: ${downloadUrl.replace(this.auth, 'XXX')}`);
+        
+        const response = await fetch(downloadUrl, {
+          headers: this.getAttachmentHeaders()
+        });
+
+        if (response.ok) {
+          const contentType = response.headers.get('content-type') || '';
+          
+          // Check if we got HTML (login page) instead of binary data
+          if (contentType.includes('text/html')) {
+            console.log(`⚠️ Got HTML response instead of binary data from ${downloadUrl}`);
+            continue; // Try next URL
+          }
+          
+          const arrayBuffer = await response.arrayBuffer();
+          const uint8Array = new Uint8Array(arrayBuffer);
+          
+          // Validate that we got actual file content (should be larger than metadata)
+          if (uint8Array.length > 100) {
+            console.log(`✅ Downloaded actual file: ${uint8Array.length} bytes`);
+            return btoa(String.fromCharCode(...uint8Array));
+          } else {
+            console.log(`⚠️ Downloaded content too small (${uint8Array.length} bytes), might be metadata`);
+          }
+        } else {
+          console.log(`❌ Failed with ${downloadUrl}: ${response.status} ${response.statusText}`);
+        }
+      } catch (error) {
+        console.log(`❌ Error with ${downloadUrl}: ${error}`);
+      }
+    }
+    
+    throw new Error(`Failed to download actual file for UniqueFileName: ${uniqueFileName}`);
+  }/**
+   * Download via UploadFile.ashx endpoint (Method 3)
+   * Using UniqueFileName from attachment info
+   */
+  private async downloadViaUploadFile(attachmentId: number, attachmentInfo: any): Promise<string> {
+    if (!attachmentInfo.UniqueFileName) {
+      throw new Error('UniqueFileName not available for UploadFile.ashx method');
+    }
+
+    const baseUrl = this.baseUrl.replace('/api/v1', '');
+    const fileName = encodeURIComponent(attachmentInfo.UniqueFileName);
+    const queryParams = this.authType === 'apikey' ? `?file=${fileName}&access_token=${encodeURIComponent(this.auth)}` : `?file=${fileName}`;
+    const downloadUrl = `${baseUrl}/UploadFile.ashx${queryParams}`;
+    
+    const response = await fetch(downloadUrl, {
+      headers: this.getAttachmentHeaders()
+    });
+
+    if (response.ok) {
+      const contentType = response.headers.get('content-type') || '';
+      
+      // Check if we got HTML (login page) instead of binary data
+      if (contentType.includes('text/html')) {
+        const text = await response.text();
+        if (text.includes('Targetprocess Login') || text.includes('login-page')) {
+          throw new Error('Access denied - redirected to login page. UploadFile.ashx requires Access Token authentication.');
+        }
+      }
+      
+      const arrayBuffer = await response.arrayBuffer();
+      const uint8Array = new Uint8Array(arrayBuffer);
+      return btoa(String.fromCharCode(...uint8Array));
+    }
+    
+    throw new Error(`UploadFile.ashx failed: ${response.status} ${response.statusText}`);
   }
 }

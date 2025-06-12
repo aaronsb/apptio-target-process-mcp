@@ -99,13 +99,12 @@ export class GetEntityTool {
           id: {
             type: 'number',
             description: 'ID of the entity',
-          },
-          include: {
+          },          include: {
             type: 'array',
             items: {
               type: 'string',
             },
-            description: 'Related data to include',
+            description: 'Related data to include (e.g., Project, Team, Attachments)',
           },
           allow_informative_errors: {
             type: 'boolean',

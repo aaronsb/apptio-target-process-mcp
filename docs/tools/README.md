@@ -6,11 +6,17 @@ This directory contains detailed documentation for each tool provided by the Tar
 
 The Targetprocess MCP provides the following tools:
 
+### Core Entity Management
+
 - [search_entities](search-entities.md) - Search for Targetprocess entities with filtering and includes
 - [get_entity](get-entity.md) - Get detailed information about a specific entity
 - [create_entity](create-entity.md) - Create a new entity in Targetprocess
 - [update_entity](update-entity.md) - Update an existing entity
 - [inspect_object](inspect-object.md) - Inspect Targetprocess objects and properties
+
+### Attachment Management
+
+- [analyze_attachment](analyze-attachment.md) - Analyze and display Targetprocess attachments for AI vision analysis
 
 ## Common Concepts
 

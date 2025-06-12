@@ -137,7 +137,7 @@ Example: searchPresets.open or "EntityState.Name eq 'Open'"`,
             items: {
               type: 'string',
             },
-            description: 'Related data to include in results (e.g., ["Project", "Team", "AssignedUser"])',
+            description: 'Related data to include in results (e.g., ["Project", "Team", "AssignedUser", "Attachments"])',
           },
           take: {
             type: 'number',
