@@ -21,6 +21,7 @@ import { GetEntityTool } from './tools/entity/get.tool.js';
 import { CreateEntityTool } from './tools/entity/create.tool.js';
 import { UpdateEntityTool } from './tools/update/update.tool.js';
 import { InspectObjectTool } from './tools/inspect/inspect.tool.js';
+import { AttachmentDownloadTool, AttachmentUploadTool, AttachmentListTool, AttachmentAnalysisTool } from './tools/attachment/index.js';
 import { operationRegistry } from './core/operation-registry.js';
 import { personalityLoader } from './core/personality-loader.js';
 import { WorkOperations } from './operations/work/index.js';
@@ -91,13 +92,16 @@ export class TargetProcessServer {
   private service: TPService;
   private contextBuilder: TPContextBuilder;
   private context: TPContextInfo | null = null;
-  private resourceProvider: ResourceProvider;
-  private tools: {
+  private resourceProvider: ResourceProvider;  private tools: {
     search: SearchTool;
     get: GetEntityTool;
     create: CreateEntityTool;
     update: UpdateEntityTool;
     inspect: InspectObjectTool;
+    downloadAttachment: AttachmentDownloadTool;
+    uploadAttachment: AttachmentUploadTool;
+    listAttachments: AttachmentListTool;
+    analyzeAttachment: AttachmentAnalysisTool;
     [key: string]: any; // Allow dynamic semantic tools
   };
   private userRole: string;
@@ -114,15 +118,17 @@ export class TargetProcessServer {
     this.resourceProvider = new ResourceProvider(this.service, this.context);
 
     // Initialize semantic features
-    this.initializeSemanticFeatures();
-
-    // Initialize core tools
+    this.initializeSemanticFeatures();    // Initialize core tools
     this.tools = {
       search: new SearchTool(this.service),
       get: new GetEntityTool(this.service),
       create: new CreateEntityTool(this.service),
       update: new UpdateEntityTool(this.service),
-      inspect: new InspectObjectTool(this.service)
+      inspect: new InspectObjectTool(this.service),
+      downloadAttachment: new AttachmentDownloadTool(this.service),
+      uploadAttachment: new AttachmentUploadTool(this.service),
+      listAttachments: new AttachmentListTool(this.service),
+      analyzeAttachment: new AttachmentAnalysisTool(this.service)
     };
 
     // Initialize role-based semantic tools
@@ -390,15 +396,17 @@ export class TargetProcessServer {
       // Get enhanced tool definitions with TP context
       const contextDescription = this.context 
         ? this.contextBuilder.generateContextDescription(this.context)
-        : '';
-
-      const tools = [
+        : '';      const tools = [
         this.getEnhancedSearchDefinition(contextDescription),
         this.getEnhancedGetDefinition(contextDescription),
         this.getEnhancedCreateDefinition(contextDescription),
         this.getEnhancedUpdateDefinition(contextDescription),
         this.getEnhancedInspectDefinition(contextDescription),
-      ];
+      ];      // Add attachment tools with explicit typing
+      tools.push(AttachmentDownloadTool.getDefinition() as any);
+      tools.push(AttachmentUploadTool.getDefinition() as any);
+      tools.push(AttachmentListTool.getDefinition() as any);
+      tools.push(AttachmentAnalysisTool.getDefinition() as any);
 
       // Add semantic tools for the current role
       Object.keys(this.tools).forEach(toolName => {
@@ -443,9 +451,7 @@ export class TargetProcessServer {
 
     this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
       try {
-        const toolName = request.params.name;
-        
-        // Handle core tools
+        const toolName = request.params.name;        // Handle core tools
         switch (toolName) {
           case 'search_entities':
             return await this.tools.search.execute(request.params.arguments);
@@ -457,6 +463,14 @@ export class TargetProcessServer {
             return await this.tools.update.execute(request.params.arguments);
           case 'inspect_object':
             return await this.tools.inspect.execute(request.params.arguments);
+          case 'download_attachment':
+            return await this.tools.downloadAttachment.execute(request.params.arguments);
+          case 'upload_attachment':
+            return await this.tools.uploadAttachment.execute(request.params.arguments);
+          case 'list_attachments':
+            return await this.tools.listAttachments.execute(request.params.arguments);
+          case 'analyze_attachment':
+            return await this.tools.analyzeAttachment.execute(request.params.arguments);
         }
 
         // Handle semantic tools
