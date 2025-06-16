@@ -108,6 +108,76 @@ TP_USER_EMAIL=your-email      # Identity for semantic operations
 - **Workflow Guidance**: Smart error handling transforms failures into actionable next steps
 - **Role-Based Filtering**: Only see tools relevant to your role (developer, PM, tester)
 
+### Claude Desktop Configuration
+
+Add to your Claude Desktop configuration file (`~/.config/Claude/claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "targetprocess": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-e",
+        "TP_USERNAME",
+        "-e",
+        "TP_PASSWORD",
+        "-e",
+        "TP_DOMAIN",
+        "-e",
+        "TP_USER_ROLE",
+        "-e",
+        "TP_USER_ID",
+        "-e",
+        "TP_USER_EMAIL",
+        "-e",
+        "MCP_STRICT_MODE",
+        "ghcr.io/aaronsb/apptio-target-process-mcp:latest"
+      ],
+      "env": {
+        "TP_USERNAME": "your-username",
+        "TP_PASSWORD": "your-password",
+        "TP_DOMAIN": "your-domain.tpondemand.com",
+        "TP_USER_ROLE": "developer",
+        "TP_USER_ID": "your-user-id",
+        "TP_USER_EMAIL": "your-email@company.com",
+        "MCP_STRICT_MODE": "true"
+      },
+      "autoApprove": [],
+      "disabled": false,
+      "transportType": "stdio"
+    }
+  }
+}
+```
+
+For local development (built from source):
+
+```json
+{
+  "mcpServers": {
+    "targetprocess": {
+      "command": "node",
+      "args": ["/path/to/apptio-target-process-mcp/build/index.js"],
+      "env": {
+        "TP_USERNAME": "your-username",
+        "TP_PASSWORD": "your-password",
+        "TP_DOMAIN": "your-domain.tpondemand.com",
+        "TP_USER_ROLE": "developer",
+        "TP_USER_ID": "your-user-id",
+        "TP_USER_EMAIL": "your-email@company.com",
+        "MCP_STRICT_MODE": "true"
+      },
+      "disabled": false,
+      "transportType": "stdio"
+    }
+  }
+}
+```
+
 ### IBM watsonx Orchestrate Integration
 
 ```bash
