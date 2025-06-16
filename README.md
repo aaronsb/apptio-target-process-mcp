@@ -108,33 +108,63 @@ TP_USER_EMAIL=your-email      # Identity for semantic operations
 - **Workflow Guidance**: Smart error handling transforms failures into actionable next steps
 - **Role-Based Filtering**: Only see tools relevant to your role (developer, PM, tester)
 
-### Claude Desktop Configuration
+### Configuration Examples
+
+#### 1. NPX (No Installation Required)
+
+```bash
+# Basic usage
+TP_DOMAIN=your-domain.tpondemand.com TP_USERNAME=your-username TP_PASSWORD=your-password \
+  npx -y https://github.com/aaronsb/apptio-target-process-mcp.git
+
+# With semantic operations (recommended)
+TP_DOMAIN=your-domain.tpondemand.com TP_USERNAME=your-username TP_PASSWORD=your-password \
+TP_USER_ROLE=developer TP_USER_ID=your-user-id TP_USER_EMAIL=your-email \
+MCP_STRICT_MODE=true \
+  npx -y https://github.com/aaronsb/apptio-target-process-mcp.git
+```
+
+#### 2. Docker
+
+```bash
+# Basic usage
+docker run -i --rm \
+  -e TP_DOMAIN=your-domain.tpondemand.com \
+  -e TP_USERNAME=your-username \
+  -e TP_PASSWORD=your-password \
+  ghcr.io/aaronsb/apptio-target-process-mcp
+
+# With semantic operations (recommended)
+docker run -i --rm \
+  -e TP_DOMAIN=your-domain.tpondemand.com \
+  -e TP_USERNAME=your-username \
+  -e TP_PASSWORD=your-password \
+  -e TP_USER_ROLE=developer \
+  -e TP_USER_ID=your-user-id \
+  -e TP_USER_EMAIL=your-email \
+  -e MCP_STRICT_MODE=true \
+  ghcr.io/aaronsb/apptio-target-process-mcp
+```
+
+#### 3. Claude Desktop Configuration
 
 Add to your Claude Desktop configuration file (`~/.config/Claude/claude_desktop_config.json`):
 
+**Using Docker:**
 ```json
 {
   "mcpServers": {
     "targetprocess": {
       "command": "docker",
       "args": [
-        "run",
-        "-i",
-        "--rm",
-        "-e",
-        "TP_USERNAME",
-        "-e",
-        "TP_PASSWORD",
-        "-e",
-        "TP_DOMAIN",
-        "-e",
-        "TP_USER_ROLE",
-        "-e",
-        "TP_USER_ID",
-        "-e",
-        "TP_USER_EMAIL",
-        "-e",
-        "MCP_STRICT_MODE",
+        "run", "-i", "--rm",
+        "-e", "TP_USERNAME",
+        "-e", "TP_PASSWORD", 
+        "-e", "TP_DOMAIN",
+        "-e", "TP_USER_ROLE",
+        "-e", "TP_USER_ID",
+        "-e", "TP_USER_EMAIL",
+        "-e", "MCP_STRICT_MODE",
         "ghcr.io/aaronsb/apptio-target-process-mcp:latest"
       ],
       "env": {
@@ -146,7 +176,6 @@ Add to your Claude Desktop configuration file (`~/.config/Claude/claude_desktop_
         "TP_USER_EMAIL": "your-email@company.com",
         "MCP_STRICT_MODE": "true"
       },
-      "autoApprove": [],
       "disabled": false,
       "transportType": "stdio"
     }
@@ -154,8 +183,77 @@ Add to your Claude Desktop configuration file (`~/.config/Claude/claude_desktop_
 }
 ```
 
-For local development (built from source):
+**Using NPX:**
+```json
+{
+  "mcpServers": {
+    "targetprocess": {
+      "command": "npx",
+      "args": ["-y", "https://github.com/aaronsb/apptio-target-process-mcp.git"],
+      "env": {
+        "TP_USERNAME": "your-username",
+        "TP_PASSWORD": "your-password",
+        "TP_DOMAIN": "your-domain.tpondemand.com",
+        "TP_USER_ROLE": "developer",
+        "TP_USER_ID": "your-user-id",
+        "TP_USER_EMAIL": "your-email@company.com",
+        "MCP_STRICT_MODE": "true"
+      },
+      "disabled": false,
+      "transportType": "stdio"
+    }
+  }
+}
+```
 
+#### 4. Claude Code Integration
+
+```bash
+# Quick setup for development
+./scripts/dev-setup.sh
+
+# Manual setup with Docker
+claude mcp add targetprocess docker \
+  -a "run" -a "-i" -a "--rm" \
+  -a "-e" -a "TP_DOMAIN" \
+  -a "-e" -a "TP_USERNAME" \
+  -a "-e" -a "TP_PASSWORD" \
+  -a "-e" -a "TP_USER_ROLE" \
+  -a "-e" -a "TP_USER_ID" \
+  -a "-e" -a "TP_USER_EMAIL" \
+  -a "-e" -a "MCP_STRICT_MODE" \
+  -a "ghcr.io/aaronsb/apptio-target-process-mcp:latest" \
+  -e TP_DOMAIN=your-domain.tpondemand.com \
+  -e TP_USERNAME=your-username \
+  -e TP_PASSWORD=your-password \
+  -e TP_USER_ROLE=developer \
+  -e TP_USER_ID=your-user-id \
+  -e TP_USER_EMAIL=your-email \
+  -e MCP_STRICT_MODE=true
+
+# Manual setup with local build
+npm install && npm run build
+claude mcp add targetprocess node ./build/index.js \
+  -e TP_DOMAIN=your-domain.tpondemand.com \
+  -e TP_USERNAME=your-username \
+  -e TP_PASSWORD=your-password \
+  -e TP_USER_ROLE=developer \
+  -e TP_USER_ID=your-user-id \
+  -e TP_USER_EMAIL=your-email \
+  -e MCP_STRICT_MODE=true
+```
+
+#### 5. Local Development (Built from Source)
+
+```bash
+# Build and run locally
+npm install && npm run build
+node ./build/index.js
+
+# For MCP clients requiring JSON config
+```
+
+**JSON Configuration for MCP Clients:**
 ```json
 {
   "mcpServers": {
