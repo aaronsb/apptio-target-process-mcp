@@ -34,7 +34,7 @@ export class PersonalityLoader implements IPersonalityLoader {
             const content = readFileSync(filePath, 'utf8');
             const personality = JSON.parse(content) as PersonalityConfig;
             this.personalities.set(personality.id, personality);
-            console.log(`Loaded personality: ${personality.id} with ${personality.availableOperations.length} operations`);
+            console.error(`Loaded personality: ${personality.id} with ${personality.availableOperations.length} operations`);
           }
         }
       } catch (error) {
@@ -42,7 +42,7 @@ export class PersonalityLoader implements IPersonalityLoader {
         this.loadDefaultPersonalities();
       }
     } else {
-      console.log(`Personalities directory not found at ${this.configPath}, loading defaults`);
+      console.error(`Personalities directory not found at ${this.configPath}, loading defaults`);
       this.loadDefaultPersonalities();
     }
   }
