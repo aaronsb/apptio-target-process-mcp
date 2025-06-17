@@ -37,12 +37,12 @@ export class WorkOperations implements FeatureModule {
 
   async initialize(context: ExecutionContext): Promise<void> {
     // Initialize any required state or connections
-    console.log(`Initializing Work Operations for user: ${context.user.name}`);
+    console.error(`Initializing Work Operations for user: ${context.user.name}`);
   }
 
   async cleanup(): Promise<void> {
     // Cleanup resources if needed
-    console.log('Cleaning up Work Operations module');
+    console.error('Cleaning up Work Operations module');
   }
 
   private initializeOperations(): void {
