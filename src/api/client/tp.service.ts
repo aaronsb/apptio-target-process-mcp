@@ -6,6 +6,7 @@ import { AssignableEntityData } from '../../entities/assignable/assignable.entit
 import { UserStoryData } from '../../entities/assignable/user-story.entity.js';
 import { ApiResponse, CreateEntityRequest, UpdateEntityRequest } from './api.types.js';
 import { EntityRegistry } from '../../core/entity-registry.js';
+import { logger } from '../../utils/logger.js';
 
 type OrderByOption = string | { field: string; direction: 'asc' | 'desc' };
 
@@ -313,7 +314,7 @@ export class TPService {
             this.validEntityTypesCache = await this.cacheInitPromise;
             this.cacheTimestamp = Date.now();
           } catch (error) {
-            console.error('Failed to fetch valid entity types:', error);
+            logger.error('Failed to fetch valid entity types:', error);
             // Fall back to static list if API call fails
             this.validEntityTypesCache = staticValidEntityTypes;
           } finally {
@@ -577,7 +578,7 @@ export class TPService {
           // Try to parse as-is first
           return JSON.parse(text);
         } catch (parseError) {
-          console.error('Failed to parse JSON response, attempting to fix format...');
+          logger.warn('Failed to parse JSON response, attempting to fix format...');
 
           // If parsing fails, try to fix the JSON by adding missing commas between objects
           const fixedText = text
@@ -587,7 +588,7 @@ export class TPService {
           try {
             return JSON.parse(fixedText);
           } catch (fixError) {
-            console.error('Failed to fix and parse JSON response:', fixError);
+            logger.error('Failed to fix and parse JSON response:', fixError);
             throw new McpError(
               ErrorCode.InvalidRequest,
               `Failed to parse metadata response: ${fixError instanceof Error ? fixError.message : String(fixError)}`
@@ -613,45 +614,45 @@ export class TPService {
    */
   async getValidEntityTypes(): Promise<string[]> {
     try {
-      console.error('Fetching valid entity types from Target Process API...');
-      console.error(`Using domain: ${this.baseUrl}`);
+      logger.info('Fetching valid entity types from Target Process API...');
+      logger.info(`Using domain: ${this.baseUrl}`);
 
       const metadata = await this.fetchMetadata();
       const entityTypes: string[] = [];
 
       if (metadata && metadata.Items) {
-        console.error(`Metadata response received with ${metadata.Items.length} items`);
+        logger.info(`Metadata response received with ${metadata.Items.length} items`);
         for (const item of metadata.Items) {
           if (item.Name && !entityTypes.includes(item.Name)) {
             entityTypes.push(item.Name);
           }
         }
       } else {
-        console.error('Metadata response missing Items array:', JSON.stringify(metadata).substring(0, 200) + '...');
+        logger.warn('Metadata response missing Items array:', JSON.stringify(metadata).substring(0, 200) + '...');
       }
 
       if (entityTypes.length === 0) {
-        console.error('No entity types found in API response, falling back to static list');
+        logger.warn('No entity types found in API response, falling back to static list');
         return EntityRegistry.getAllEntityTypes();
       }
 
-      console.error(`Found ${entityTypes.length} valid entity types from API`);
+      logger.info(`Found ${entityTypes.length} valid entity types from API`);
       
       // Register any custom entity types discovered from the API
       for (const entityType of entityTypes) {
         if (!EntityRegistry.isValidEntityType(entityType)) {
-          console.error(`Registering custom entity type: ${entityType}`);
+          logger.info(`Registering custom entity type: ${entityType}`);
           EntityRegistry.registerCustomEntityType(entityType);
         }
       }
       
       return entityTypes.sort();
     } catch (error) {
-      console.error('Error fetching valid entity types:', error);
+      logger.error('Error fetching valid entity types:', error);
       // Provide more detailed error information
       if (error instanceof Error) {
-        console.error(`Error details: ${error.message}`);
-        console.error(`Error stack: ${error.stack}`);
+        logger.error(`Error details: ${error.message}`);
+        logger.error(`Error stack: ${error.stack}`);
       }
 
       if (error instanceof McpError) {
@@ -659,7 +660,7 @@ export class TPService {
       }
 
       // Fall back to static list on error instead of throwing
-      console.error('Falling back to static entity type list due to error');
+      logger.warn('Falling back to static entity type list due to error');
       return EntityRegistry.getAllEntityTypes();
     }
   }
@@ -671,15 +672,15 @@ export class TPService {
   async initializeEntityTypeCache(): Promise<void> {
     try {
       if (!this.validEntityTypesCache) {
-        console.error('Pre-initializing entity type cache...');
+        logger.info('Pre-initializing entity type cache...');
         this.cacheInitPromise = this.getValidEntityTypes();
         this.validEntityTypesCache = await this.cacheInitPromise;
         this.cacheTimestamp = Date.now();
         this.cacheInitPromise = null;
-        console.error('Entity type cache initialized successfully');
+        logger.info('Entity type cache initialized successfully');
       }
     } catch (error) {
-      console.error('Failed to initialize entity type cache:', error);
+      logger.error('Failed to initialize entity type cache:', error);
       // Don't throw - we'll retry on first use
     }
   }

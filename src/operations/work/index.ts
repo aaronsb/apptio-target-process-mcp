@@ -10,6 +10,7 @@ import { CompleteTaskOperation } from './complete-task.js';
 import { ShowMyBugsOperation } from './show-my-bugs.js';
 import { LogTimeOperation } from './log-time.js';
 import { AddCommentOperation } from './add-comment.js';
+import { logger } from '../../utils/logger.js';
 
 /**
  * Work Operations Module
@@ -37,12 +38,12 @@ export class WorkOperations implements FeatureModule {
 
   async initialize(context: ExecutionContext): Promise<void> {
     // Initialize any required state or connections
-    console.log(`Initializing Work Operations for user: ${context.user.name}`);
+    logger.info(`Initializing Work Operations for user: ${context.user.name}`);
   }
 
   async cleanup(): Promise<void> {
     // Cleanup resources if needed
-    console.log('Cleaning up Work Operations module');
+    logger.info('Cleaning up Work Operations module');
   }
 
   private initializeOperations(): void {
