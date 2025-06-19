@@ -1,0 +1,34 @@
+# CODEOWNERS file for automatic review assignment
+# Each line is a file pattern followed by one or more owners.
+
+# Default owner for everything
+* @aaronsb
+
+# API and core functionality
+/src/api/ @aaronsb
+/src/core/ @aaronsb
+
+# Entity definitions
+/src/entities/ @aaronsb
+
+# MCP Tools
+/src/tools/ @aaronsb
+
+# Semantic operations
+/src/operations/ @aaronsb
+
+# Documentation
+/docs/ @aaronsb
+*.md @aaronsb
+
+# Configuration files
+/config/ @aaronsb
+/.github/ @aaronsb
+
+# Registry configurations
+/mcp-registries/ @aaronsb
+
+# Security-sensitive files
+SECURITY.md @aaronsb
+/src/utils/logger.ts @aaronsb
+/src/server.ts @aaronsb
