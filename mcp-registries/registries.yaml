@@ -5,16 +5,19 @@
 registries:
   - name: smithery.ai
     branch: smithery
+    directory: smithery
     config_file: smithery.yaml
     description: "Smithery AI MCP Registry"
     
   - name: cprime.com
     branch: cprime
+    directory: cprime
     config_file: cprime.yaml
     description: "Cprime MCP Registry"
     
   # Example of adding another registry:
   # - name: another-registry.com
   #   branch: another-registry
+  #   directory: another-registry
   #   config_file: another-config.yaml
   #   description: "Another MCP Registry"

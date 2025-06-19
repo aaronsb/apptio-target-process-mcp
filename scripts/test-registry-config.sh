@@ -39,7 +39,12 @@ try:
                 print(f'✗ Registry missing required key: {key}')
                 sys.exit(1)
         
-        config_path = f\"mcp-registries/{registry['config_file']}\"
+        # Check for config file in directory or at root
+        if 'directory' in registry and registry['directory']:
+            config_path = f\"mcp-registries/{registry['directory']}/{registry['config_file']}\"
+        else:
+            config_path = f\"mcp-registries/{registry['config_file']}\"
+            
         if os.path.exists(config_path):
             print(f\"✓ Found: {config_path}\")
         else:
