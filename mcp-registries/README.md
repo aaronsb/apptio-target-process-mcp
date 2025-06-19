@@ -151,6 +151,56 @@ Each registry branch contains:
 - The registry's config file copied to the root
 - A `BRANCH_README.md` explaining the branch purpose
 
+## Registry Branch URLs
+
+When configuring registry systems to pull from specific branches, use these URL patterns:
+
+### Clone/Pull URLs
+
+**HTTPS (Public Access)**
+```bash
+# Clone a specific branch
+git clone -b smithery https://github.com/aaronsb/apptio-target-process-mcp.git
+
+# Direct branch URL for systems that need it
+https://github.com/aaronsb/apptio-target-process-mcp.git#smithery
+https://github.com/aaronsb/apptio-target-process-mcp.git#cprime
+```
+
+**SSH (Authenticated Access)**
+```bash
+# Clone a specific branch
+git clone -b smithery git@github.com:aaronsb/apptio-target-process-mcp.git
+
+# Direct branch URL
+git@github.com:aaronsb/apptio-target-process-mcp.git#smithery
+git@github.com:aaronsb/apptio-target-process-mcp.git#cprime
+```
+
+### Registry System URLs
+
+Many MCP registry systems accept URLs in these formats:
+
+1. **GitHub URL with branch reference**:
+   ```
+   https://github.com/aaronsb/apptio-target-process-mcp/tree/smithery
+   https://github.com/aaronsb/apptio-target-process-mcp/tree/cprime
+   ```
+
+2. **Git URL with branch fragment**:
+   ```
+   https://github.com/aaronsb/apptio-target-process-mcp.git#smithery
+   https://github.com/aaronsb/apptio-target-process-mcp.git#cprime
+   ```
+
+3. **Raw file access** (for specific files):
+   ```
+   https://raw.githubusercontent.com/aaronsb/apptio-target-process-mcp/smithery/smithery.yaml
+   https://raw.githubusercontent.com/aaronsb/apptio-target-process-mcp/cprime/cprime.yaml
+   ```
+
+The exact format depends on what the registry system expects. Most modern systems support the `#branch` notation or allow you to specify the branch separately in their configuration.
+
 ## Troubleshooting
 
 ### Registry branch not updating
