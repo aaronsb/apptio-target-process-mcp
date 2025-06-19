@@ -8,8 +8,13 @@ This directory contains configuration files for various MCP (Model Context Proto
 mcp-registries/
 ├── README.md           # This file
 ├── registries.yaml     # Registry definitions and branch mappings
-├── smithery.yaml       # Smithery.ai configuration
-└── [other-registry].yaml  # Other registry configurations
+├── smithery/           # Smithery.ai registry directory
+│   ├── smithery.yaml   # Configuration file
+│   └── (future: logo, instructions, etc.)
+├── cprime/             # Cprime registry directory
+│   ├── cprime.yaml     # Configuration file
+│   └── (future: logo, instructions, etc.)
+└── [other-registry]/   # Other registry directories
 ```
 
 ## How It Works
@@ -21,12 +26,15 @@ This file defines all MCP registries and their configurations:
 registries:
   - name: smithery.ai           # Registry platform name
     branch: smithery            # Git branch name for this registry
-    config_file: smithery.yaml  # Config filename (must exist in this directory)
+    directory: smithery         # Subdirectory containing registry files
+    config_file: smithery.yaml  # Config filename within the directory
     description: "Smithery AI MCP Registry"
 ```
 
-### 2. Platform Configuration Files
-Each registry has its own configuration file (e.g., `smithery.yaml`) stored in this directory. These files contain the platform-specific settings required by each registry.
+### 2. Registry Directories
+Each registry has its own subdirectory containing:
+- **Configuration file** (e.g., `smithery.yaml`) - Required platform-specific settings
+- **Future additions** - Logos, custom instructions, additional metadata, etc.
 
 ### 3. Automated Branch Management
 The GitHub Action workflow (`.github/workflows/sync-mcp-registries.yml`) runs on every push to main and:
@@ -44,43 +52,62 @@ main branch:
 ├── docs/
 ├── mcp-registries/
 │   ├── registries.yaml
-│   └── smithery.yaml
-└── (no smithery.yaml at root)
+│   ├── smithery/
+│   │   └── smithery.yaml
+│   └── cprime/
+│       └── cprime.yaml
+└── (no registry configs at root)
 
 smithery branch (auto-generated):
 ├── src/
 ├── docs/
 ├── mcp-registries/
 │   ├── registries.yaml
-│   └── smithery.yaml
+│   ├── smithery/
+│   │   └── smithery.yaml
+│   └── cprime/
+│       └── cprime.yaml
 └── smithery.yaml  ← Automatically copied to root
 ```
 
 ## Adding a New Registry
 
-### Step 1: Update `registries.yaml`
+### Step 1: Create Registry Directory
+```bash
+mkdir mcp-registries/example-registry
+```
+
+### Step 2: Update `registries.yaml`
 Add your new registry to the list:
 
 ```yaml
 registries:
   - name: smithery.ai
     branch: smithery
+    directory: smithery
     config_file: smithery.yaml
     description: "Smithery AI MCP Registry"
     
   # Add your new registry:
   - name: example-registry.com
     branch: example-registry
+    directory: example-registry
     config_file: example-config.yaml
     description: "Example MCP Registry"
 ```
 
-### Step 2: Create the Configuration File
-Create `mcp-registries/example-config.yaml` with the registry's required configuration.
+### Step 3: Create the Configuration File
+Create `mcp-registries/example-registry/example-config.yaml` with the registry's required configuration.
 
-### Step 3: Commit and Push
+### Step 4: Add Optional Files (if needed)
+You can add additional files to the registry directory:
+- `logo.png` - Registry logo
+- `instructions.md` - Custom setup instructions
+- Other metadata files
+
+### Step 5: Commit and Push
 ```bash
-git add mcp-registries/registries.yaml mcp-registries/example-config.yaml
+git add mcp-registries/registries.yaml mcp-registries/example-registry/
 git commit -m "Add example-registry.com configuration"
 git push origin main
 ```
