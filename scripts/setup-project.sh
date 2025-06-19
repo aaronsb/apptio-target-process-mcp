@@ -34,6 +34,10 @@ echo "💬 Enabling discussions..."
 ./scripts/setup-discussions.sh
 echo ""
 
+echo "🔐 Setting up git hooks..."
+./scripts/setup-git-hooks.sh
+echo ""
+
 echo "✅ Project configuration complete!"
 echo ""
 echo "📝 Next steps:"
