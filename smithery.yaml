@@ -24,6 +24,16 @@ startCommand:
       tpApiKey:
         type: string
         description: Your TargetProcess API key (alternative to username/password)
+      tpUserRole:
+        type: string
+        description: User role for semantic operations (developer, project-manager, tester)
+        default: developer
+      tpUserId:
+        type: string
+        description: TargetProcess user ID for assignments and time tracking
+      tpUserEmail:
+        type: string
+        description: User email address for identification
   commandFunction:
     # A JS function that produces the CLI command based on the given config to start the MCP on stdio.
     |-
@@ -40,6 +50,17 @@ startCommand:
         env.TP_PASSWORD = config.tpPassword;
       }
       
+      // Add optional user identity fields
+      if (config.tpUserRole) {
+        env.TP_USER_ROLE = config.tpUserRole;
+      }
+      if (config.tpUserId) {
+        env.TP_USER_ID = config.tpUserId;
+      }
+      if (config.tpUserEmail) {
+        env.TP_USER_EMAIL = config.tpUserEmail;
+      }
+      
       return {
         command: 'node',
         args: ['build/index.js'],
@@ -47,11 +68,17 @@ startCommand:
       };
     }
   exampleConfig:
-    # Basic auth example
+    # Basic auth example with optional fields
     tpDomain: company.tpondemand.com
     tpUsername: demo-user
     tpPassword: demo-password
+    tpUserRole: developer
+    tpUserId: "12345"
+    tpUserEmail: demo-user@company.com
     
     # Alternatively, use API key authentication
     # tpDomain: company.tpondemand.com
     # tpApiKey: your-api-key
+    # tpUserRole: developer
+    # tpUserId: "12345"
+    # tpUserEmail: demo-user@company.com
