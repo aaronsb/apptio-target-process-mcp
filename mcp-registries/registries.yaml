@@ -15,6 +15,12 @@ registries:
     config_file: cprime.yaml
     description: "Cprime MCP Registry"
     
+  - name: watson.orchestrate.ibm.com
+    branch: watson-orchestrate
+    directory: watson-orchestrate
+    config_file: watson-orchestrate.yaml
+    description: "IBM Watson Orchestrate MCP Registry (Hypothetical)"
+    
   # Example of adding another registry:
   # - name: another-registry.com
   #   branch: another-registry
