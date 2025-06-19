@@ -1,0 +1,136 @@
+name: Sync MCP Registry Branches
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      # Trigger on any changes except the registry config files themselves
+      - '**'
+      - '!mcp-registries/**'
+      - '!.github/workflows/sync-mcp-registries.yml'
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  sync-registries:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      
+    steps:
+      - name: Checkout main branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for proper merging
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Git
+        run: |
+          git config user.name "GitHub Actions Bot"
+          git config user.email "actions@github.com"
+
+      - name: Install yq for YAML parsing
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: Process registries
+        run: |
+          # Read the registries configuration
+          if [ ! -f "mcp-registries/registries.yaml" ]; then
+            echo "No registries.yaml found, skipping sync"
+            exit 0
+          fi
+          
+          # Parse each registry
+          registries=$(yq eval '.registries[] | @json' mcp-registries/registries.yaml)
+          
+          while IFS= read -r registry_json; do
+            # Parse registry details
+            name=$(echo "$registry_json" | jq -r '.name')
+            branch=$(echo "$registry_json" | jq -r '.branch')
+            config_file=$(echo "$registry_json" | jq -r '.config_file')
+            
+            echo "Processing registry: $name (branch: $branch)"
+            
+            # Check if the branch exists remotely
+            if git ls-remote --heads origin "$branch" | grep -q "$branch"; then
+              echo "Branch $branch exists, checking out"
+              git checkout -B "$branch" "origin/$branch"
+            else
+              echo "Creating new branch $branch from main"
+              git checkout -b "$branch"
+            fi
+            
+            # Merge latest changes from main (allowing unrelated histories for new branches)
+            echo "Merging latest changes from main"
+            git merge main --no-edit --allow-unrelated-histories || {
+              echo "Merge conflict detected, using main version"
+              git checkout --theirs .
+              git add .
+              git commit -m "Auto-merge from main with conflict resolution"
+            }
+            
+            # Copy the registry-specific config file to root
+            if [ -f "mcp-registries/$config_file" ]; then
+              echo "Copying $config_file to root"
+              cp "mcp-registries/$config_file" "./$config_file"
+              git add "./$config_file"
+              
+              # Check if there are changes to commit
+              if ! git diff --cached --quiet; then
+                git commit -m "Update $config_file from registry configuration"
+              fi
+            else
+              echo "Warning: Config file mcp-registries/$config_file not found"
+            fi
+            
+            # Push the branch
+            echo "Pushing branch $branch"
+            git push origin "$branch" --force-with-lease || git push origin "$branch"
+            
+            # Return to main for next iteration
+            git checkout main
+            
+          done <<< "$registries"
+
+      - name: Create Pull Request descriptions
+        run: |
+          # For each registry branch, ensure there's a clear README
+          registries=$(yq eval '.registries[] | @json' mcp-registries/registries.yaml)
+          
+          while IFS= read -r registry_json; do
+            name=$(echo "$registry_json" | jq -r '.name')
+            branch=$(echo "$registry_json" | jq -r '.branch')
+            description=$(echo "$registry_json" | jq -r '.description // "MCP Registry branch"')
+            
+            git checkout "$branch"
+            
+            # Create or update branch README
+            cat > BRANCH_README.md << EOF
+          # $name Registry Branch
+          
+          This branch is automatically maintained for the $name MCP registry.
+          
+          **DO NOT MAKE DIRECT COMMITS TO THIS BRANCH**
+          
+          All changes should be made to the \`main\` branch and will be automatically synced here.
+          
+          ## Description
+          $description
+          
+          ## Automated Sync
+          This branch is automatically synchronized with the main branch through GitHub Actions.
+          Any changes made directly to this branch may be overwritten.
+          
+          Last sync: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          EOF
+            
+            git add BRANCH_README.md
+            if ! git diff --cached --quiet; then
+              git commit -m "Update branch README with sync information"
+              git push origin "$branch"
+            fi
+            
+            git checkout main
+          done <<< "$registries"

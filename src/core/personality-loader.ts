@@ -5,6 +5,7 @@ import {
   PersonalityConfig,
   IPersonalityLoader
 } from './interfaces/semantic-operation.interface.js';
+import { logger } from '../utils/logger.js';
 
 /**
  * Loads and manages personality configurations from JSON files
@@ -34,15 +35,15 @@ export class PersonalityLoader implements IPersonalityLoader {
             const content = readFileSync(filePath, 'utf8');
             const personality = JSON.parse(content) as PersonalityConfig;
             this.personalities.set(personality.id, personality);
-            console.log(`Loaded personality: ${personality.id} with ${personality.availableOperations.length} operations`);
+            logger.info(`Loaded personality: ${personality.id} with ${personality.availableOperations.length} operations`);
           }
         }
       } catch (error) {
-        console.warn(`Failed to load personalities from ${this.configPath}:`, error);
+        logger.warn(`Failed to load personalities from ${this.configPath}:`, error);
         this.loadDefaultPersonalities();
       }
     } else {
-      console.log(`Personalities directory not found at ${this.configPath}, loading defaults`);
+      logger.info(`Personalities directory not found at ${this.configPath}, loading defaults`);
       this.loadDefaultPersonalities();
     }
   }

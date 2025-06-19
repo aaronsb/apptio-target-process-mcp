@@ -4,6 +4,7 @@ import { TPService } from '../../api/client/tp.service.js';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import path from 'path';
+import { logger } from '../../utils/logger.js';
 
 const execAsync = promisify(exec);
 
@@ -262,7 +263,7 @@ export class InspectObjectTool {
       // Extract relevant information from the search results
       return this.extractDocumentationContext(stdout);
     } catch (error) {
-      console.error('Error searching documentation:', error);
+      logger.error('Error searching documentation:', error);
       return 'Documentation search failed or no results found.';
     }
   }
@@ -300,7 +301,7 @@ export class InspectObjectTool {
           };
         }
       } catch (metadataError) {
-        console.error('Failed to fetch metadata directly:', metadataError);
+        logger.error('Failed to fetch metadata directly:', metadataError);
       }
       
       // If direct method failed, try to trigger an informative error
@@ -341,7 +342,7 @@ export class InspectObjectTool {
       }
     } catch (error) {
       // Handle any unexpected errors
-      console.error('Error in discoverApiStructure:', error);
+      logger.error('Error in discoverApiStructure:', error);
       return {
         content: [
           {
