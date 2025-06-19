@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: GitHub Discussions
+    url: https://github.com/aaronsb/apptio-target-process-mcp/discussions
+    about: Please ask and answer questions here
+  - name: MCP Documentation
+    url: https://modelcontextprotocol.io/
+    about: Learn more about the Model Context Protocol
+  - name: Targetprocess API Documentation
+    url: https://dev.targetprocess.com/docs
+    about: Official Targetprocess API documentation

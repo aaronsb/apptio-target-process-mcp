@@ -26,12 +26,15 @@
     "build"
   ],
   "scripts": {
-    "build": "tsc && node -e \"require('fs').chmodSync('build/index.js', '755')\"",
+    "build": "npm run check:secrets && tsc && node -e \"require('fs').chmodSync('build/index.js', '755')\"",
     "prepare": "[ \"$NODE_ENV\" != \"production\" ] && npm run build || exit 0",
     "watch": "tsc --watch",
     "inspector": "npx @modelcontextprotocol/inspector build/index.js",
     "lint": "rm -rf build && eslint 'src/**/*.ts'",
-    "test": "jest"
+    "test": "jest",
+    "check:secrets": "node scripts/check-secrets.cjs",
+    "prebuild": "npm run lint",
+    "precommit": "npm run check:secrets && npm run lint"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.11.1",
@@ -46,6 +49,7 @@
     "@typescript-eslint/eslint-plugin": "^8.25.0",
     "@typescript-eslint/parser": "^8.25.0",
     "eslint": "^9.21.0",
+    "glob": "^10.3.10",
     "jest": "^29.7.0",
     "ts-jest": "^29.2.6",
     "typescript": "^5.3.3"
