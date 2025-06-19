@@ -4,11 +4,6 @@ on:
   push:
     branches:
       - main
-    paths:
-      # Trigger on any changes except the registry config files themselves
-      - '**'
-      - '!mcp-registries/**'
-      - '!.github/workflows/sync-mcp-registries.yml'
   workflow_dispatch:  # Allow manual trigger
 
 jobs:
