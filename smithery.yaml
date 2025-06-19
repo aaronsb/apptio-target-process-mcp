@@ -1,0 +1,57 @@
+# Smithery configuration file (adapted from PR #7 by smithery-ai)
+# Original reference: https://smithery.ai/docs/config#smitheryyaml
+
+startCommand:
+  type: stdio
+  configSchema:
+    # JSON Schema defining the configuration options for the MCP.
+    type: object
+    required:
+      - tpDomain
+    oneOf:
+      - required: ['tpUsername', 'tpPassword']
+      - required: ['tpApiKey']
+    properties:
+      tpDomain:
+        type: string
+        description: Your TargetProcess domain, e.g. company.tpondemand.com
+      tpUsername:
+        type: string
+        description: Your TargetProcess username
+      tpPassword:
+        type: string
+        description: Your TargetProcess password
+      tpApiKey:
+        type: string
+        description: Your TargetProcess API key (alternative to username/password)
+  commandFunction:
+    # A JS function that produces the CLI command based on the given config to start the MCP on stdio.
+    |-
+    (config) => {
+      const env = {
+        TP_DOMAIN: config.tpDomain
+      };
+      
+      // Support both authentication methods
+      if (config.tpApiKey) {
+        env.TP_API_KEY = config.tpApiKey;
+      } else if (config.tpUsername && config.tpPassword) {
+        env.TP_USERNAME = config.tpUsername;
+        env.TP_PASSWORD = config.tpPassword;
+      }
+      
+      return {
+        command: 'node',
+        args: ['build/index.js'],
+        env
+      };
+    }
+  exampleConfig:
+    # Basic auth example
+    tpDomain: company.tpondemand.com
+    tpUsername: demo-user
+    tpPassword: demo-password
+    
+    # Alternatively, use API key authentication
+    # tpDomain: company.tpondemand.com
+    # tpApiKey: your-api-key
