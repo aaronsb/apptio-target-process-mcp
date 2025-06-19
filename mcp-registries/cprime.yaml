@@ -1,0 +1,45 @@
+config_schema:
+    type: object
+    required:
+        - tp_domain
+        - tp_username
+        - tp_password
+    properties:
+        tp_domain:
+            type: string
+            description: Target Process instance domain
+        tp_username:
+            type: string
+            description: Unique identifier for the user
+        tp_password:
+            type: string
+            format: string
+            description: Password for the user
+        tp_user_role:
+            type: string
+            description: User role (developer, project-manager, tester)
+            default: developer
+        tp_user_id:
+            type: string
+            description: Target Process user ID for assignments and time tracking
+        tp_user_email:
+            type: string
+            description: User email address for identification
+server_name: TargetProcessMCP
+command: npx
+args:
+    - -y
+    - .
+env:
+    - name: TP_DOMAIN
+      value: config.tp_domain
+    - name: TP_USERNAME
+      value: config.tp_username
+    - name: TP_PASSWORD
+      value: config.tp_password
+    - name: TP_USER_ROLE
+      value: config.tp_user_role
+    - name: TP_USER_ID
+      value: config.tp_user_id
+    - name: TP_USER_EMAIL
+      value: config.tp_user_email
