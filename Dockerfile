@@ -1,6 +1,6 @@
 # Dockerfile adapted from PR #7 by smithery-ai
 # Build stage
-FROM node:20.11-bullseye AS builder
+FROM node:24.2-bullseye AS builder
 
 # Install build dependencies
 ENV NODE_ENV=development
@@ -16,7 +16,7 @@ COPY . .
 RUN npm ci && npm run build
 
 # Production stage
-FROM node:20.11-bullseye
+FROM node:24.2-bullseye
 ENV NODE_ENV=production
 WORKDIR /app
 COPY --from=builder /app/build ./build
