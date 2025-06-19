@@ -1,0 +1,120 @@
+# IBM Watson Orchestrate MCP Registry Configuration
+# This is a hypothetical configuration for Watson Orchestrate
+# Based on typical IBM enterprise integration patterns
+
+metadata:
+  name: "TargetProcess MCP Server"
+  version: "1.0.0"
+  description: "Enterprise-grade TargetProcess integration for Watson Orchestrate"
+  vendor: "Aaron Bockelie"
+  category: "Project Management"
+  tags:
+    - "targetprocess"
+    - "agile"
+    - "project-management"
+    - "task-tracking"
+    - "enterprise"
+
+authentication:
+  type: "environment"
+  required_vars:
+    - name: "TP_DOMAIN"
+      description: "TargetProcess instance domain"
+      type: "string"
+      required: true
+    - name: "TP_USERNAME"
+      description: "TargetProcess username"
+      type: "string"
+      required: true
+    - name: "TP_PASSWORD"
+      description: "TargetProcess password"
+      type: "string"
+      sensitive: true
+      required: true
+  optional_vars:
+    - name: "TP_USER_ROLE"
+      description: "User role for semantic operations"
+      type: "string"
+      default: "developer"
+      options: ["developer", "project-manager", "tester"]
+    - name: "TP_USER_ID"
+      description: "TargetProcess user ID for assignments"
+      type: "string"
+    - name: "TP_USER_EMAIL"
+      description: "User email for identification"
+      type: "string"
+
+deployment:
+  type: "container"
+  image: "ghcr.io/aaronsb/apptio-target-process-mcp:latest"
+  command: ["node", "build/index.js"]
+  resources:
+    memory: "256Mi"
+    cpu: "0.5"
+  environment:
+    - name: "MCP_STRICT_MODE"
+      value: "true"
+    - name: "NODE_ENV"
+      value: "production"
+
+capabilities:
+  tools:
+    - name: "search_entities"
+      description: "Search TargetProcess entities with advanced filtering"
+      category: "query"
+    - name: "get_entity"
+      description: "Retrieve detailed entity information"
+      category: "query"
+    - name: "create_entity"
+      description: "Create new TargetProcess entities"
+      category: "modify"
+    - name: "update_entity"
+      description: "Update existing entities"
+      category: "modify"
+    - name: "inspect_object"
+      description: "Inspect TargetProcess object schemas"
+      category: "metadata"
+  
+  semantic_operations:
+    - name: "show_my_tasks"
+      description: "View assigned tasks with intelligent filtering"
+      roles: ["developer", "project-manager", "tester"]
+    - name: "start_working_on"
+      description: "Begin work with automatic state transitions"
+      roles: ["developer", "tester"]
+    - name: "complete_task"
+      description: "Mark tasks complete with time tracking"
+      roles: ["developer", "tester"]
+    - name: "show_my_bugs"
+      description: "Analyze assigned bugs with severity insights"
+      roles: ["developer", "tester"]
+    - name: "log_time"
+      description: "Record time with intelligent discovery"
+      roles: ["developer", "project-manager", "tester"]
+
+integration:
+  watson_assistant:
+    enabled: true
+    intents:
+      - "project_status"
+      - "task_management"
+      - "bug_tracking"
+      - "time_logging"
+  
+  watson_discovery:
+    enabled: true
+    collections:
+      - "targetprocess_entities"
+      - "project_documentation"
+
+compliance:
+  data_residency: "configurable"
+  encryption: "in-transit"
+  audit_logging: true
+  gdpr_compliant: true
+  soc2_compliant: true
+
+support:
+  documentation: "https://github.com/aaronsb/apptio-target-process-mcp/tree/watson-orchestrate"
+  issues: "https://github.com/aaronsb/apptio-target-process-mcp/issues"
+  contact: "aaron@aaronsb.com"
