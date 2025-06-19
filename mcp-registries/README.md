@@ -1,39 +1,138 @@
 # MCP Registry Configuration
 
-This directory contains configuration files for various MCP (Model Context Protocol) registries.
+This directory contains configuration files for various MCP (Model Context Protocol) registries. The system automatically maintains separate branches for each registry platform, keeping their configuration files isolated from the main development branch.
 
-## How it works
+## Directory Structure
 
-1. **registries.yaml** - Defines all MCP registries and their configuration
-2. **Platform-specific files** - Contains the actual configuration required by each registry (e.g., smithery.yaml)
+```
+mcp-registries/
+├── README.md           # This file
+├── registries.yaml     # Registry definitions and branch mappings
+├── smithery.yaml       # Smithery.ai configuration
+└── [other-registry].yaml  # Other registry configurations
+```
 
-## GitHub Action Workflow
+## How It Works
 
-The `.github/workflows/sync-mcp-registries.yml` workflow automatically:
+### 1. Registry Definition (`registries.yaml`)
+This file defines all MCP registries and their configurations:
 
-1. Reads the `registries.yaml` file
-2. Creates/updates a branch for each registry
-3. Merges latest changes from main into each registry branch
-4. Copies the platform-specific configuration file to the root of that branch
-5. Pushes the updated branch
+```yaml
+registries:
+  - name: smithery.ai           # Registry platform name
+    branch: smithery            # Git branch name for this registry
+    config_file: smithery.yaml  # Config filename (must exist in this directory)
+    description: "Smithery AI MCP Registry"
+```
 
-## Adding a new registry
+### 2. Platform Configuration Files
+Each registry has its own configuration file (e.g., `smithery.yaml`) stored in this directory. These files contain the platform-specific settings required by each registry.
 
-1. Add the registry configuration to `registries.yaml`:
-   ```yaml
-   - name: new-registry.com
-     branch: new-registry
-     config_file: new-registry.yaml
-     description: "Description of the registry"
-   ```
+### 3. Automated Branch Management
+The GitHub Action workflow (`.github/workflows/sync-mcp-registries.yml`) runs on every push to main and:
 
-2. Create the configuration file (e.g., `mcp-registries/new-registry.yaml`)
+1. **Reads** the `registries.yaml` file to get all registry definitions
+2. **Creates or updates** a branch for each registry (e.g., `smithery` branch)
+3. **Merges** the latest changes from main into each registry branch
+4. **Copies** the platform-specific config file to the root of that branch
+5. **Pushes** the updated branch to GitHub
 
-3. Commit to main and the GitHub Action will automatically create and maintain the branch
+### Branch Structure Example
+```
+main branch:
+├── src/
+├── docs/
+├── mcp-registries/
+│   ├── registries.yaml
+│   └── smithery.yaml
+└── (no smithery.yaml at root)
+
+smithery branch (auto-generated):
+├── src/
+├── docs/
+├── mcp-registries/
+│   ├── registries.yaml
+│   └── smithery.yaml
+└── smithery.yaml  ← Automatically copied to root
+```
+
+## Adding a New Registry
+
+### Step 1: Update `registries.yaml`
+Add your new registry to the list:
+
+```yaml
+registries:
+  - name: smithery.ai
+    branch: smithery
+    config_file: smithery.yaml
+    description: "Smithery AI MCP Registry"
+    
+  # Add your new registry:
+  - name: example-registry.com
+    branch: example-registry
+    config_file: example-config.yaml
+    description: "Example MCP Registry"
+```
+
+### Step 2: Create the Configuration File
+Create `mcp-registries/example-config.yaml` with the registry's required configuration.
+
+### Step 3: Commit and Push
+```bash
+git add mcp-registries/registries.yaml mcp-registries/example-config.yaml
+git commit -m "Add example-registry.com configuration"
+git push origin main
+```
+
+The GitHub Action will automatically:
+- Create the `example-registry` branch
+- Copy all files from main
+- Place `example-config.yaml` at the root
+- Push the branch to GitHub
+
+## Testing Configuration
+
+Run the test script to validate your configuration before committing:
+
+```bash
+./scripts/test-registry-config.sh
+```
+
+This will check:
+- YAML syntax validity
+- Required fields in registry definitions
+- Existence of referenced configuration files
 
 ## Important Notes
 
-- Never commit directly to registry branches - they are automatically maintained
-- All development should happen on the main branch
-- Registry branches are force-pushed to ensure they stay in sync with main
-- Each registry branch contains only the files from main plus its specific config file
+### ⚠️ Branch Management Rules
+- **Never commit directly to registry branches** - they are automatically maintained
+- **All development happens on main** - registry branches are read-only
+- **Force pushes** - Registry branches may be force-pushed to stay in sync
+- **One-way sync** - Changes flow from main → registry branches only
+
+### 🔄 Workflow Triggers
+The sync workflow runs:
+- On every push to the main branch
+- Can be manually triggered via GitHub Actions UI
+- Skips when only registry configs are changed (to prevent loops)
+
+### 📦 What Gets Synced
+Each registry branch contains:
+- All files from the main branch
+- The registry's config file copied to the root
+- A `BRANCH_README.md` explaining the branch purpose
+
+## Troubleshooting
+
+### Registry branch not updating
+1. Check GitHub Actions tab for workflow runs
+2. Ensure the registry is properly defined in `registries.yaml`
+3. Verify the config file exists in `mcp-registries/`
+
+### Merge conflicts
+The workflow automatically resolves conflicts by preferring main branch changes. If you need different behavior, modify the workflow file.
+
+### Manual sync
+Trigger the workflow manually from GitHub Actions tab if needed.
