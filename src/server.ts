@@ -28,7 +28,7 @@ import { WorkOperations } from './operations/work/index.js';
 function loadConfig(): TPServiceConfig {
   // Try API key authentication
   if (process.env.TP_API_KEY && process.env.TP_DOMAIN) {
-    console.error('Using API key authentication from environment variables');
+    logger.info('Using API key authentication from environment variables');
     return {
       domain: process.env.TP_DOMAIN,
       apiKey: process.env.TP_API_KEY
@@ -37,7 +37,7 @@ function loadConfig(): TPServiceConfig {
 
   // Try basic authentication with environment variables
   if (process.env.TP_DOMAIN && process.env.TP_USERNAME && process.env.TP_PASSWORD) {
-    console.error('Using basic authentication from environment variables');
+    logger.info('Using basic authentication from environment variables');
     return {
       domain: process.env.TP_DOMAIN,
       credentials: {
@@ -63,7 +63,7 @@ function loadConfig(): TPServiceConfig {
   for (const location of configLocations) {
     if (fs.existsSync(location)) {
       configPath = location;
-      console.error(`Found configuration file at ${location}`);
+      logger.info(`Found configuration file at ${location}`);
       break;
     }
   }
@@ -71,14 +71,14 @@ function loadConfig(): TPServiceConfig {
   if (!configPath) {
     const errorMessage = 'No configuration found. Please set environment variables (TP_DOMAIN, TP_USERNAME, TP_PASSWORD) or create a configuration file in one of these locations:\n' +
       configLocations.join('\n');
-    console.error(errorMessage);
+    logger.error(errorMessage);
     throw new McpError(ErrorCode.InternalError, errorMessage);
   }
 
   try {
     return JSON.parse(fs.readFileSync(configPath, 'utf8'));
   } catch (error) {
-    console.error(`Error parsing config file ${configPath}: ${error instanceof Error ? error.message : String(error)}`);
+    logger.error(`Error parsing config file ${configPath}: ${error instanceof Error ? error.message : String(error)}`);
     throw new McpError(
       ErrorCode.InternalError,
       `Error parsing config file ${configPath}: ${error instanceof Error ? error.message : String(error)}`
@@ -105,7 +105,7 @@ export class TargetProcessServer {
   constructor() {
     // Load user role from environment
     this.userRole = process.env.TP_USER_ROLE || 'developer';
-    console.error(`User role configured as: ${this.userRole}`);
+    logger.info(`User role configured as: ${this.userRole}`);
 
     // Initialize service
     const config = loadConfig();
@@ -145,7 +145,7 @@ export class TargetProcessServer {
     this.setupHandlers();
 
     // Error handling
-    this.server.onerror = (error) => console.error('[MCP Error]', error);
+    this.server.onerror = (error) => logger.error('[MCP Error]', error);
     process.on('SIGINT', async () => {
       await this.server.close();
       process.exit(0);
@@ -164,14 +164,14 @@ export class TargetProcessServer {
       await this.service.initializeEntityTypeCache();
       
       // Build TargetProcess context
-      console.error('Building TargetProcess context...');
+      logger.info('Building TargetProcess context...');
       this.context = await this.contextBuilder.buildContext();
       
       // Update resource provider with context
       this.resourceProvider = new ResourceProvider(this.service, this.context);
-      console.error('TargetProcess context built successfully');
+      logger.info('TargetProcess context built successfully');
     } catch (error) {
-      console.error('Cache/context initialization error:', error);
+      logger.error('Cache/context initialization error:', error);
       // Non-fatal error, server can still function
     }
   }
@@ -189,9 +189,9 @@ export class TargetProcessServer {
       // const collaborationOperations = new CollaborationOperations(this.service);
       // operationRegistry.registerFeature(collaborationOperations);
       
-      console.error('Semantic features initialized successfully');
+      logger.info('Semantic features initialized successfully');
     } catch (error) {
-      console.error('Failed to initialize semantic features:', error);
+      logger.error('Failed to initialize semantic features:', error);
     }
   }
 
@@ -203,17 +203,17 @@ export class TargetProcessServer {
       // Get operations for the current user role
       const availableOperations = operationRegistry.getOperationsForPersonality(this.userRole);
       
-      console.error(`Initializing ${availableOperations.length} semantic tools for role: ${this.userRole}`);
+      logger.info(`Initializing ${availableOperations.length} semantic tools for role: ${this.userRole}`);
       
       // Create individual MCP tools for each semantic operation
       availableOperations.forEach(operation => {
         const toolName = operation.metadata.id.replace(/-/g, '_'); // Convert to snake_case for MCP
         this.tools[toolName] = this.createSemanticTool(operation);
-        console.error(`Registered semantic tool: ${toolName}`);
+        logger.info(`Registered semantic tool: ${toolName}`);
       });
       
     } catch (error) {
-      console.error('Failed to initialize semantic tools:', error);
+      logger.error('Failed to initialize semantic tools:', error);
     }
   }
 
@@ -254,11 +254,11 @@ export class TargetProcessServer {
           const result = await operation.execute(context, args);
           
           // Debug logging
-          console.error('Semantic operation result:', JSON.stringify(result, null, 2));
+          logger.debug('Semantic operation result:', JSON.stringify(result, null, 2));
           
           // Format result for MCP
           const formattedText = this.formatSemanticResult(result);
-          console.error('Formatted text:', formattedText);
+          logger.debug('Formatted text:', formattedText);
           
           return {
             content: [{
@@ -635,6 +635,6 @@ export class TargetProcessServer {
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
     const timestamp = new Date().toISOString();
-    console.error(`Target Process MCP server running on stdio (started at ${timestamp})`);
+    logger.info(`Target Process MCP server running on stdio (started at ${timestamp})`);
   }
 }

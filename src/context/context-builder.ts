@@ -1,4 +1,5 @@
 import { TPService } from '../api/client/tp.service.js';
+import { logger } from '../utils/logger.js';
 
 export interface TPContextInfo {
   projects: Array<{
@@ -56,7 +57,7 @@ export class TPContextBuilder {
         }));
       }
     } catch (error) {
-      console.error('Failed to fetch projects for context:', error);
+      logger.error('Failed to fetch projects for context:', error);
     }
 
     // Fetch programs with error handling
@@ -75,7 +76,7 @@ export class TPContextBuilder {
         }));
       }
     } catch (error) {
-      console.error('Failed to fetch programs for context:', error);
+      logger.error('Failed to fetch programs for context:', error);
     }
 
     // Fetch entity states with error handling
@@ -95,7 +96,7 @@ export class TPContextBuilder {
         }));
       }
     } catch (error) {
-      console.error('Failed to fetch entity states for context:', error);
+      logger.error('Failed to fetch entity states for context:', error);
     }
 
     // Fetch users with error handling
@@ -115,7 +116,7 @@ export class TPContextBuilder {
         }));
       }
     } catch (error) {
-      console.error('Failed to fetch users for context:', error);
+      logger.error('Failed to fetch users for context:', error);
     }
 
     // Discover available entity types
