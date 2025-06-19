@@ -9,8 +9,6 @@ updates:
       day: "monday"
       time: "09:00"
     open-pull-requests-limit: 10
-    reviewers:
-      - "aaronsb"
     labels:
       - "dependencies"
       - "automated"
@@ -28,8 +26,6 @@ updates:
       interval: "weekly"
       day: "monday"
       time: "09:00"
-    reviewers:
-      - "aaronsb"
     labels:
       - "dependencies"
       - "github-actions"
@@ -44,8 +40,6 @@ updates:
       interval: "weekly"
       day: "monday"
       time: "09:00"
-    reviewers:
-      - "aaronsb"
     labels:
       - "dependencies"
       - "docker"
