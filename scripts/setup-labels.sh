@@ -46,5 +46,6 @@ gh label create "help wanted" -c "008672" -d "Extra attention is needed" 2>/dev/
 gh label create "security" -c "d73a4a" -d "Security related issue" 2>/dev/null || true
 gh label create "breaking change" -c "d73a4a" -d "Breaking change" 2>/dev/null || true
 gh label create "dependencies" -c "0366d6" -d "Pull requests that update a dependency file" 2>/dev/null || true
+gh label create "automated" -c "0366d6" -d "Automated changes by bots" 2>/dev/null || true
 
 echo "Labels setup complete!"
