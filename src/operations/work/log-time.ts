@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { TPService } from '../../api/client/tp.service.js';
 import { ExecutionContext, SemanticOperation, OperationResult } from '../../core/interfaces/semantic-operation.interface.js';
+import { logger } from '../../utils/logger.js';
 
 const logTimeSchema = z.object({
   entityId: z.number().describe('ID of the task or bug to log time against'),
@@ -64,7 +65,7 @@ export class LogTimeOperation implements SemanticOperation<LogTimeParams> {
       
       if (!isAssigned) {
         // Warn but don't prevent - user might be helping or have permission
-        console.warn(`User ${context.user.id} logging time on unassigned ${params.entityType} ${params.entityId}`);
+        logger.warn(`User ${context.user.id} logging time on unassigned ${params.entityType} ${params.entityId}`);
       }
 
       // Prepare time entry data
