@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { TPService } from '../../api/client/tp.service.js';
 import { ExecutionContext, SemanticOperation, OperationResult } from '../../core/interfaces/semantic-operation.interface.js';
+import { logger } from '../../utils/logger.js';
 
 const completeTaskSchema = z.object({
   taskId: z.number().describe('ID of the task to complete'),
@@ -127,7 +128,7 @@ export class CompleteTaskOperation implements SemanticOperation<CompleteTaskPara
           );
         } catch (commentError) {
           // Don't fail if comment creation fails
-          console.error('Failed to add completion comment:', commentError);
+          logger.error('Failed to add completion comment:', commentError);
         }
       }
 

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { TPService } from '../../api/client/tp.service.js';
 import { ExecutionContext, SemanticOperation, OperationResult } from '../../core/interfaces/semantic-operation.interface.js';
+import { logger } from '../../utils/logger.js';
 
 export const showMyBugsSchema = z.object({
   includeClosed: z.boolean().optional().default(false),
@@ -65,7 +66,7 @@ export class ShowMyBugsOperation implements SemanticOperation<ShowMyBugsParams> 
           }
         } catch (stateError) {
           // Fallback to common closed states if discovery fails
-          console.warn('Failed to discover final states:', stateError);
+          logger.warn('Failed to discover final states:', stateError);
           whereConditions.push(`EntityState.Name ne 'Closed'`);
           whereConditions.push(`EntityState.Name ne 'Fixed'`);
         }
@@ -109,13 +110,13 @@ export class ShowMyBugsOperation implements SemanticOperation<ShowMyBugsParams> 
           }
         } catch (severityError) {
           // If severity discovery fails, continue without severity filter
-          console.warn('Failed to discover severities:', severityError);
+          logger.warn('Failed to discover severities:', severityError);
         }
       }
 
       const whereClause = whereConditions.length > 0 ? whereConditions.join(' and ') : undefined;
-      console.error('ShowMyBugs - User ID:', context.user.id);
-      console.error('ShowMyBugs - Where clause:', whereClause || '(none)');
+      logger.error('ShowMyBugs - User ID:', context.user.id);
+      logger.error('ShowMyBugs - Where clause:', whereClause || '(none)');
       
       // Search for bugs
       const allBugs = await this.service.searchEntities(

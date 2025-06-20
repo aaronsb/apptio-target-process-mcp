@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { TPService } from '../../api/client/tp.service.js';
 import { ExecutionContext, SemanticOperation, OperationResult } from '../../core/interfaces/semantic-operation.interface.js';
+import { logger } from '../../utils/logger.js';
 
 export const showMyTasksSchema = z.object({
   includeCompleted: z.boolean().optional().default(false),
@@ -69,7 +70,7 @@ export class ShowMyTasksOperation implements SemanticOperation<ShowMyTasksParams
         }
       } catch (stateError) {
         // Fallback to common completed state if discovery fails
-        console.warn('Failed to discover final states:', stateError);
+        logger.warn('Failed to discover final states:', stateError);
         whereConditions.push(`EntityState.Name ne 'Done'`);
       }
     }
@@ -117,16 +118,16 @@ export class ShowMyTasksOperation implements SemanticOperation<ShowMyTasksParams
         }
       } catch (priorityError) {
         // If priority discovery fails, continue without priority filter
-        console.warn('Failed to discover priorities:', priorityError);
+        logger.warn('Failed to discover priorities:', priorityError);
       }
     }
 
     try {
       const whereClause = whereConditions.length > 0 ? whereConditions.join(' and ') : undefined;
-      console.error('ShowMyTasks - User ID:', context.user.id);
-      console.error('ShowMyTasks - Params:', JSON.stringify(params));
-      console.error('ShowMyTasks - Where conditions:', whereConditions);
-      console.error('ShowMyTasks - Where clause:', whereClause || '(none)');
+      logger.error('ShowMyTasks - User ID:', context.user.id);
+      logger.error('ShowMyTasks - Params:', JSON.stringify(params));
+      logger.error('ShowMyTasks - Where conditions:', whereConditions);
+      logger.error('ShowMyTasks - Where clause:', whereClause || '(none)');
       
       // Search for tasks
       const allTasks = await this.service.searchEntities(
