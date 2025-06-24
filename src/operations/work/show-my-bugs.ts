@@ -115,8 +115,8 @@ export class ShowMyBugsOperation implements SemanticOperation<ShowMyBugsParams> 
       }
 
       const whereClause = whereConditions.length > 0 ? whereConditions.join(' and ') : undefined;
-      logger.error('ShowMyBugs - User ID:', context.user.id);
-      logger.error('ShowMyBugs - Where clause:', whereClause || '(none)');
+      logger.debug('ShowMyBugs - User ID:', context.user.id);
+      logger.debug('ShowMyBugs - Where clause:', whereClause || '(none)');
       
       // Search for bugs
       const allBugs = await this.service.searchEntities(

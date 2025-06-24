@@ -13,6 +13,15 @@ The Targetprocess MCP Server enables AI assistants to interact with your Targetp
 - **Stay in Flow**: Complete full workflows without switching to the Targetprocess UI
 - **Enterprise Ready**: Handles complex schemas and millions of records with robust authentication and error handling
 
+## MCP Registry Support
+
+This MCP server is available through multiple MCP registries:
+
+- **[Smithery.ai](https://smithery.ai)** - Install directly from the Smithery registry
+- **[Cprime](https://cprime.com)** - Available through Cprime's MCP catalog
+
+Each registry maintains its own configuration branch with platform-specific settings while staying synchronized with the latest features and updates.
+
 ## Quick Start
 
 ### Docker (Recommended for Containerized Environments)
