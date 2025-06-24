@@ -1,0 +1,29 @@
+# MCP Registry Configuration
+# This file defines all MCP registries and their required configuration files
+# The GitHub Action will create and maintain branches for each registry
+
+registries:
+  - name: smithery.ai
+    branch: smithery
+    directory: smithery
+    config_file: smithery.yaml
+    description: "Smithery AI MCP Registry"
+    
+  - name: cprime.com
+    branch: cprime
+    directory: cprime
+    config_file: cprime.yaml
+    description: "Cprime MCP Registry"
+    
+  - name: watson.orchestrate.ibm.com
+    branch: watson-orchestrate
+    directory: watson-orchestrate
+    config_file: watson-orchestrate.yaml
+    description: "IBM Watson Orchestrate MCP Registry (Hypothetical)"
+    
+  # Example of adding another registry:
+  # - name: another-registry.com
+  #   branch: another-registry
+  #   directory: another-registry
+  #   config_file: another-config.yaml
+  #   description: "Another MCP Registry"

@@ -124,10 +124,10 @@ export class ShowMyTasksOperation implements SemanticOperation<ShowMyTasksParams
 
     try {
       const whereClause = whereConditions.length > 0 ? whereConditions.join(' and ') : undefined;
-      logger.error('ShowMyTasks - User ID:', context.user.id);
-      logger.error('ShowMyTasks - Params:', JSON.stringify(params));
-      logger.error('ShowMyTasks - Where conditions:', whereConditions);
-      logger.error('ShowMyTasks - Where clause:', whereClause || '(none)');
+      logger.debug('ShowMyTasks - User ID:', context.user.id);
+      logger.debug('ShowMyTasks - Params:', JSON.stringify(params));
+      logger.debug('ShowMyTasks - Where conditions:', whereConditions);
+      logger.debug('ShowMyTasks - Where clause:', whereClause || '(none)');
       
       // Search for tasks
       const allTasks = await this.service.searchEntities(

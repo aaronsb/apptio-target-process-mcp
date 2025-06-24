@@ -5,6 +5,6 @@ import { logger } from './utils/logger.js';
 
 const server = new TargetProcessServer();
 server.run().catch((error) => {
-  logger.error('Failed to start server', error);
+  logger.error('Server failed to start:', error);
   process.exit(1);
 });
