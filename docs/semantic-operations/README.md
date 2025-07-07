@@ -154,6 +154,18 @@ When operations fail:
 4. **Start with Core Operations**: Begin with `show-my-tasks` or role-appropriate entry point
 5. **Follow Suggestions**: Use provided next-step recommendations to learn workflows
 
+## For Contributors
+
+If you're contributing to this project, semantic operations are the heart of what makes this system intelligent. Before implementing any new feature:
+
+1. **Understand the Philosophy**: Read this document completely to grasp why we use semantic operations
+2. **Study Existing Examples**: Review the operations in `/src/operations/` to see patterns in action
+3. **Consider User Intent**: Always ask "what is the user trying to accomplish?" not "what API call do I need?"
+4. **Implement Discovery**: Never hardcode assumptions - discover capabilities dynamically
+5. **Provide Guidance**: Your operation should help users understand what to do next
+
+Remember: We're not building API wrappers, we're building intelligent assistants that understand work context.
+
 ## Advanced Usage
 
 - **Custom Personalities**: Create additional role configurations
