@@ -1,12 +1,29 @@
 # Target Process MCP Architecture
 
-This document outlines the architecture of the Target Process Model Context Protocol (MCP) implementation, including system structure, class diagrams, and transaction models.
+This document provides a high-level overview of the Target Process Model Context Protocol (MCP) implementation architecture, including system structure, class diagrams, and transaction models.
+
+## Documentation Structure
+
+This document serves as the **architectural overview** for the system. For detailed deep-dives into specific components, please refer to the [`architecture/`](architecture/) subdirectory which contains:
+
+- **Component design details** - In-depth analysis of each system component
+- **Data model specifications** - Detailed entity relationships and schemas  
+- **Transaction flow diagrams** - Step-by-step sequence diagrams for operations
+- **Implementation guides** - Technical implementation details
+
+**When to read which document:**
+- **Start here** (ARCHITECTURE.md) for system understanding and high-level design decisions
+- **Use architecture/ subdirectory** when implementing features or debugging specific components
+
+---
 
 ## System Overview
 
 The Target Process MCP server provides an interface between Large Language Models (LLMs) and the Target Process API, enabling AI assistants to perform operations such as searching, retrieving, creating, and updating Target Process entities.
 
 ## System Architecture
+
+> **📋 For detailed component analysis:** See [architecture/components.md](architecture/components.md)
 
 ```mermaid
 flowchart TB
@@ -138,6 +155,8 @@ classDiagram
 
 ## Entity Data Models
 
+> **📋 For detailed entity specifications:** See [architecture/data-models.md](architecture/data-models.md)
+
 ```mermaid
 classDiagram
     class BaseEntity {
@@ -191,6 +210,8 @@ classDiagram
 ```
 
 ## Transaction Models
+
+> **📋 For detailed transaction flows:** See [architecture/transaction-flows.md](architecture/transaction-flows.md)
 
 ### Search Flow
 

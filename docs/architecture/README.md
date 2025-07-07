@@ -38,6 +38,22 @@ flowchart TB
     style TPService fill:#fbf,stroke:#333,stroke-width:2px
 ```
 
+## Usage Guidelines
+
+### For System Overview
+- **Start with:** [`../ARCHITECTURE.md`](../ARCHITECTURE.md) for high-level system understanding
+- **Use case:** Getting oriented with the system, understanding design decisions
+
+### For Implementation Details
+- **Components:** [components.md](components.md) - When implementing new tools or debugging existing ones
+- **Data Models:** [data-models.md](data-models.md) - When working with entity types and relationships
+- **Transaction Flows:** [transaction-flows.md](transaction-flows.md) - When debugging API interactions or understanding request/response patterns
+
+### For New Contributors
+1. Read [`../ARCHITECTURE.md`](../ARCHITECTURE.md) first
+2. Review [overview.md](overview.md) for technical context
+3. Dive into specific component docs as needed
+
 ## Key Architecture Principles
 
 1. **Layered Architecture**: Clean separation between:
