@@ -37,7 +37,7 @@
     "precommit": "npm run check:secrets && npm run lint"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "1.13.0",
+    "@modelcontextprotocol/sdk": "1.15.0",
     "axios": "^1.10.0",
     "dotenv": "^16.5.0",
     "node-fetch": "^3.3.2",
