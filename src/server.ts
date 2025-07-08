@@ -24,6 +24,7 @@ import { InspectObjectTool } from './tools/inspect/inspect.tool.js';
 import { operationRegistry } from './core/operation-registry.js';
 import { personalityLoader } from './core/personality-loader.js';
 import { WorkOperations } from './operations/work/index.js';
+import { GeneralOperations } from './operations/general/index.js';
 
 function loadConfig(): TPServiceConfig {
   // Try API key authentication
@@ -181,6 +182,10 @@ export class TargetProcessServer {
    */
   private initializeSemanticFeatures(): void {
     try {
+      // Register general operations module (available to all users)
+      const generalOperations = new GeneralOperations(this.service);
+      operationRegistry.registerFeature(generalOperations);
+      
       // Register work operations module
       const workOperations = new WorkOperations(this.service);
       operationRegistry.registerFeature(workOperations);
