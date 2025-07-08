@@ -98,7 +98,7 @@ export class CreateEntityTool {
   static getDefinition() {
     return {
       name: 'create_entity',
-      description: 'Create a new Target Process entity. REQUIRED: All entities except Project must have a project.id. OPTIONAL: team, assignedUser for work items.',
+      description: 'Create a new Target Process entity. REQUIRED: All entities except Project must have a project.id. NOTE: Tasks may require a UserStory parent. OPTIONAL: team, assignedUser for work items.',
       inputSchema: {
         type: 'object',
         properties: {
