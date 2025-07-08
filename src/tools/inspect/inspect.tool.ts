@@ -364,13 +364,13 @@ export class InspectObjectTool {
   static getDefinition() {
     return {
       name: 'inspect_object',
-      description: 'Inspect Target Process objects and properties through the API. This tool also provides API discovery capabilities through error messages when used with unsupported entity types.',
+      description: 'Inspect TargetProcess API metadata. Use "list_types" to see all entity types, "get_properties" to see fields for an entity type, "discover_api_structure" for quick entity discovery.',
       inputSchema: {
         type: 'object',
         properties: {
           action: {
             type: 'string',
-            description: 'Action to perform: list_types, get_properties, get_property_details, or discover_api_structure',
+            description: 'Action: "list_types" (all entities), "get_properties" (fields for entity), "get_property_details" (field details), "discover_api_structure" (quick discovery)',
           },
           entityType: {
             type: 'string',
