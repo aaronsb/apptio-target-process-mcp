@@ -39,21 +39,21 @@ export class SearchWorkItemsOperation implements SemanticOperation<SearchWorkIte
       const types = ['UserStory', 'Bug', 'Task', 'Feature'];
       const results: any[] = [];
 
-      // Build where clause - double quotes for string literals
-      let whereClause = `Name contains "${params.query}"`;
+      // Build where clause using the exact format that works in curl tests
+      let whereClause = `Name contains '${params.query}'`;
       if (params.projectId) {
-        whereClause = `(${whereClause}) and Project.Id = ${params.projectId}`;
+        whereClause = `${whereClause} and Project.Id eq ${params.projectId}`;
       }
 
-      // Search each entity type
+      // Search each entity type sequentially (not concurrently) to avoid issues
       for (const type of types) {
         try {
           const items = await this.service.searchEntities(
             type,
             whereClause,
-            ['Name', 'EntityState', 'Project', 'Priority'],
+            undefined, // Don't specify include to match working curl calls
             Math.floor(params.limit / types.length),
-            ['Priority.Importance desc', 'CreateDate desc']
+            undefined  // Don't specify orderBy to match working curl calls
           );
 
           results.push(...items.map((item: any) => ({
@@ -66,10 +66,10 @@ export class SearchWorkItemsOperation implements SemanticOperation<SearchWorkIte
         }
       }
 
-      // Sort combined results by priority
+      // Sort combined results by priority if available
       results.sort((a, b) => {
-        const aPriority = a.Priority?.Importance || 999;
-        const bPriority = b.Priority?.Importance || 999;
+        const aPriority = a.Priority?.Importance || a.NumericPriority || 999;
+        const bPriority = b.Priority?.Importance || b.NumericPriority || 999;
         return aPriority - bPriority;
       });
 
@@ -92,12 +92,13 @@ export class SearchWorkItemsOperation implements SemanticOperation<SearchWorkIte
       const priority = item.Priority?.Name || 'No Priority';
       const state = item.EntityState?.Name || 'Unknown';
       const project = item.Project?.Name || 'No Project';
+      const description = item.Description ? `\n   Description: ${item.Description.substring(0, 100)}${item.Description.length > 100 ? '...' : ''}` : '';
       
       return `${index + 1}. [${item.EntityType}] ${item.Name}
    ID: ${item.Id}
    State: ${state}
    Priority: ${priority}
-   Project: ${project}`;
+   Project: ${project}${description}`;
     }).join('\n\n');
   }
 }
