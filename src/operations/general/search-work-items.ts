@@ -39,9 +39,8 @@ export class SearchWorkItemsOperation implements SemanticOperation<SearchWorkIte
       const types = ['UserStory', 'Bug', 'Task', 'Feature'];
       const results: any[] = [];
 
-      // Build where clause - escape quotes in query
-      const escapedQuery = params.query.replace(/'/g, "\\'");
-      let whereClause = `Name contains '${escapedQuery}'`;
+      // Build where clause - double quotes for string literals
+      let whereClause = `Name contains "${params.query}"`;
       if (params.projectId) {
         whereClause = `(${whereClause}) and Project.Id = ${params.projectId}`;
       }
