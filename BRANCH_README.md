@@ -13,4 +13,4 @@ Smithery AI MCP Registry
 This branch is automatically synchronized with the main branch through GitHub Actions.
 Any changes made directly to this branch may be overwritten.
 
-Last sync: 2025-06-19 15:03:06 UTC
+Last sync: 2025-07-08 04:38:37 UTC
