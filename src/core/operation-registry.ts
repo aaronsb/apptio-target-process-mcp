@@ -212,6 +212,11 @@ export class OperationRegistry implements IOperationRegistry {
 
     // Administrator personality - has access to all operations
     this.personalityFilters.set('administrator', new Set());
+
+    // Default personality - basic operations for general users
+    this.personalityFilters.set('default', new Set([
+      'search-work-items'  // Semantic operation for searching
+    ]));
   }
 
   private updatePersonalityFilters(operation: SemanticOperation): void {
