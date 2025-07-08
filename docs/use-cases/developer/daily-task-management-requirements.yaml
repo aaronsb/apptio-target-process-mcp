@@ -1,0 +1,193 @@
+name: Daily Task Management
+personality: developer
+version: "1.0"
+description: Manage daily development tasks with intelligent workflow guidance
+
+metadata:
+  author: Targetprocess MCP Team
+  last_updated: 2024-01-10
+  category: task-management
+  difficulty: beginner
+
+prerequisites:
+  environment:
+    - variable: TP_USER_ROLE
+      value: developer
+    - variable: TP_USER_ID
+      value: valid_user_id
+  
+  data:
+    - At least 5 tasks assigned to user
+    - Tasks in various states (Open, In Progress)
+    - Mix of priorities (High, Normal, Low)
+    - Some tasks with deadlines
+  
+  permissions:
+    - Can view assigned tasks
+    - Can update task states
+    - Can add comments
+    - Can log time
+
+scenarios:
+  - name: Morning Task Review
+    description: Review all assigned tasks at start of day
+    steps:
+      - operation: show-my-tasks
+        input:
+          includeCompleted: false
+        expected:
+          response_includes:
+            - tasks array with assigned items
+            - summary with counts
+            - suggestions for priority items
+          validations:
+            - tasks.length > 0
+            - each task has id, name, state, priority
+            - suggestions array is not empty
+        
+      - operation: show-my-tasks
+        input:
+          priority: high
+          includeCompleted: false
+        expected:
+          response_includes:
+            - filtered list of high-priority tasks
+          validations:
+            - all tasks have priority = "High"
+  
+  - name: Start High-Priority Task
+    description: Begin work on most important task
+    steps:
+      - operation: show-my-tasks
+        input:
+          priority: high
+          includeCompleted: false
+        capture:
+          first_task_id: tasks[0].id
+          first_task_name: tasks[0].name
+      
+      - operation: start-working-on
+        input:
+          taskId: "{{first_task_id}}"
+        expected:
+          response_includes:
+            - success: true
+            - task with updated state
+            - workflow transition details
+            - suggestions for next steps
+          validations:
+            - task.state = "In Progress"
+            - task.assignedTo = current_user
+            - workflow.previousState = "Open"
+  
+  - name: Update Progress Mid-Day
+    description: Update task progress and remaining estimate
+    precondition: Task is in "In Progress" state
+    steps:
+      - operation: update-progress
+        input:
+          taskId: "{{active_task_id}}"
+          percentComplete: 60
+          remainingHours: 3
+          comment: "Backend complete, working on frontend"
+        expected:
+          response_includes:
+            - success: true
+            - updated task details
+            - progress recorded
+          validations:
+            - task.percentComplete = 60
+            - comment saved successfully
+  
+  - name: Handle Context Switch
+    description: Pause current work to handle urgent request
+    steps:
+      - operation: pause-work
+        input:
+          taskId: "{{current_task_id}}"
+          reason: "Urgent production issue"
+          progressNote: "Completed auth module, UI pending"
+        expected:
+          response_includes:
+            - work paused successfully
+            - progress saved
+            - reminder set
+          validations:
+            - task.state remains "In Progress"
+            - progress note saved
+      
+      - operation: show-my-tasks
+        input:
+          priority: urgent
+        expected:
+          response_includes:
+            - urgent tasks listed
+            - context switch acknowledged
+  
+  - name: Complete Task
+    description: Finish task and log time
+    steps:
+      - operation: complete-task
+        input:
+          taskId: "{{task_id}}"
+          timeSpent: 8
+          summary: "Implemented feature as specified"
+        expected:
+          response_includes:
+            - success: true
+            - task.state = "Done"
+            - time logged confirmation
+            - nextSteps suggestions
+          validations:
+            - state transition successful
+            - time entry created
+            - workflow notifications sent
+
+success_criteria:
+  functional:
+    - All assigned tasks are visible
+    - Tasks can be filtered by priority
+    - State transitions work correctly
+    - Time tracking is accurate
+    - Comments and progress are saved
+  
+  semantic:
+    - System provides relevant suggestions
+    - Workflow hints match user context
+    - Priority recommendations are logical
+    - Next steps guide productivity
+    - Error messages are helpful
+
+error_cases:
+  - name: No Tasks Assigned
+    trigger: User has no assigned tasks
+    expected_behavior:
+      - Clear message about no assignments
+      - Suggestion to contact PM
+      - Option to view team's tasks
+  
+  - name: Invalid State Transition
+    trigger: Try to start already completed task
+    expected_behavior:
+      - Clear error message
+      - Explanation of why transition failed
+      - Suggested alternatives
+  
+  - name: Permission Denied
+    trigger: Try to update unassigned task
+    expected_behavior:
+      - Permission error with context
+      - Suggestion to request assignment
+      - List valid actions
+
+performance_requirements:
+  - show-my-tasks completes within 2 seconds
+  - State transitions complete within 1 second
+  - Supports up to 100 tasks per user
+  - Handles concurrent updates gracefully
+
+notes:
+  - Task states may vary by organization
+  - Priority values should be discovered dynamically
+  - Time tracking rules vary by configuration
+  - Some organizations use custom fields
