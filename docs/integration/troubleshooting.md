@@ -2,6 +2,8 @@
 
 This guide helps you diagnose and fix common issues with the Targetprocess MCP server.
 
+> **Looking for Semantic Operations issues?** See the dedicated [Semantic Operations Troubleshooting Guide](../semantic-operations/troubleshooting.md) for role-based operations, discovery failures, and context handling problems.
+
 ## Connection Issues
 
 ### Problem: Cannot Connect to Targetprocess API

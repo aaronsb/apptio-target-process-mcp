@@ -37,12 +37,18 @@ export interface ITPService {
   /**
    * Search for entities
    */
-  searchEntities(entityType: string, params?: SearchParams): Promise<ApiResponse<any>>;
+  searchEntities(
+    entityType: string, 
+    where?: string,
+    include?: string[],
+    take?: number,
+    orderBy?: string[]
+  ): Promise<any[]>;
   
   /**
    * Get a single entity by ID
    */
-  getEntity(entityType: string, id: number, include?: string): Promise<any>;
+  getEntity(entityType: string, id: number, include?: string[]): Promise<any>;
   
   /**
    * Create a new entity

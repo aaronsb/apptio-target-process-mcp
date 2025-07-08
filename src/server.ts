@@ -103,8 +103,8 @@ export class TargetProcessServer {
   private userRole: string;
 
   constructor() {
-    // Load user role from environment
-    this.userRole = process.env.TP_USER_ROLE || 'developer';
+    // Load user role from environment, default to 'default' for basic semantic operations
+    this.userRole = process.env.TP_USER_ROLE || 'default';
     logger.info(`User role configured as: ${this.userRole}`);
 
     // Initialize service

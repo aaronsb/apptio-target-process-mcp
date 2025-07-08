@@ -1,0 +1,26 @@
+{
+  "id": "default",
+  "name": "Default User",
+  "description": "Default personality with general-purpose semantic operations for all users",
+  "operations": [
+    "search-entities",
+    "get-entity", 
+    "create-entity",
+    "update-entity",
+    "inspect-object"
+  ],
+  "contextualHints": {
+    "emptyResults": "No items found. Try adjusting your search criteria or create a new item.",
+    "errorRecovery": "If you're having trouble, try checking the entity type or field names with inspect_object.",
+    "workflowSuggestions": [
+      "Search for existing items before creating new ones",
+      "Use inspect_object to understand entity structures",
+      "Include related data with the 'include' parameter for richer results"
+    ]
+  },
+  "preferences": {
+    "defaultIncludes": ["Name", "Description", "EntityState"],
+    "preferredViews": ["list", "detail"],
+    "taskOrdering": "priority"
+  }
+}

@@ -378,6 +378,117 @@ Working with the project structure:
 }
 ```
 
+## Common Department and Team Operations
+
+### Viewing Department/Team Information
+
+**Purpose:** Retrieve and analyze team and department-level information.
+
+**Using MCP Tools:**
+
+```json
+// Search for all teams in a specific department
+{
+  "type": "Team",
+  "include": ["Project", "AssignedUser"],
+  "where": "Department.Name eq 'IT'",
+  "take": 100
+}
+```
+
+**Tips:**
+- Use the `include` parameter to fetch related data in a single request
+- The `where` clause supports complex filtering expressions
+- Increase `take` value (up to 1000) to retrieve more results
+
+### Running Cost Reports
+
+**Purpose:** Analyze project costs and spending across the organization.
+
+**Using MCP Tools:**
+
+```json
+// Get project cost information
+{
+  "type": "Project",
+  "include": ["Budget", "Effort", "Team"],
+  "where": "StartDate gt '2024-01-01'",
+  "orderBy": ["StartDate desc"]
+}
+
+// Get specific project details
+{
+  "type": "Project",
+  "id": 123,
+  "include": ["Budget", "Effort", "Team", "UserStories"]
+}
+```
+
+**Tips:**
+- Use date filters in the `where` clause for period-specific analysis
+- Include related entities to get comprehensive cost data
+- Chain multiple requests to build detailed reports
+
+### Managing Application Information
+
+**Purpose:** Track and update application-related entities.
+
+**Using MCP Tools:**
+
+```json
+// Create a new feature for an application
+{
+  "type": "Feature",
+  "name": "New Authentication System",
+  "description": "Implement OAuth 2.0 authentication",
+  "project": {
+    "id": 123
+  },
+  "team": {
+    "id": 456
+  }
+}
+
+// Search for application features
+{
+  "type": "Feature",
+  "where": "Project.Id eq 123",
+  "include": ["Project", "Team", "UserStories"]
+}
+```
+
+**Tips:**
+- Use entity relationships to maintain proper connections
+- Include relevant teams and projects when creating new entities
+- Update existing entities to reflect changes in status or ownership
+
+### Budget vs. Actual Analysis
+
+**Purpose:** Compare planned versus actual metrics.
+
+**Using MCP Tools:**
+
+```json
+// Get project metrics
+{
+  "type": "Project",
+  "include": ["Budget", "TimeSpent", "Effort"],
+  "where": "EndDate gt @Today"
+}
+
+// Get team capacity
+{
+  "type": "Team",
+  "include": ["Capacity", "TimeSpent"],
+  "where": "Project.Id eq 123"
+}
+```
+
+**Tips:**
+- Combine multiple queries to build comprehensive reports
+- Use date-based filters for period-specific analysis
+- Include relevant metrics for comparison
+
 ## Tips for Basic Operations
 
 1. **Start Specific**: Begin with specific queries and gradually broaden if needed
