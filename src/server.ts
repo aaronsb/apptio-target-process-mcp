@@ -25,6 +25,9 @@ import { operationRegistry } from './core/operation-registry.js';
 import { personalityLoader } from './core/personality-loader.js';
 import { WorkOperations } from './operations/work/index.js';
 import { GeneralOperations } from './operations/general/index.js';
+import { paginateText } from './utils/paginator.js';
+import { ShowMoreTool } from './tools/pagination/show-more.tool.js';
+import { ShowAllTool } from './tools/pagination/show-all.tool.js';
 
 function loadConfig(): TPServiceConfig {
   // Try API key authentication
@@ -123,7 +126,9 @@ export class TargetProcessServer {
       get: new GetEntityTool(this.service),
       create: new CreateEntityTool(this.service),
       update: new UpdateEntityTool(this.service),
-      inspect: new InspectObjectTool(this.service)
+      inspect: new InspectObjectTool(this.service),
+      show_more: new ShowMoreTool(),
+      show_all: new ShowAllTool()
     };
 
     // Initialize role-based semantic tools
@@ -361,7 +366,7 @@ export class TargetProcessServer {
   }
 
   /**
-   * Format semantic operation result for display
+   * Format semantic operation result for display with automatic pagination
    */
   private formatSemanticResult(result: any): string {
     const parts: string[] = [];
@@ -387,7 +392,11 @@ export class TargetProcessServer {
       });
     }
 
-    return parts.join('\n');
+    const fullText = parts.join('\n');
+    
+    // Apply automatic pagination to large responses
+    const paginationResult = paginateText(fullText);
+    return paginationResult.text;
   }
 
   private setupHandlers() {
@@ -403,11 +412,13 @@ export class TargetProcessServer {
         this.getEnhancedCreateDefinition(contextDescription),
         this.getEnhancedUpdateDefinition(contextDescription),
         this.getEnhancedInspectDefinition(contextDescription),
+        this.getShowMoreDefinition(),
+        this.getShowAllDefinition(),
       ];
 
       // Add semantic tools for the current role
       Object.keys(this.tools).forEach(toolName => {
-        if (!['search', 'get', 'create', 'update', 'inspect'].includes(toolName)) {
+        if (!['search', 'get', 'create', 'update', 'inspect', 'show_more', 'show_all'].includes(toolName)) {
           const tool = (this.tools as any)[toolName];
           if (tool && tool.description) {
             tools.push({
@@ -462,6 +473,14 @@ export class TargetProcessServer {
             return await this.tools.update.execute(request.params.arguments);
           case 'inspect_object':
             return await this.tools.inspect.execute(request.params.arguments);
+        }
+
+        // Handle pagination tools
+        if (toolName === 'show_more') {
+          return await this.tools.show_more.execute(request.params.arguments);
+        }
+        if (toolName === 'show_all') {
+          return await this.tools.show_all.execute(request.params.arguments);
         }
 
         // Handle semantic tools
@@ -634,6 +653,45 @@ export class TargetProcessServer {
       };
     }
     return baseDefinition;
+  }
+
+  private getShowMoreDefinition() {
+    return {
+      name: 'show_more',
+      description: 'Show more results from a paginated response',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          cacheKey: {
+            type: 'string',
+            description: 'Cache key from previous paginated result'
+          },
+          page: {
+            type: 'number',
+            minimum: 2,
+            description: 'Specific page number to show (default: next page)'
+          }
+        },
+        required: ['cacheKey']
+      }
+    };
+  }
+
+  private getShowAllDefinition() {
+    return {
+      name: 'show_all',
+      description: 'Show all results without pagination',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          cacheKey: {
+            type: 'string',
+            description: 'Cache key from previous paginated result'
+          }
+        },
+        required: ['cacheKey']
+      }
+    };
   }
 
   async run() {
