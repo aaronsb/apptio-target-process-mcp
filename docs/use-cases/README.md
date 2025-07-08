@@ -1,73 +1,131 @@
 # Targetprocess MCP Use Cases
 
-This directory contains examples and guides for common use cases when working with the Targetprocess MCP. Each document provides detailed explanations and code examples for specific scenarios.
+This directory contains role-based use cases aligned with our semantic operations personalities. Each role has specific workflows, requirements, and testable scenarios.
 
-## Quick Guides
+## 🎭 Use Cases by Personality
 
-- [Basic Operations](basic-operations.md) - Essential operations like searching, creating, and updating entities
-- [Advanced Queries](advanced-queries.md) - Complex query patterns and filtering techniques
-- [Data Analysis](data-analysis.md) - Extracting and analyzing Targetprocess data
-- [Enterprise Use Cases](enterprise-use-cases.md) - Large-scale and complex organizational scenarios
-- [Advanced Usage](advanced-usage.md) - Advanced patterns like batch operations and performance optimization
+Our use cases are organized by the four primary personalities (roles) supported by the MCP server:
 
-## Use Cases by Role
+### 👨‍💻 [Developer](developer/)
+Software developers focused on task completion and code quality.
 
-### For Project Managers
+**Key Use Cases:**
+- [Daily Task Management](developer/daily-task-management.md) - Start your day, prioritize work
+- [Bug Investigation Workflow](developer/bug-investigation.md) - Reproduce, investigate, and fix bugs
+- [Time Tracking Patterns](developer/time-tracking.md) - Log time effectively
+- [Code Review Process](developer/code-review.md) - Request and handle reviews
 
-- [Portfolio Management](enterprise-use-cases.md#portfolio-management) - Managing across multiple projects and teams
-- [Resource Allocation](enterprise-use-cases.md#resource-allocation) - Tracking and optimizing team assignments
-- [Status Reporting](data-analysis.md#status-reporting) - Generating project status reports
+**Available Operations:** `show-my-tasks`, `start-working-on`, `complete-task`, `log-time`, `add-comment`
 
-### For Team Leads
+### 📊 [Project Manager](project-manager/)
+Team coordination, resource management, and delivery oversight.
 
-- [Team Management](basic-operations.md#team-management) - Managing team workloads and assignments
-- [Sprint Planning](basic-operations.md#sprint-planning) - Creating and managing iterations and sprints
-- [Progress Tracking](data-analysis.md#progress-tracking) - Monitoring team progress
+**Key Use Cases:**
+- [Sprint Planning](project-manager/sprint-planning.md) - Plan and manage iterations
+- [Team Workload Analysis](project-manager/team-workload.md) - Balance team capacity
+- [Risk Management](project-manager/risk-management.md) - Identify and mitigate risks
+- [Status Reporting](project-manager/status-reporting.md) - Generate progress reports
 
-### For Developers
+**Available Operations:** `manage-sprints`, `track-velocity`, `generate-reports`, `manage-impediments`
 
-- [Task Management](basic-operations.md#task-management) - Working with tasks and user stories
-- [Bug Tracking](basic-operations.md#bug-tracking) - Managing bugs and defects
-- [Custom Workflows](advanced-usage.md#custom-workflows) - Creating custom workflows for development
+### 🧪 [QA Tester](tester/)
+Quality assurance professionals ensuring product quality.
 
-### For Analysts
+**Key Use Cases:**
+- [Test Planning](tester/test-planning.md) - Create and organize test plans
+- [Defect Management](tester/defect-management.md) - Report and track bugs
+- [Test Execution](tester/test-execution.md) - Run tests and log results
+- [Quality Metrics](tester/quality-metrics.md) - Track quality indicators
 
-- [Data Extraction](data-analysis.md#data-extraction) - Extracting data for analysis
-- [Reporting](data-analysis.md#reporting) - Creating custom reports
-- [Cross-System Integration](enterprise-use-cases.md#cross-system-integration) - Integrating with other systems
+**Available Operations:** `start-testing`, `log-defect`, `verify-fix`, `generate-test-report`
 
-## Common Scenarios
+### 🎯 [Product Owner](product-owner/)
+Product strategy, backlog management, and stakeholder communication.
 
-### Entity Management
+**Key Use Cases:**
+- [Backlog Prioritization](product-owner/backlog-prioritization.md) - Manage product backlog
+- [Feature Planning](product-owner/feature-planning.md) - Plan features and epics
+- [Stakeholder Communication](product-owner/stakeholder-communication.md) - Reports and updates
+- [ROI Analysis](product-owner/roi-analysis.md) - Measure feature value
 
-- [Finding Entities](basic-operations.md#finding-entities) - How to search for and filter entities
-- [Creating New Items](basic-operations.md#creating-new-items) - Creating various entity types
-- [Updating Status](basic-operations.md#updating-status) - Changing entity status and properties
-- [Relationship Management](advanced-queries.md#relationship-management) - Working with entity relationships
+**Available Operations:** `manage-backlog`, `prioritize-features`, `plan-iterations`, `stakeholder-report`
 
-### Data Exploration
+## 📋 Requirements Structure
 
-- [Discovery](data-analysis.md#discovery) - Discovering your Targetprocess data model
-- [Entity Relationships](advanced-queries.md#entity-relationships) - Understanding how entities relate
-- [Custom Fields](advanced-usage.md#custom-fields) - Working with custom fields
+Each use case includes a `requirements.yaml` file that makes the scenarios testable and shareable:
 
-### Process Automation
+```yaml
+# Example: developer/daily-task-management/requirements.yaml
+name: Daily Task Management
+personality: developer
+description: Start the day by reviewing and prioritizing tasks
 
-- [Batch Operations](advanced-usage.md#batch-operations) - Performing operations on multiple entities
-- [Status Transitions](advanced-usage.md#status-transitions) - Automating workflow transitions
-- [Data Synchronization](enterprise-use-cases.md#data-synchronization) - Keeping data in sync with other systems
+prerequisites:
+  - User has developer role configured
+  - At least 5 open tasks assigned
+  - Tasks have different priorities
 
-## Complex Enterprise Scenarios
+scenarios:
+  - name: Morning task review
+    steps:
+      - operation: show-my-tasks
+        input:
+          includeCompleted: false
+          orderBy: priority
+        expected:
+          - Returns list of open tasks
+          - Tasks ordered by priority
+          - Shows task age and estimates
+    
+  - name: Start high-priority task
+    steps:
+      - operation: show-my-tasks
+        input:
+          priority: high
+      - operation: start-working-on
+        input:
+          taskId: "{{first_high_priority_task}}"
+        expected:
+          - Task state changes to "In Progress"
+          - Task assigned to current user
+          - Returns workflow suggestions
 
-- [Cross-Project Reporting](enterprise-use-cases.md#cross-project-reporting) - Reporting across multiple projects
-- [Process Compliance](enterprise-use-cases.md#process-compliance) - Ensuring compliance with organizational processes
-- [Custom Field Analysis](enterprise-use-cases.md#custom-field-analysis) - Analyzing and managing custom fields
-- [Mass Updates](advanced-usage.md#mass-updates) - Performing large-scale updates
-- [Data Governance](enterprise-use-cases.md#data-governance) - Implementing data governance practices
+success_criteria:
+  - Developer can see all assigned tasks
+  - Can filter by priority
+  - Can transition task states
+  - Receives helpful next-step guidance
+```
 
-## API Best Practices
+## 🧪 Testing Use Cases
 
-- [Query Optimization](advanced-usage.md#query-optimization) - Optimizing query performance
-- [Error Handling](advanced-usage.md#error-handling) - Robust error handling strategies
-- [Pagination](advanced-usage.md#pagination) - Working with large result sets
-- [Rate Limiting](advanced-usage.md#rate-limiting) - Handling API rate limits
+Each personality directory contains:
+- **Use case documents** - Detailed workflows with examples
+- **Requirements files** - Testable scenarios in YAML format
+- **Example outputs** - Expected responses and behaviors
+
+To test a use case:
+1. Set your personality: `export TP_USER_ROLE=developer`
+2. Run the scenario using the MCP inspector
+3. Verify outputs match requirements
+
+## 📚 Reference Documents
+
+### Core Operations
+- [Basic Operations](basic-operations.md) - Fundamental CRUD operations
+- [Advanced Queries](advanced-queries.md) - Complex filtering and searches
+- [Data Analysis](data-analysis.md) - Analytics and reporting patterns
+
+### Enterprise Patterns
+- [Enterprise Use Cases](enterprise-use-cases.md) - Large-scale scenarios
+- [Advanced Usage](advanced-usage.md) - Performance optimization
+- [Integration Patterns](enterprise-use-cases.md#cross-system-integration) - System integration
+
+## 🎯 Choosing Your Path
+
+1. **Identify your role** - Developer, PM, Tester, or Product Owner
+2. **Browse role-specific use cases** - Find workflows that match your needs
+3. **Review requirements** - Understand prerequisites and success criteria
+4. **Follow the examples** - Step-by-step guidance for each scenario
+
+Remember: These use cases demonstrate semantic operations in action - intelligent, context-aware workflows that understand how you work!

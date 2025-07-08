@@ -2,6 +2,22 @@
 
 This directory contains documentation on development practices, patterns, and processes for the Targetprocess MCP server.
 
+## Current Documentation
+
+- **README.md** (this file) - Main development guide with modular architecture patterns
+- **semantic-hints-pattern.md** - Pattern for contextual workflow guidance in semantic operations
+- **tp-docs-findings.md** - Analysis of the Targetprocess documentation scraper tool
+
+## Archived Documentation
+
+Historical planning and refactor documents have been moved to the `archive/` directory. These documents were used during the initial implementation of semantic operations and are preserved for historical context:
+
+- **semantic-refactor-summary.md** - Initial refactor summary from WordPress MCP analysis
+- **semantic-architecture-plan.md** - Original planning document for semantic operations
+- **wordpress-mcp-analysis.md** - Analysis of WordPress MCP patterns
+
+These archived documents served their purpose during development but are no longer actively maintained. The current implementation is documented in the main [Semantic Operations Documentation](../semantic-operations/).
+
 ## Getting Started with Development
 
 To set up a development environment:

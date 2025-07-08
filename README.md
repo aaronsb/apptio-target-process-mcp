@@ -4,6 +4,18 @@
 
 The Targetprocess MCP Server enables AI assistants to interact with your Targetprocess data through intelligent semantic operations. Beyond basic data access, it provides workflow-aware tools that understand context, suggest next steps, and adapt to your Targetprocess configuration automatically.
 
+## ⚠️ IMPORTANT: Not Just Another API Wrapper!
+
+> **This project implements SEMANTIC OPERATIONS** - intelligent, context-aware workflows that understand how people actually work. We're not building simple API wrappers; we're building tools that think.
+> 
+> **Before contributing**, you MUST understand our semantic operations philosophy:
+> - 📖 Read [CONTRIBUTING.md](CONTRIBUTING.md) - Mandatory reading for all contributors
+> - 🧠 Study [Semantic Operations Documentation](docs/semantic-operations/) - The heart of this project
+> - 🎯 Operations adapt to user context, not just expose CRUD endpoints
+> - 🔄 Dynamic discovery over hard-coded assumptions
+> 
+> **If you're here to add "just another API endpoint wrapper" - please reconsider.** We need contributors who understand and embrace the semantic operations approach.
+
 ## Why use it?
 
 - **Intelligent Workflows**: Semantic operations that understand your work context and suggest logical next steps
