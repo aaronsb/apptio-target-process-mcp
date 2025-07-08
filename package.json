@@ -1,7 +1,7 @@
 {
-  "name": "TargetProcessMCP",
+  "name": "@aaronsb/targetprocess-mcp",
   "version": "0.9.0",
-  "description": "A tool server for Apptio Target Process",
+  "description": "Model Context Protocol server for Targetprocess project management platform",
   "author": "Aaron Bockelie <aaronsb@gmail.com> (https://github.com/aaronsb)",
   "repository": {
     "type": "git",
@@ -15,15 +15,22 @@
     "ai-assistant",
     "claude",
     "agile",
-    "project-management"
+    "project-management",
+    "apptio"
   ],
   "private": false,
   "type": "module",
+  "main": "./build/index.js",
+  "exports": {
+    ".": "./build/index.js"
+  },
   "bin": {
-    "TargetProcessMCP": "./build/index.js"
+    "targetprocess-mcp": "./build/index.js"
   },
   "files": [
-    "build"
+    "build",
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "build": "npm run check:secrets && tsc && node -e \"require('fs').chmodSync('build/index.js', '755')\"",
@@ -34,7 +41,10 @@
     "test": "jest",
     "check:secrets": "node scripts/check-secrets.cjs",
     "prebuild": "npm run lint",
-    "precommit": "npm run check:secrets && npm run lint"
+    "precommit": "npm run check:secrets && npm run lint",
+    "prepublishOnly": "npm run test && npm run build",
+    "start": "node build/index.js",
+    "mcp": "node build/index.js"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.15.0",
