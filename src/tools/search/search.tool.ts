@@ -41,7 +41,7 @@ export const searchToolSchema = z.object({
   where: z.string().optional().describe('Filter expression using TargetProcess query language.\n\nPreset filters: searchPresets.open, .notDone, .myOpenTasks, .activeItems, etc.\n\nQuery syntax:\n- Use "eq" for equals: EntityState.Name eq "Open"\n- Use "ne" for not equals: EntityState.Name ne "Done"\n- Use "and"/"or": Priority.Name eq "High" and EntityState.Name ne "Done"\n- Date macros: CreateDate gt @Today\n\nExample: searchPresets.activeItems or "EntityState.Name ne \'Done\'"'),
   include: z.array(z.string()).optional().describe('Related data to include (e.g., Project, Team, AssignedUser)'),
   take: z.number().min(1).max(1000).optional().describe('Number of items to return (default: 100)'),
-  orderBy: z.array(z.string()).optional().describe('Fields to sort by (e.g., ["CreateDate desc"])'),
+  orderBy: z.array(z.string()).optional().describe('Fields to sort by - field names only (e.g., ["CreateDate", "Name"]). Note: TargetProcess API does not support direction keywords like "desc" or "asc".'),
 });
 
 export type SearchToolInput = z.infer<typeof searchToolSchema>;
@@ -113,7 +113,7 @@ export class SearchTool {
   static getDefinition() {
     return {
       name: 'search_entities',
-      description: 'Search Target Process entities with powerful filtering capabilities and preset filters for common scenarios',
+      description: 'Search Target Process entities with powerful filtering capabilities and preset filters for common scenarios. Common usage patterns: basic search by type only, preset filters for status/assignments, simple field-only sorting.',
       inputSchema: {
         type: 'object',
         properties: {
@@ -125,7 +125,7 @@ export class SearchTool {
             type: 'string',
             description: `Filter expression using Target Process query language. Common preset filters available:
 - Status filters: searchPresets.open, .inProgress, .done
-- Assignment filters: searchPresets.myTasks, .unassigned
+- Assignment filters: searchPresets.myTasks, .unassigned  
 - Time-based filters: searchPresets.createdToday, .modifiedToday, .createdThisWeek
 - Priority filters: searchPresets.highPriority
 - Combined filters: searchPresets.myOpenTasks, .highPriorityUnassigned
@@ -137,7 +137,7 @@ Example: searchPresets.open or "EntityState.Name eq 'Open'"`,
             items: {
               type: 'string',
             },
-            description: 'Related data to include in results (e.g., ["Project", "Team", "AssignedUser"])',
+            description: 'Related data to include in results. Common reliable options: ["Project", "AssignedUser", "EntityState", "Priority"]. AVOID: Complex nested includes that may cause errors.',
           },
           take: {
             type: 'number',
@@ -150,7 +150,7 @@ Example: searchPresets.open or "EntityState.Name eq 'Open'"`,
             items: {
               type: 'string',
             },
-            description: 'Sort order for results (e.g., ["CreateDate desc", "Name asc"])',
+            description: 'Fields to sort by - field names only (e.g., ["CreateDate", "Name"]). TargetProcess API does not support "desc" or "asc" keywords.',
           },
         },
         required: ['type'],
