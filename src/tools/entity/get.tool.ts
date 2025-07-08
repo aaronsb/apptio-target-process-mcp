@@ -88,7 +88,7 @@ export class GetEntityTool {
   static getDefinition() {
     return {
       name: 'get_entity',
-      description: 'Get details of a specific Target Process entity',
+      description: 'Get details of a specific Target Process entity. Use include for related data like ["Project", "AssignedUser", "EntityState", "Priority"].',
       inputSchema: {
         type: 'object',
         properties: {
@@ -105,7 +105,7 @@ export class GetEntityTool {
             items: {
               type: 'string',
             },
-            description: 'Related data to include',
+            description: 'Related data to include. Common values: "Project", "AssignedUser", "EntityState", "Priority", "Team". Avoid complex nested includes.',
           },
           allow_informative_errors: {
             type: 'boolean',
