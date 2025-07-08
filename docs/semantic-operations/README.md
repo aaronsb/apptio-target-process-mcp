@@ -166,6 +166,14 @@ If you're contributing to this project, semantic operations are the heart of wha
 
 Remember: We're not building API wrappers, we're building intelligent assistants that understand work context.
 
+## Troubleshooting
+
+Having issues with semantic operations? Check our [Troubleshooting Guide](troubleshooting.md) for:
+- Common problems and solutions
+- Debugging discovery failures
+- Performance optimization tips
+- Role configuration issues
+
 ## Advanced Usage
 
 - **Custom Personalities**: Create additional role configurations

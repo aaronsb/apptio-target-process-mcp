@@ -761,3 +761,76 @@ async function exportToCsv(entityType, query, include, fields, filename) {
 8. **Custom Fields**: Be careful with custom fields as they can vary between Targetprocess instances
 9. **Validation**: Validate data before sending it to the API to avoid errors
 10. **Monitoring**: Implement monitoring and alerting for production integrations
+
+## General Best Practices
+
+### Error Handling
+- Always check response status codes
+- Handle rate limits appropriately with exponential backoff
+- Implement retry logic for transient failures
+- Log errors with sufficient context for debugging
+
+### Performance Optimization
+- Use specific `where` clauses to limit result sets
+- Include only necessary related data with `include` parameter
+- Batch operations when possible to reduce API calls
+- Consider pagination for large result sets
+
+### Data Management
+- Keep entity references up to date
+- Maintain proper relationships between entities
+- Archive or clean up obsolete data regularly
+- Validate data integrity before and after operations
+
+## Working with Custom Fields
+
+Access and update custom fields using dot notation:
+
+```json
+{
+  "type": "UserStory",
+  "id": 456,
+  "fields": {
+    "CustomField.RiskLevel": "High",
+    "CustomField.Priority": 1,
+    "CustomField.EstimatedROI": 150000
+  }
+}
+```
+
+**Tips for Custom Fields:**
+- Always verify custom field names exist in your instance
+- Use `inspect_object` to discover available custom fields
+- Be aware that custom field types may vary (string, number, date, etc.)
+- Handle missing custom fields gracefully in your code
+
+## Troubleshooting Common Issues
+
+If you encounter issues:
+
+1. **Authentication Failures**
+   - Verify credentials are correct
+   - Check if API access is enabled for the user
+   - Ensure the user has appropriate permissions
+
+2. **Query Errors**
+   - Validate query syntax using the API documentation
+   - Check field names are spelled correctly
+   - Verify entity relationships exist
+
+3. **Data Issues**
+   - Verify entity IDs exist and are accessible
+   - Check required fields are provided when creating entities
+   - Ensure data types match expected formats
+
+4. **Performance Problems**
+   - Reduce the number of included relations
+   - Use more specific where clauses
+   - Implement pagination for large datasets
+   - Consider caching frequently accessed data
+
+## Next Steps
+
+- Explore the [Enterprise Use Cases](enterprise-use-cases.md) for complex organizational scenarios
+- Review the [Data Analysis](data-analysis.md) guide for analytics and reporting patterns
+- Check the [Advanced Queries](advanced-queries.md) guide for more complex query examples

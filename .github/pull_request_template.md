@@ -2,65 +2,53 @@
 
 <!-- Provide a brief description of the changes in this PR -->
 
-## Related Issue
-
-<!-- Link to the issue this PR addresses, if applicable -->
-Fixes #(issue number)
-
 ## Type of Change
 
-<!-- Mark the relevant option with an "x" -->
+- [ ] Bug fix (non-breaking change which fixes an issue)
+- [ ] New feature (non-breaking change which adds functionality)
+- [ ] Breaking change (fix or feature that would cause existing functionality to not work as expected)
+- [ ] Documentation update
+- [ ] Semantic operation (intelligent workflow implementation)
 
-- [ ] 🐛 Bug fix (non-breaking change which fixes an issue)
-- [ ] ✨ New feature (non-breaking change which adds functionality)
-- [ ] 💥 Breaking change (fix or feature that would cause existing functionality to not work as expected)
-- [ ] 📚 Documentation update
-- [ ] 🔧 Configuration change
-- [ ] ♻️ Refactoring (no functional changes)
+## Semantic Operations Checklist
 
-## Changes Made
+**⚠️ REQUIRED: This project uses semantic operations, not simple API wrappers!**
 
-<!-- List the specific changes made in this PR -->
+- [ ] **I have read and understood the [Semantic Operations Documentation](../docs/semantic-operations/)**
+- [ ] **I have read [CONTRIBUTING.md](../CONTRIBUTING.md) completely**
+- [ ] **I understand the difference between semantic operations and API wrappers**
 
-- 
-- 
-- 
+### If adding/modifying operations:
+
+- [ ] The operation provides intelligent workflow assistance, not just data access
+- [ ] It discovers capabilities dynamically rather than hardcoding assumptions
+- [ ] It provides helpful guidance when things go wrong
+- [ ] It adapts based on user role when appropriate
+- [ ] It suggests logical next steps in the workflow
+
+### If adding a raw tool:
+
+- [ ] I've considered if this should be a semantic operation instead
+- [ ] I've documented why this needs to be a low-level tool
+- [ ] The tool supports semantic operations built on top of it
 
 ## Testing
 
-<!-- Describe the tests you ran to verify your changes -->
+- [ ] I have tested my changes locally
+- [ ] I have added tests for my changes
+- [ ] All tests pass
+- [ ] I have tested with different user roles (if applicable)
 
-- [ ] Unit tests pass locally
-- [ ] Manual testing completed
-- [ ] Tested with MCP client (specify which one)
+## Documentation
 
-### Test Configuration
-- Node.js version:
-- Operating System:
-- Targetprocess version (if relevant):
-
-## Checklist
-
-<!-- Mark completed items with an "x" -->
-
-- [ ] My code follows the project's style guidelines
-- [ ] I have performed a self-review of my own code
-- [ ] I have commented my code, particularly in hard-to-understand areas
-- [ ] I have made corresponding changes to the documentation
-- [ ] My changes generate no new warnings
-- [ ] I have added tests that prove my fix is effective or that my feature works
-- [ ] New and existing unit tests pass locally with my changes
-- [ ] Any dependent changes have been merged and published
-
-## Security Considerations
-
-<!-- For features that handle user input or external data -->
-
-- [ ] Input validation has been implemented
-- [ ] No sensitive data is logged
-- [ ] Error messages don't expose internal details
-- [ ] File operations are properly sandboxed (if applicable)
+- [ ] I have updated relevant documentation
+- [ ] My code includes appropriate comments
+- [ ] I have updated the README if needed
 
 ## Additional Notes
 
-<!-- Add any additional notes, concerns, or discussion points -->
+<!-- Any additional information that reviewers should know -->
+
+---
+
+**Remember:** We're building intelligent assistants that understand work context, not just API wrappers. If your contribution doesn't align with this philosophy, please reconsider your approach.
