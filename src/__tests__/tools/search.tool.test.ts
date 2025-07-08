@@ -19,9 +19,7 @@ describe('SearchTool', () => {
         createMockEntity('UserStory', { Name: 'Story 2' })
       ];
       
-      mockService.searchEntities.mockResolvedValue(
-        createMockSearchResponse(mockStories)
-      );
+      mockService.searchEntities.mockResolvedValue(mockStories);
 
       const result = await searchTool.execute({
         entityType: 'UserStory',
@@ -30,14 +28,19 @@ describe('SearchTool', () => {
 
       expect(mockService.searchEntities).toHaveBeenCalledWith(
         'UserStory',
-        { take: 10 }
+        undefined,  // where
+        undefined,  // include
+        10,         // take
+        undefined   // orderBy
       );
       
       expect(result).toMatchObject({
-        success: true,
-        entities: mockStories,
-        total: 2,
-        hasMore: false
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(mockStories, null, 2)
+          }
+        ]
       });
     });
 
@@ -49,9 +52,7 @@ describe('SearchTool', () => {
         })
       ];
       
-      mockService.searchEntities.mockResolvedValue(
-        createMockSearchResponse(mockBugs)
-      );
+      mockService.searchEntities.mockResolvedValue(mockBugs);
 
       const result = await searchTool.execute({
         entityType: 'Bug',

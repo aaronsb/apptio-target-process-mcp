@@ -7,6 +7,18 @@ assignees: ''
 
 ---
 
+## 🎯 Semantic Operations Context
+
+**Which type of operation were you using?**
+- [ ] Raw tool (search_entities, get_entity, etc.)
+- [ ] Semantic operation (show_my_tasks, start_working_on, etc.)
+- [ ] Not sure
+
+**If using semantic operations:**
+- User role: [developer/project-manager/tester/product-owner]
+- Did discovery fail? [Yes/No/Not sure]
+- Did it fall back to basic behavior? [Yes/No/Not sure]
+
 **Describe the bug**
 A clear and concise description of what the bug is.
 
@@ -45,3 +57,7 @@ Please paste any error messages here
 
 **Additional context**
 Add any other context about the problem here.
+
+---
+
+**Note:** If this is about semantic operations not being "intelligent enough", that's valuable feedback! We want operations that truly understand workflows and provide helpful guidance.

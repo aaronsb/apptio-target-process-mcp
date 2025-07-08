@@ -8,6 +8,8 @@ This guide will help you quickly set up and start using the Targetprocess MCP Se
 - **Docker** (for containerized deployment) or **Node.js 20+** (for local development).
 - **AI Assistant**: An LLM that supports the Model Context Protocol (Claude, ChatGPT, etc.).
 
+> **Security Note:** For authentication options and best practices, see the [Security & Authentication Guide](security-and-authentication.md).
+
 ## Installation Options
 
 ### Quick Start with Docker

@@ -1,0 +1,58 @@
+# Source files
+src/
+*.ts
+!build/**/*.d.ts
+
+# Test files
+__tests__/
+*.test.js
+*.test.ts
+jest.config.js
+coverage/
+
+# Development files
+.github/
+.vscode/
+docs/
+scripts/
+resources/
+config/
+
+# Environment and config files
+.env
+.env.*
+*.local.json
+targetprocess.json
+config/targetprocess.json
+
+# Build and development
+tsconfig.json
+.eslintrc.json
+.prettierrc
+.editorconfig
+.gitleaks.toml
+.gitignore
+
+# Docker files
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Logs and temporary files
+*.log
+npm-debug.log*
+.DS_Store
+tmp/
+temp/
+
+# CI/CD
+.travis.yml
+.gitlab-ci.yml
+
+# Repository files
+CONTRIBUTING.md
+CODE_OF_CONDUCT.md
+CLAUDE.md
+CLAUDE.local.md
+renovate.json
+.git*
