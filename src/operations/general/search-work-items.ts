@@ -39,8 +39,9 @@ export class SearchWorkItemsOperation implements SemanticOperation<SearchWorkIte
       const types = ['UserStory', 'Bug', 'Task', 'Feature'];
       const results: any[] = [];
 
-      // Build where clause
-      let whereClause = `Name contains '${params.query}' or Description contains '${params.query}'`;
+      // Build where clause - escape quotes in query
+      const escapedQuery = params.query.replace(/'/g, "\\'");
+      let whereClause = `Name contains '${escapedQuery}'`;
       if (params.projectId) {
         whereClause = `(${whereClause}) and Project.Id = ${params.projectId}`;
       }
@@ -61,7 +62,8 @@ export class SearchWorkItemsOperation implements SemanticOperation<SearchWorkIte
             EntityType: type
           })));
         } catch (error) {
-          logger.warn(`Failed to search ${type}: ${error}`);
+          logger.warn(`Failed to search ${type}: ${error instanceof Error ? error.message : String(error)}`);
+          // Continue with other entity types even if one fails
         }
       }
 
