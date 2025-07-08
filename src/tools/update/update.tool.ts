@@ -73,7 +73,7 @@ export class UpdateEntityTool {
   static getDefinition() {
     return {
       name: 'update_entity',
-      description: 'Update an existing Target Process entity',
+      description: 'Update an existing Target Process entity. Common updates: name, description, status (requires status.id), assignedUser (requires user.id).',
       inputSchema: {
         type: 'object',
         properties: {
@@ -101,7 +101,7 @@ export class UpdateEntityTool {
                 properties: {
                   id: {
                     type: 'number',
-                    description: 'Status ID to set',
+                    description: 'Status ID to set (must be valid EntityState ID for this entity type)',
                   },
                 },
                 required: ['id'],

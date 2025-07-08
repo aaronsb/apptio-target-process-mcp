@@ -174,13 +174,16 @@ export class TPService {
 
   /**
    * Formats orderBy parameters according to TargetProcess rules
+   * TargetProcess API only accepts field names, no direction keywords
    */
   private formatOrderBy(orderBy: OrderByOption[]): string {
     return orderBy.map(item => {
       if (typeof item === 'string') {
-        return this.formatWhereField(item);
+        // Remove any direction keywords that might be present
+        const fieldName = item.replace(/\s+(desc|asc)$/i, '').trim();
+        return fieldName; // Don't use formatWhereField for orderBy - just return clean field name
       }
-      return `${this.formatWhereField(item.field)} ${item.direction}`;
+      return item.field; // For object format, just return the field name
     }).join(',');
   }
 
