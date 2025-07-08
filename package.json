@@ -33,14 +33,14 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "npm run check:secrets && tsc && node -e \"require('fs').chmodSync('build/index.js', '755')\"",
+    "build": "npm run check:secrets > /tmp/apptio-mcp-secrets.log 2>&1 && echo '✓ Secrets check passed' || (echo '✗ Secrets check failed - see /tmp/apptio-mcp-secrets.log' && cat /tmp/apptio-mcp-secrets.log && exit 1); tsc > /tmp/apptio-mcp-tsc.log 2>&1 && echo '✓ TypeScript compiled' || (echo '✗ TypeScript compilation failed - see /tmp/apptio-mcp-tsc.log' && tail -20 /tmp/apptio-mcp-tsc.log && exit 1); chmod 755 build/index.js && echo '✓ Build complete!'",
     "prepare": "[ \"$NODE_ENV\" != \"production\" ] && npm run build || exit 0",
     "watch": "tsc --watch",
     "inspector": "npx @modelcontextprotocol/inspector build/index.js",
-    "lint": "rm -rf build && eslint 'src/**/*.ts'",
+    "lint": "eslint 'src/**/*.ts' > /tmp/apptio-mcp-lint.log 2>&1 && echo '✓ Linting passed' || (echo '✗ Linting failed - see /tmp/apptio-mcp-lint.log' && cat /tmp/apptio-mcp-lint.log && exit 1)",
     "test": "jest",
     "check:secrets": "node scripts/check-secrets.cjs",
-    "prebuild": "npm run lint",
+    "prebuild": "rm -rf build && npm run lint",
     "precommit": "npm run check:secrets && npm run lint",
     "prepublishOnly": "npm run test && npm run build",
     "start": "node build/index.js",
