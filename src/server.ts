@@ -463,8 +463,17 @@ export class TargetProcessServer {
         
         // Handle core tools
         switch (toolName) {
-          case 'search_entities':
-            return await this.tools.search.execute(request.params.arguments);
+          case 'search_entities': {
+            // Apply pagination to search results
+            const searchResult = await this.tools.search.execute(request.params.arguments);
+            const formattedResult = this.formatSemanticResult(searchResult);
+            return {
+              content: [{
+                type: 'text',
+                text: formattedResult
+              }]
+            };
+          }
           case 'get_entity':
             return await this.tools.get.execute(request.params.arguments);
           case 'create_entity':

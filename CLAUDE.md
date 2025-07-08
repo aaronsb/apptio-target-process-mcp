@@ -309,3 +309,7 @@ See the [toolkit integration guide](docs/integration/toolkit-integration.md) for
 - Improved query system with better validation and error handling
 - Added context builder and resource provider components
 - Added IBM watsonx Orchestrate toolkit integration support
+
+## Architecture Notes
+
+**All operations are semantic operations** - The server is designed so that all user-facing operations go through the semantic layer and `formatSemanticResult()`. This ensures consistent behavior, automatic pagination, and proper result formatting across all tools. Raw MCP tools should only be used for internal system operations.
