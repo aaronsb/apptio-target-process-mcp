@@ -2,6 +2,7 @@ import { FeatureModule } from '../../core/interfaces/semantic-operation.interfac
 import { TPService } from '../../api/client/tp.service.js';
 import { SearchWorkItemsOperation } from './search-work-items.js';
 import { AddCommentOperation } from '../work/add-comment.js';
+import { ShowCommentsOperation } from '../work/show-comments.js';
 
 /**
  * General operations available to all users including default personality
@@ -29,6 +30,9 @@ export class GeneralOperations implements FeatureModule {
     // Register shared operations (available to all roles with role-specific adaptations)
     const addComment = new AddCommentOperation(this.service);
     this._operations[addComment.metadata.id] = addComment;
+    
+    const showComments = new ShowCommentsOperation(this.service);
+    this._operations[showComments.metadata.id] = showComments;
   }
 
   get operations() {

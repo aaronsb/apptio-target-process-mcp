@@ -4,7 +4,8 @@
   "description": "Default personality with general-purpose semantic operations for all users",
   "availableOperations": [
     "search-work-items",
-    "add-comment"
+    "add-comment",
+    "show-comments"
   ],
   "workflowHints": {
     "dailyStart": ["search-work-items"],

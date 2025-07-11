@@ -407,6 +407,33 @@ export class TPService {
   }
 
   /**
+   * Get comments for an entity
+   */
+  async getComments(entityType: string, entityId: number): Promise<any> {
+    try {
+      // Validate entity type
+      const validatedType = await this.validateEntityType(entityType);
+
+      return await this.executeWithRetry(async () => {
+        const response = await fetch(`${this.baseUrl}/${validatedType}/${entityId}/Comments`, {
+          headers: this.getHeaders()
+        });
+
+        return await this.handleApiResponse<any>(
+          response,
+          `get comments for ${validatedType} ${entityId}`
+        );
+      }, `get comments for ${validatedType} ${entityId}`);
+    } catch (error) {
+      if (error instanceof McpError) throw error;
+      throw new McpError(
+        ErrorCode.InternalError,
+        `Failed to get comments: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+  }
+
+  /**
    * Create a comment on an entity
    */
   async createComment(entityId: number, description: string, isPrivate?: boolean): Promise<any> {
