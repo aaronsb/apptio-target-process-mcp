@@ -10,6 +10,7 @@ import { CompleteTaskOperation } from './complete-task.js';
 import { ShowMyBugsOperation } from './show-my-bugs.js';
 import { LogTimeOperation } from './log-time.js';
 import { ShowCommentsOperation } from './show-comments.js';
+import { DeleteCommentOperation } from './delete-comment.js';
 import { logger } from '../../utils/logger.js';
 
 /**
@@ -60,6 +61,7 @@ export class WorkOperations implements FeatureModule {
     
     // Comment Operations
     this.operations['show-comments'] = new ShowCommentsOperation(this.tpService);
+    this.operations['delete-comment'] = new DeleteCommentOperation(this.tpService);
     
     
     // TODO: Implement these operations

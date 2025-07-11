@@ -5,7 +5,8 @@
   "availableOperations": [
     "search-work-items",
     "add-comment",
-    "show-comments"
+    "show-comments",
+    "delete-comment"
   ],
   "workflowHints": {
     "dailyStart": ["search-work-items"],

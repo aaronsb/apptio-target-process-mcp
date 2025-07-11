@@ -3,6 +3,7 @@ import { TPService } from '../../api/client/tp.service.js';
 import { SearchWorkItemsOperation } from './search-work-items.js';
 import { AddCommentOperation } from '../work/add-comment.js';
 import { ShowCommentsOperation } from '../work/show-comments.js';
+import { DeleteCommentOperation } from '../work/delete-comment.js';
 
 /**
  * General operations available to all users including default personality
@@ -33,6 +34,9 @@ export class GeneralOperations implements FeatureModule {
     
     const showComments = new ShowCommentsOperation(this.service);
     this._operations[showComments.metadata.id] = showComments;
+    
+    const deleteComment = new DeleteCommentOperation(this.service);
+    this._operations[deleteComment.metadata.id] = deleteComment;
   }
 
   get operations() {

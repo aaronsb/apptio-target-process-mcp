@@ -434,6 +434,25 @@ export class TPService {
   }
 
   /**
+   * Delete a comment by ID
+   */
+  async deleteComment(commentId: number): Promise<boolean> {
+    return await this.executeWithRetry(async () => {
+      const response = await fetch(`${this.baseUrl}/Comments/${commentId}`, {
+        method: 'DELETE',
+        headers: this.getHeaders()
+      });
+
+      if (response.ok) {
+        return true;
+      } else {
+        const errorText = await this.extractErrorMessage(response);
+        throw new Error(`Failed to delete comment ${commentId}: ${response.status} - ${errorText}`);
+      }
+    }, `delete comment ${commentId}`);
+  }
+
+  /**
    * Create a comment on an entity
    */
   async createComment(entityId: number, description: string, isPrivate?: boolean, parentCommentId?: number): Promise<any> {
