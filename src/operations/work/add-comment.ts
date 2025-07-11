@@ -8,9 +8,9 @@ import { TPService } from '../../api/client/tp.service.js';
 
 const AddCommentParamsSchema = z.object({
   entityType: z.string().describe('Type of entity to comment on (Task, Bug, UserStory, etc.)'),
-  entityId: z.number().describe('ID of the entity to comment on'),
+  entityId: z.coerce.number().describe('ID of the entity to comment on'),
   comment: z.string().min(1).describe('Comment text to add'),
-  isPrivate: z.boolean().optional().default(false).describe('Whether the comment should be private (visible only to team members)')
+  isPrivate: z.coerce.boolean().optional().default(false).describe('Whether the comment should be private (visible only to team members)')
 });
 
 type AddCommentParams = z.infer<typeof AddCommentParamsSchema>;
@@ -156,8 +156,7 @@ export class AddCommentOperation implements SemanticOperation<AddCommentParams> 
       // First, verify the entity exists and get its details
       const entity = await this.service.getEntity(
         validatedParams.entityType,
-        validatedParams.entityId,
-        ['Name', 'EntityState', 'AssignedUser', 'Project', 'Priority', 'Severity']
+        validatedParams.entityId
       ) as any;
 
       if (!entity) {
@@ -183,18 +182,12 @@ export class AddCommentOperation implements SemanticOperation<AddCommentParams> 
       const userRole = context.user.role || 'default';
       const formattedComment = this.formatContent(validatedParams.comment, userRole, entity);
       
-      // Create the comment
-      const commentData: any = {
-        Description: formattedComment,
-        General: { Id: validatedParams.entityId }
-      };
-
-      // Add privacy settings if supported
-      if (validatedParams.isPrivate) {
-        commentData.IsPrivate = true;
-      }
-
-      const comment = await this.service.createEntity('Comment', commentData) as any;
+      // Create the comment using the proper API method
+      const comment = await this.service.createComment(
+        validatedParams.entityId,
+        formattedComment,
+        validatedParams.isPrivate
+      );
 
       // Build response with context
       const contextInfo = this.buildEntityContext(entity);

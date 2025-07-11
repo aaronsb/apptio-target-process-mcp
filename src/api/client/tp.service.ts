@@ -407,6 +407,36 @@ export class TPService {
   }
 
   /**
+   * Create a comment on an entity
+   */
+  async createComment(entityId: number, description: string, isPrivate?: boolean): Promise<any> {
+    const commentData: any = {
+      General: { Id: entityId },
+      Description: description
+    };
+
+    if (isPrivate) {
+      commentData.IsPrivate = true;
+    }
+
+    return await this.executeWithRetry(async () => {
+      const response = await fetch(`${this.baseUrl}/Comments`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...this.getHeaders()
+        },
+        body: JSON.stringify(commentData)
+      });
+
+      return await this.handleApiResponse<any>(
+        response,
+        `create comment on entity ${entityId}`
+      );
+    }, `create comment on entity ${entityId}`);
+  }
+
+  /**
    * Get a single entity by ID
    */
   async getEntity<T>(
