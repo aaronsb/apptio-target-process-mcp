@@ -10,7 +10,8 @@ const AddCommentParamsSchema = z.object({
   entityType: z.string().describe('Type of entity to comment on (Task, Bug, UserStory, etc.)'),
   entityId: z.coerce.number().describe('ID of the entity to comment on'),
   comment: z.string().min(1).describe('Comment text to add'),
-  isPrivate: z.coerce.boolean().optional().default(false).describe('Whether the comment should be private (visible only to team members)')
+  isPrivate: z.coerce.boolean().optional().default(false).describe('Whether the comment should be private (visible only to team members)'),
+  parentCommentId: z.coerce.number().optional().describe('ID of the parent comment to reply to (leave empty for root comment)')
 });
 
 type AddCommentParams = z.infer<typeof AddCommentParamsSchema>;
@@ -45,7 +46,8 @@ export class AddCommentOperation implements SemanticOperation<AddCommentParams> 
     examples: [
       'add-comment entityType:Task entityId:12345 comment:"Fixed the login issue, ready for testing"',
       'add-comment entityType:Bug entityId:67890 comment:"Cannot reproduce in dev environment" isPrivate:true',
-      'add-comment entityType:UserStory entityId:11111 comment:"Added acceptance criteria based on customer feedback"'
+      'add-comment entityType:UserStory entityId:11111 comment:"Added acceptance criteria based on customer feedback"',
+      'add-comment entityType:UserStory entityId:11111 comment:"Thanks for the clarification!" parentCommentId:207218'
     ]
   };
 
@@ -186,7 +188,8 @@ export class AddCommentOperation implements SemanticOperation<AddCommentParams> 
       const comment = await this.service.createComment(
         validatedParams.entityId,
         formattedComment,
-        validatedParams.isPrivate
+        validatedParams.isPrivate,
+        validatedParams.parentCommentId
       );
 
       // Build response with context
@@ -197,7 +200,7 @@ export class AddCommentOperation implements SemanticOperation<AddCommentParams> 
         content: [
           {
             type: 'text',
-            text: this.formatSuccessMessage(entity, formattedComment, validatedParams.isPrivate)
+            text: this.formatSuccessMessage(entity, formattedComment, validatedParams.isPrivate, validatedParams.parentCommentId)
           },
           {
             type: 'structured-data',
@@ -257,11 +260,12 @@ export class AddCommentOperation implements SemanticOperation<AddCommentParams> 
     }
   }
 
-  private formatSuccessMessage(entity: any, comment: string, isPrivate: boolean): string {
+  private formatSuccessMessage(entity: any, comment: string, isPrivate: boolean, parentCommentId?: number): string {
     const privacy = isPrivate ? ' (private)' : '';
+    const replyText = parentCommentId ? ' reply' : '';
     const preview = comment.length > 50 ? comment.substring(0, 50) + '...' : comment;
     
-    return `✅ Comment added${privacy} to ${entity.Name}\n\n💬 "${preview}"\n\n📋 Entity: ${entity.EntityState?.Name || 'Unknown'} | 👤 ${entity.AssignedUser?.FirstName ? `${entity.AssignedUser.FirstName} ${entity.AssignedUser.LastName}` : 'Unassigned'}`;
+    return `✅ Comment${replyText} added${privacy} to ${entity.Name}${parentCommentId ? ` (replying to comment #${parentCommentId})` : ''}\n\n💬 "${preview}"\n\n📋 Entity: ${entity.EntityState?.Name || 'Unknown'} | 👤 ${entity.AssignedUser?.FirstName ? `${entity.AssignedUser.FirstName} ${entity.AssignedUser.LastName}` : 'Unassigned'}`;
   }
 
   private buildEntityContext(entity: any): string {

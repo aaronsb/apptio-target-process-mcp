@@ -436,7 +436,7 @@ export class TPService {
   /**
    * Create a comment on an entity
    */
-  async createComment(entityId: number, description: string, isPrivate?: boolean): Promise<any> {
+  async createComment(entityId: number, description: string, isPrivate?: boolean, parentCommentId?: number): Promise<any> {
     const commentData: any = {
       General: { Id: entityId },
       Description: description
@@ -444,6 +444,10 @@ export class TPService {
 
     if (isPrivate) {
       commentData.IsPrivate = true;
+    }
+
+    if (parentCommentId) {
+      commentData.ParentId = parentCommentId;
     }
 
     return await this.executeWithRetry(async () => {
