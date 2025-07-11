@@ -12,7 +12,8 @@
     "show-blockers",
     "schedule-meeting",
     "create-sprint-report",
-    "manage-backlog"
+    "manage-backlog",
+    "add-comment"
   ],
   "preferences": {
     "defaultView": "team",

@@ -9,7 +9,6 @@ import { StartWorkingOnOperation } from './start-working-on.js';
 import { CompleteTaskOperation } from './complete-task.js';
 import { ShowMyBugsOperation } from './show-my-bugs.js';
 import { LogTimeOperation } from './log-time.js';
-import { AddCommentOperation } from './add-comment.js';
 import { logger } from '../../utils/logger.js';
 
 /**
@@ -58,8 +57,6 @@ export class WorkOperations implements FeatureModule {
     // Time Management Operations
     this.operations['log-time'] = new LogTimeOperation(this.tpService);
     
-    // Collaboration Operations
-    this.operations['add-comment'] = new AddCommentOperation(this.tpService);
     
     // TODO: Implement these operations
     // this.operations['update-progress'] = new UpdateProgressOperation(this.tpService);

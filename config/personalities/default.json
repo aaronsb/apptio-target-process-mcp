@@ -3,7 +3,8 @@
   "name": "Default User",
   "description": "Default personality with general-purpose semantic operations for all users",
   "availableOperations": [
-    "search-work-items"
+    "search-work-items",
+    "add-comment"
   ],
   "workflowHints": {
     "dailyStart": ["search-work-items"],

@@ -18,9 +18,20 @@ type AddCommentParams = z.infer<typeof AddCommentParamsSchema>;
 /**
  * Add Comment Operation
  * 
- * Adds comments to work items with context awareness and workflow suggestions.
- * Supports both public and private comments, validates entity existence,
- * and provides smart follow-up recommendations.
+ * Enhanced comment creation with role-specific templates and rich text formatting.
+ * 
+ * Features:
+ * - Role-based comment templates (Developer, Tester, Project Manager, Product Owner)
+ * - Rich text formatting with HTML and basic Markdown support
+ * - Context-aware follow-up suggestions
+ * - Public and private comment support
+ * - Entity validation and error handling
+ * 
+ * Role-specific templates:
+ * - Developer: Technical notes, code reviews, bug fixes
+ * - Tester: Test results, bug reproduction, quality observations
+ * - Project Manager: Status updates, team coordination, risk management
+ * - Product Owner: Business justification, stakeholder feedback, requirements
  */
 export class AddCommentOperation implements SemanticOperation<AddCommentParams> {
   constructor(private service: TPService) {}
@@ -28,15 +39,115 @@ export class AddCommentOperation implements SemanticOperation<AddCommentParams> 
   metadata = {
     id: 'add-comment',
     name: 'Add Comment',
-    description: 'Add comments to tasks, bugs, and other work items with smart context awareness',
+    description: 'Add comments to tasks, bugs, and other work items with smart context awareness and role-specific formatting',
     category: 'collaboration',
-    requiredPersonalities: ['developer', 'tester', 'project-manager', 'product-manager'],
+    requiredPersonalities: ['default', 'developer', 'tester', 'project-manager', 'product-manager'],
     examples: [
       'add-comment entityType:Task entityId:12345 comment:"Fixed the login issue, ready for testing"',
       'add-comment entityType:Bug entityId:67890 comment:"Cannot reproduce in dev environment" isPrivate:true',
       'add-comment entityType:UserStory entityId:11111 comment:"Added acceptance criteria based on customer feedback"'
     ]
   };
+
+  /**
+   * Get role-specific comment templates
+   */
+  getTemplates(role: string): string[] {
+    switch (role) {
+      case 'developer':
+        return [
+          'Fixed: [Brief description of what was fixed]',
+          'Code review: [Feedback on implementation]',
+          'Technical note: [Implementation details or considerations]',
+          'Testing: [Test results or testing approach]',
+          'Blocked: [What is blocking progress and next steps]'
+        ];
+      
+      case 'tester':
+        return [
+          'Test results: [Pass/Fail with details]',
+          'Bug reproduction: [Steps to reproduce the issue]',
+          'Test coverage: [Areas tested and coverage notes]',
+          'Quality observation: [Quality concerns or improvements]',
+          'Ready for testing: [Item ready for QA review]'
+        ];
+      
+      case 'project-manager':
+        return [
+          'Status update: [Current status and next steps]',
+          'Team coordination: [Team communication or assignments]',
+          'Risk identified: [Risk description and mitigation plan]',
+          'Meeting notes: [Key decisions or action items]',
+          'Resource allocation: [Resource changes or needs]'
+        ];
+      
+      case 'product-manager':
+      case 'product-owner':
+        return [
+          'Business justification: [Why this change is important]',
+          'Stakeholder feedback: [Input from stakeholders]',
+          'Requirements clarification: [Clarification on requirements]',
+          'Acceptance criteria: [Updated or new acceptance criteria]',
+          'Priority change: [Priority adjustment with reasoning]'
+        ];
+      
+      default:
+        return [
+          'Update: [General status update]',
+          'Note: [General comment or observation]',
+          'Follow-up: [Next steps or follow-up actions]'
+        ];
+    }
+  }
+
+  /**
+   * Format comment content based on role and context
+   */
+  formatContent(content: string, role: string, entity?: any): string {
+    const timestamp = new Date().toISOString().split('T')[0];
+    
+    // Convert basic markdown to HTML for TargetProcess
+    const htmlContent = this.convertMarkdownToHtml(content);
+    
+    switch (role) {
+      case 'developer':
+        return `<div><strong>💻 Developer Update</strong> (${timestamp})</div><div><br/></div><div>${htmlContent}</div>`;
+      
+      case 'tester':
+        return `<div><strong>🧪 QA Update</strong> (${timestamp})</div><div><br/></div><div>${htmlContent}</div>`;
+      
+      case 'project-manager':
+        return `<div><strong>📋 Project Update</strong> (${timestamp})</div><div><br/></div><div>${htmlContent}</div>`;
+      
+      case 'product-manager':
+      case 'product-owner':
+        return `<div><strong>🎯 Product Update</strong> (${timestamp})</div><div><br/></div><div>${htmlContent}</div>`;
+      
+      default:
+        return `<div><strong>📝 Update</strong> (${timestamp})</div><div><br/></div><div>${htmlContent}</div>`;
+    }
+  }
+
+  /**
+   * Convert basic markdown to HTML for TargetProcess
+   */
+  private convertMarkdownToHtml(content: string): string {
+    return content
+      // Bold: **text** or __text__
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/__(.*?)__/g, '<strong>$1</strong>')
+      // Italic: *text* or _text_
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/_(.*?)_/g, '<em>$1</em>')
+      // Code: `code`
+      .replace(/`(.*?)`/g, '<code>$1</code>')
+      // Line breaks
+      .replace(/\n\n/g, '</div><div><br/></div><div>')
+      .replace(/\n/g, '<br/>')
+      // Lists (basic support)
+      .replace(/^- (.*$)/gm, '<li>$1</li>')
+      .replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
+  }
 
   async execute(context: ExecutionContext, params: AddCommentParams): Promise<OperationResult> {
     try {
@@ -68,12 +179,14 @@ export class AddCommentOperation implements SemanticOperation<AddCommentParams> 
         };
       }
 
+      // Format comment based on user role (with fallback for default/unknown roles)
+      const userRole = context.user.role || 'default';
+      const formattedComment = this.formatContent(validatedParams.comment, userRole, entity);
+      
       // Create the comment
       const commentData: any = {
-        Name: `Comment on ${validatedParams.entityType} ${validatedParams.entityId}`,
-        Description: validatedParams.comment,
-        General: { Id: validatedParams.entityId },
-        User: { Id: context.user.id }
+        Description: formattedComment,
+        General: { Id: validatedParams.entityId }
       };
 
       // Add privacy settings if supported
@@ -91,17 +204,18 @@ export class AddCommentOperation implements SemanticOperation<AddCommentParams> 
         content: [
           {
             type: 'text',
-            text: this.formatSuccessMessage(entity, validatedParams.comment, validatedParams.isPrivate)
+            text: this.formatSuccessMessage(entity, formattedComment, validatedParams.isPrivate)
           },
           {
             type: 'structured-data',
             data: {
               comment: {
                 id: comment.Id,
-                description: comment.Description,
+                description: formattedComment,
                 user: comment.User,
                 createdDate: comment.CreateDate,
-                isPrivate: validatedParams.isPrivate
+                isPrivate: validatedParams.isPrivate,
+                userRole: userRole
               },
               entity: {
                 id: entity.Id,
