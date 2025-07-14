@@ -5,6 +5,7 @@ import {
   OperationResult 
 } from '../../core/interfaces/semantic-operation.interface.js';
 import { TPService } from '../../api/client/tp.service.js';
+import { logger } from '../../utils/logger.js';
 
 export const addCommentSchema = z.object({
   entityType: z.string().describe('Type of entity to comment on (Task, Bug, UserStory, etc.)'),
@@ -166,184 +167,515 @@ export class AddCommentOperation implements SemanticOperation<AddCommentParams> 
     try {
       const validatedParams = addCommentSchema.parse(params);
       
-      // Validate entity exists
-      const entity = await this.validateEntity(validatedParams.entityType, validatedParams.entityId);
+      // Validate and analyze entity with full context
+      const entity = await this.fetchEntityWithContext(validatedParams.entityType, validatedParams.entityId);
       if (!entity) {
-        return this.createErrorResponse(`${validatedParams.entityType} with ID ${validatedParams.entityId} not found`);
+        return this.createNotFoundResponse(validatedParams.entityType, validatedParams.entityId);
       }
 
-      // Create formatted comment
-      const userRole = context.user.role || 'default';
-      const formattedComment = this.formatContent(validatedParams.comment, userRole, entity);
+      // Discover comment capabilities for this entity type
+      const commentCapabilities = await this.discoverCommentCapabilities(validatedParams.entityType);
       
-      // Create comment via API
-      const comment = await this.service.createComment(
-        validatedParams.entityId,
-        formattedComment,
-        validatedParams.isPrivate,
-        validatedParams.parentCommentId
+      // Analyze entity context for intelligent suggestions
+      const entityContext = await this.analyzeEntityContext(entity, validatedParams.entityType);
+      
+      // Generate role-based comment with discovered context
+      const formattedComment = await this.generateIntelligentComment(
+        validatedParams.comment, 
+        context.user.role,
+        entity,
+        entityContext,
+        commentCapabilities
+      );
+      
+      // Create comment with proper error handling
+      let comment;
+      try {
+        comment = await this.service.createComment(
+          validatedParams.entityId,
+          formattedComment,
+          validatedParams.isPrivate,
+          validatedParams.parentCommentId
+        );
+      } catch (commentError) {
+        // Provide intelligent fallback guidance
+        return this.createCommentErrorResponse(commentError, entity, validatedParams, commentCapabilities);
+      }
+
+      // Build response with workflow-aware suggestions
+      return this.buildIntelligentResponse(
+        entity, 
+        comment, 
+        validatedParams, 
+        context,
+        entityContext,
+        formattedComment
       );
 
-      // Build response
-      return this.buildSuccessResponse(entity, comment, validatedParams, userRole, formattedComment, context);
-
     } catch (error) {
-      return this.createErrorResponse(`Failed to add comment: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      // Educational error handling
+      if (error instanceof z.ZodError) {
+        return this.createValidationErrorResponse(error);
+      }
+      return this.createDiscoveryErrorResponse(error);
     }
   }
 
-  private async validateEntity(entityType: string, entityId: number): Promise<any> {
-    return await this.service.getEntity(entityType, entityId) as any;
+
+  // New methods for true semantic operation behavior
+
+  private async fetchEntityWithContext(entityType: string, entityId: number): Promise<any> {
+    const includes = [
+      'EntityState',
+      'Project',
+      'AssignedUser',
+      'Owner',
+      'Team',
+      'Priority',
+      'Severity',
+      'Tags',
+      'CustomFields',
+      'StartDate',
+      'EndDate',
+      'CreateDate',
+      'ModifyDate'
+    ];
+
+    // Add type-specific includes
+    if (entityType === 'UserStory' || entityType === 'Bug') {
+      includes.push('Feature', 'Epic', 'Release');
+    }
+    if (entityType === 'Task') {
+      includes.push('UserStory', 'Iteration');
+    }
+
+    try {
+      return await this.service.getEntity(entityType, entityId, includes);
+    } catch (error) {
+      logger.warn(`Failed to fetch entity with full context: ${error}`);
+      // Try with minimal includes
+      return await this.service.getEntity(entityType, entityId, ['EntityState', 'Project', 'AssignedUser']);
+    }
   }
 
-  private createErrorResponse(message: string): OperationResult {
+  private async discoverCommentCapabilities(entityType: string): Promise<any> {
+    const capabilities: any = {
+      supportsPrivateComments: true,
+      supportsRichText: true,
+      supportsAttachments: false,
+      supportsThreading: true,
+      commentTypes: [],
+      notificationRules: []
+    };
+
+    try {
+      // Try to discover comment types
+      const commentTypes = await this.service.searchEntities(
+        'CommentType',
+        `EntityType.Name eq '${entityType}'`,
+        ['Name', 'Description'],
+        10
+      ).catch(() => []);
+
+      if (commentTypes.length > 0) {
+        capabilities.commentTypes = commentTypes.map((t: any) => ({
+          id: t.Id,
+          name: t.Name,
+          description: t.Description
+        }));
+      }
+    } catch (error) {
+      logger.debug('CommentType entity not available in this TP instance');
+    }
+
+    // Discover notification patterns (this is illustrative - actual TP may differ)
+    try {
+      const notifications = await this.service.searchEntities(
+        'NotificationRule',
+        undefined,
+        ['Name', 'EntityType'],
+        5
+      ).catch(() => []);
+
+      capabilities.notificationRules = notifications.filter((n: any) => 
+        n.EntityType?.Name === entityType || n.EntityType?.Name === 'Comment'
+      );
+    } catch (error) {
+      logger.debug('NotificationRule discovery not available');
+    }
+
+    return capabilities;
+  }
+
+  private async analyzeEntityContext(entity: any, entityType: string): Promise<any> {
+    const context: any = {
+      workflowStage: {
+        currentState: entity.EntityState?.Name || 'Unknown',
+        isInitial: entity.EntityState?.IsInitial || false,
+        isFinal: entity.EntityState?.IsFinal || false,
+        isBlocked: await this.detectIfBlocked(entity)
+      },
+      teamContext: {
+        assignedUsers: this.extractAssignedUsers(entity),
+        projectName: entity.Project?.Name || 'Unknown',
+        hasAssignees: false
+      },
+      timing: {
+        daysInCurrentState: this.calculateDaysSince(entity.EntityState?.ModifyDate || entity.ModifyDate),
+        isOverdue: false
+      },
+      relatedMetrics: {}
+    };
+
+    // Check assignment
+    context.teamContext.hasAssignees = context.teamContext.assignedUsers.length > 0;
+
+    // Check if overdue
+    if (entity.EndDate) {
+      const endDate = new Date(entity.EndDate);
+      context.timing.isOverdue = endDate < new Date();
+    }
+
+    // Analyze priority/severity
+    if (entity.Priority) {
+      context.relatedMetrics.priorityLevel = entity.Priority.Importance || 999;
+      context.relatedMetrics.priorityName = entity.Priority.Name;
+    }
+    if (entity.Severity) {
+      context.relatedMetrics.severityLevel = entity.Severity.Importance || 999;
+      context.relatedMetrics.severityName = entity.Severity.Name;
+    }
+
+    return context;
+  }
+
+  private async generateIntelligentComment(
+    content: string,
+    role: string,
+    entity: any,
+    entityContext: any,
+    capabilities: any
+  ): Promise<string> {
+    const timestamp = new Date().toISOString().split('T')[0];
+    
+    // Convert basic markdown to HTML
+    const htmlContent = this.convertMarkdownToHtml(content);
+    
+    // Add contextual prefix based on entity state and role
+    let prefix = this.getRolePrefix(role, timestamp);
+    
+    // Add workflow context if relevant
+    if (entityContext.workflowStage.isBlocked && content.toLowerCase().includes('unblock')) {
+      prefix += ' 🚧 Unblocking';
+    } else if (entityContext.workflowStage.isFinal) {
+      prefix += ' ✅ Final State';
+    } else if (entityContext.timing.isOverdue) {
+      prefix += ' ⚠️ Overdue';
+    }
+
+    return `<div><strong>${prefix}</strong></div><div><br/></div><div>${htmlContent}</div>`;
+  }
+
+  private getRolePrefix(role: string, timestamp: string): string {
+    switch (role) {
+      case 'developer':
+        return `💻 Developer Update (${timestamp})`;
+      case 'tester':
+        return `🧪 QA Update (${timestamp})`;
+      case 'project-manager':
+        return `📋 Project Update (${timestamp})`;
+      case 'product-manager':
+      case 'product-owner':
+        return `🎯 Product Update (${timestamp})`;
+      default:
+        return `📝 Update (${timestamp})`;
+    }
+  }
+
+  private async detectIfBlocked(entity: any): Promise<boolean> {
+    const blockedIndicators = [
+      entity.Tags?.Items?.some((t: any) => t.Name.toLowerCase().includes('blocked')),
+      entity.CustomFields?.IsBlocked === true,
+      entity.Name?.toLowerCase().includes('blocked'),
+      entity.Description?.toLowerCase().includes('waiting for')
+    ];
+    
+    return blockedIndicators.some(indicator => indicator === true);
+  }
+
+  private extractAssignedUsers(entity: any): any[] {
+    const users: any[] = [];
+    
+    if (entity.AssignedUser?.Items?.length > 0) {
+      entity.AssignedUser.Items.forEach((user: any) => {
+        users.push({
+          id: user.Id,
+          name: `${user.FirstName || ''} ${user.LastName || ''}`.trim() || 'Unknown'
+        });
+      });
+    } else if (entity.AssignedUser?.Id) {
+      users.push({
+        id: entity.AssignedUser.Id,
+        name: `${entity.AssignedUser.FirstName || ''} ${entity.AssignedUser.LastName || ''}`.trim() || 'Unknown'
+      });
+    }
+    
+    return users;
+  }
+
+  private calculateDaysSince(date: string | Date): number {
+    if (!date) return 0;
+    const diff = Date.now() - new Date(date).getTime();
+    return Math.floor(diff / (1000 * 60 * 60 * 24));
+  }
+
+  private createNotFoundResponse(entityType: string, entityId: number): OperationResult {
     return {
       content: [{
-        type: 'error' as const,
-        text: message
+        type: 'text',
+        text: `💡 **Entity Discovery**: Could not find ${entityType} with ID ${entityId}`
+      }, {
+        type: 'text',
+        text: `🔍 **Smart Suggestions:**
+• The entity might have been deleted or archived
+• You might not have permissions to view this ${entityType}
+• The ID might be incorrect
+
+Try these alternatives:`
+      }],
+      suggestions: [
+        `search_entities type:${entityType} - Find available ${entityType}s`,
+        `get_entity type:${entityType} id:${entityId} - Get more details about the error`,
+        'show-my-tasks - View your assigned work items'
+      ]
+    };
+  }
+
+  private createCommentErrorResponse(
+    error: any,
+    entity: any,
+    params: AddCommentParams,
+    capabilities: any
+  ): OperationResult {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    
+    return {
+      content: [{
+        type: 'text',
+        text: `💡 **Comment Creation Discovery**: Unable to add comment to ${entity.Name}`
+      }, {
+        type: 'text',
+        text: `🔍 **What we learned:**
+• Entity exists and is in ${entity.EntityState?.Name || 'Unknown'} state
+• Comment capabilities: ${capabilities.supportsPrivateComments ? 'Private comments supported' : 'Only public comments'}
+• Threading: ${capabilities.supportsThreading ? 'Reply threads supported' : 'Flat comments only'}
+
+**Error details:** ${errorMessage}
+
+**Possible causes:**
+• Comments might be disabled for ${params.entityType} in ${entity.EntityState?.Name} state
+• Parent comment ID ${params.parentCommentId} might not exist
+• Your role might not have comment permissions`
+      }],
+      suggestions: [
+        `show-comments entityType:${params.entityType} entityId:${params.entityId} - View existing comments`,
+        `get_entity type:Comment id:${params.parentCommentId || 'ID'} - Verify parent comment exists`,
+        'inspect_object type:Comment - Learn about comment structure'
+      ]
+    };
+  }
+
+  private createValidationErrorResponse(error: z.ZodError): OperationResult {
+    const issues = error.errors.map(e => `• ${e.path.join('.')}: ${e.message}`).join('\n');
+    
+    return {
+      content: [{
+        type: 'text',
+        text: `❌ **Validation Error**: Invalid parameters for adding comment`
+      }, {
+        type: 'text',
+        text: `**Issues found:**
+${issues}
+
+**Valid parameters:**
+• entityType: Type of entity (Task, Bug, UserStory, etc.)
+• entityId: Numeric ID of the entity
+• comment: Your comment text (required, non-empty)
+• isPrivate: true/false for private comments (optional)
+• parentCommentId: ID of comment to reply to (optional)`
+      }],
+      suggestions: [
+        'show-my-tasks - View your tasks to get valid IDs',
+        'show-my-bugs - View your bugs to get valid IDs'
+      ]
+    };
+  }
+
+  private createDiscoveryErrorResponse(error: any): OperationResult {
+    return {
+      content: [{
+        type: 'text',
+        text: `⚠️ **Discovery Process Failed**: Unable to analyze entity context`
+      }, {
+        type: 'text',
+        text: `This might mean:
+• The TargetProcess API is temporarily unavailable
+• Your session might have expired
+• Network connectivity issues
+
+**Error:** ${error instanceof Error ? error.message : 'Unknown error'}
+
+You can still try adding a basic comment without advanced features.`
+      }],
+      suggestions: [
+        'search_entities type:Task take:1 - Test API connectivity',
+        'show-my-tasks - Verify your session is active'
+      ]
+    };
+  }
+
+  private async buildIntelligentResponse(
+    entity: any,
+    comment: any,
+    params: AddCommentParams,
+    context: ExecutionContext,
+    entityContext: any,
+    formattedComment: string
+  ): Promise<OperationResult> {
+    const suggestions = await this.generateWorkflowAwareSuggestions(
+      entity,
+      params,
+      context,
+      entityContext
+    );
+
+    const preview = this.extractCommentPreview(formattedComment);
+    
+    return {
+      content: [
+        {
+          type: 'text',
+          text: this.formatIntelligentSuccessMessage(entity, params, entityContext, preview)
+        },
+        {
+          type: 'structured-data',
+          data: {
+            comment: {
+              id: comment.Id,
+              entityId: params.entityId,
+              entityType: params.entityType,
+              isPrivate: params.isPrivate || false,
+              parentId: params.parentCommentId,
+              preview: preview
+            },
+            entity: {
+              id: entity.Id,
+              name: entity.Name,
+              type: params.entityType,
+              state: entity.EntityState?.Name,
+              project: entity.Project?.Name
+            },
+            context: {
+              workflowStage: entityContext.workflowStage.currentState,
+              isBlocked: entityContext.workflowStage.isBlocked,
+              daysInState: entityContext.timing.daysInCurrentState,
+              assigneeCount: entityContext.teamContext.assignedUsers.length
+            }
+          }
+        }
+      ],
+      suggestions: suggestions,
+      affectedEntities: [{
+        id: params.entityId,
+        type: params.entityType,
+        action: 'updated' as const
       }]
     };
   }
 
-  private async buildSuccessResponse(
-    entity: any, 
-    comment: any, 
-    params: AddCommentParams, 
-    userRole: string, 
-    formattedComment: string,
-    context: ExecutionContext
-  ): Promise<OperationResult> {
-    const contextInfo = this.buildEntityContext(entity);
-    const suggestions = await this.generateFollowUpSuggestions(entity, params, context);
-    const successMessage = this.formatSuccessMessage(entity, formattedComment, params.isPrivate, params.parentCommentId);
-
-    return {
-      content: [
-        { type: 'text' as const, text: successMessage },
-        {
-          type: 'structured-data' as const,
-          data: {
-            comment: this.buildCommentData(comment, params.isPrivate, userRole, formattedComment),
-            entity: this.buildEntityData(entity, params.entityType),
-            contextInfo,
-            nextSteps: suggestions
-          }
-        }
-      ],
-      suggestions: suggestions
-    };
+  private extractCommentPreview(htmlComment: string): string {
+    // Strip HTML tags for preview
+    const textOnly = htmlComment.replace(/<[^>]*>/g, ' ').trim();
+    return textOnly.length > 100 ? textOnly.substring(0, 100) + '...' : textOnly;
   }
 
-  private buildCommentData(comment: any, isPrivate: boolean, userRole: string, formattedComment: string) {
-    return {
-      id: comment.Id,
-      description: formattedComment,
-      user: comment.User,
-      createdDate: comment.CreateDate,
-      isPrivate: isPrivate,
-      userRole: userRole
-    };
-  }
-
-  private buildEntityData(entity: any, entityType: string) {
-    return {
-      id: entity.Id,
-      name: entity.Name,
-      type: entityType,
-      state: entity.EntityState?.Name,
-      assignedUser: entity.AssignedUser?.FirstName && entity.AssignedUser?.LastName 
-        ? `${entity.AssignedUser.FirstName} ${entity.AssignedUser.LastName}`
-        : 'Unassigned',
-      project: entity.Project?.Name || 'Unknown'
-    };
-  }
-
-  private formatSuccessMessage(entity: any, comment: string, isPrivate?: boolean, parentCommentId?: number): string {
-    const privacy = isPrivate ? ' (private)' : '';
-    const replyText = parentCommentId ? ' reply' : '';
-    const preview = comment.length > 50 ? comment.substring(0, 50) + '...' : comment;
+  private formatIntelligentSuccessMessage(
+    entity: any,
+    params: AddCommentParams,
+    context: any,
+    preview: string
+  ): string {
+    let message = `✅ Comment added to ${entity.Name}`;
     
-    return `✅ Comment${replyText} added${privacy} to ${entity.Name}${parentCommentId ? ` (replying to comment #${parentCommentId})` : ''}\n\n💬 "${preview}"\n\n📋 Entity: ${entity.EntityState?.Name || 'Unknown'} | 👤 ${entity.AssignedUser?.FirstName ? `${entity.AssignedUser.FirstName} ${entity.AssignedUser.LastName}` : 'Unassigned'}`;
-  }
-
-  private buildEntityContext(entity: any): string {
-    const parts: string[] = [];
+    // Add context-aware information
+    if (params.isPrivate) {
+      message += ' 🔒 (Private)';
+    }
+    if (params.parentCommentId) {
+      message += ` 💬 (Reply to #${params.parentCommentId})`;
+    }
     
-    // Entity state and assignment
-    if (entity.EntityState?.Name) {
-      const stateIcon = entity.EntityState.IsFinal ? '✅' : entity.EntityState.IsInitial ? '🆕' : '🔄';
-      parts.push(`${stateIcon} State: ${entity.EntityState.Name}`);
+    message += `\n\n📋 **Current State:** ${context.workflowStage.currentState}`;
+    
+    if (context.workflowStage.isBlocked) {
+      message += ' 🚧 (Blocked)';
     }
-
-    // Priority/Severity for different entity types
-    if (entity.Priority?.Name) {
-      const priorityIcon = (entity.Priority.Importance || 999) <= 2 ? '🔴' : (entity.Priority.Importance || 999) <= 4 ? '🟡' : '🟢';
-      parts.push(`${priorityIcon} Priority: ${entity.Priority.Name}`);
+    if (context.timing.isOverdue) {
+      message += ' ⚠️ (Overdue)';
     }
-
-    if (entity.Severity?.Name) {
-      const severityIcon = (entity.Severity.Importance || 999) <= 2 ? '🔴' : (entity.Severity.Importance || 999) <= 4 ? '🟠' : '🟡';
-      parts.push(`${severityIcon} Severity: ${entity.Severity.Name}`);
+    
+    message += `\n💬 **Preview:** "${preview}"`;
+    
+    if (context.teamContext.assignedUsers.length === 0) {
+      message += `\n\n⚠️ **Note:** This ${params.entityType} is currently unassigned`;
     }
-
-    return parts.join(' | ');
+    
+    return message;
   }
 
-  private async generateFollowUpSuggestions(
-    entity: any, 
-    params: AddCommentParams, 
-    context: ExecutionContext
+  private async generateWorkflowAwareSuggestions(
+    entity: any,
+    params: AddCommentParams,
+    context: ExecutionContext,
+    entityContext: any
   ): Promise<string[]> {
     const suggestions: string[] = [];
-    const entityState = this.getEntityStateInfo(entity);
-    const isAssignedToMe = this.isEntityAssignedToUser(entity, context.user.id);
     
-    // Add entity-specific suggestions
-    this.addTaskSuggestions(suggestions, params, entityState, isAssignedToMe);
-    this.addBugSuggestions(suggestions, params, entityState, isAssignedToMe);
-    this.addGeneralSuggestions(suggestions, entity, params);
-
-    return suggestions;
-  }
-
-  private getEntityStateInfo(entity: any) {
-    return {
-      isInitial: entity.EntityState?.IsInitial,
-      isFinal: entity.EntityState?.IsFinal
-    };
-  }
-
-  private isEntityAssignedToUser(entity: any, userId: number): boolean {
-    return entity.AssignedUser?.Items?.some((user: any) => user.Id === userId) ||
-           entity.AssignedUser?.Id === userId;
-  }
-
-  private addTaskSuggestions(suggestions: string[], params: AddCommentParams, entityState: any, isAssignedToMe: boolean) {
-    if (params.entityType !== 'Task') return;
-
-    if (isAssignedToMe && !entityState.isFinal) {
-      if (entityState.isInitial) {
-        suggestions.push(`start-working-on ${params.entityId} - Begin work on this task`);
-      } else {
-        suggestions.push(`complete-task ${params.entityId} - Mark task as complete`);
-        suggestions.push(`log-time entityId:${params.entityId} spent:1.0 - Log time spent`);
+    // Context-aware suggestions based on entity state
+    if (entityContext.workflowStage.isInitial && entityContext.teamContext.assignedUsers.length === 0) {
+      suggestions.push(`assign-to user:"${context.user.name}" - Assign this ${params.entityType} to yourself`);
+    }
+    
+    if (entityContext.workflowStage.isBlocked) {
+      suggestions.push(`search_entities type:${params.entityType} where:"Tags.Name contains 'blocked'" - Find other blocked items`);
+      suggestions.push('escalate-to-manager - Escalate this blocker');
+    }
+    
+    if (!entityContext.workflowStage.isFinal && entityContext.teamContext.hasAssignees) {
+      const isAssignedToMe = entityContext.teamContext.assignedUsers.some(
+        (u: any) => u.id === context.user.id
+      );
+      
+      if (isAssignedToMe) {
+        if (params.entityType === 'Task') {
+          suggestions.push(`start-working-on ${params.entityId} - Begin work on this task`);
+        }
+        suggestions.push(`update-progress entityId:${params.entityId} - Update progress`);
       }
     }
     
-    if (!params.parentCommentId) {
-      suggestions.push(`show-comments entityType:${params.entityType} entityId:${params.entityId} - View all comments`);
+    // Comment-specific suggestions
+    suggestions.push(`show-comments entityType:${params.entityType} entityId:${params.entityId} - View all comments`);
+    
+    if (entityContext.timing.daysInCurrentState > 5) {
+      suggestions.push(`analyze-blockers entityId:${params.entityId} - Identify why this is taking longer than usual`);
     }
-  }
-
-  private addBugSuggestions(suggestions: string[], params: AddCommentParams, entityState: any, isAssignedToMe: boolean) {
-    if (params.entityType === 'Bug' && isAssignedToMe && !entityState.isFinal) {
-      suggestions.push(`show-my-bugs - View all your assigned bugs`);
-    }
-  }
-
-  private addGeneralSuggestions(suggestions: string[], entity: any, _params: AddCommentParams) {
+    
+    // Project-level suggestions
     if (entity.Project?.Id) {
-      suggestions.push(`search-work-items project:"${entity.Project.Name}" - View related work items`);
+      suggestions.push(`search-work-items project:"${entity.Project.Name}" state:"${entityContext.workflowStage.currentState}" - Find similar items`);
     }
+    
+    return suggestions;
   }
 }
