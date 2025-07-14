@@ -1,126 +1,133 @@
 import { z } from 'zod';
-import { 
-  SemanticOperation, 
-  ExecutionContext, 
-  OperationResult 
-} from '../../core/interfaces/semantic-operation.interface.js';
 import { TPService } from '../../api/client/tp.service.js';
+import { ExecutionContext, SemanticOperation, OperationResult } from '../../core/interfaces/semantic-operation.interface.js';
 
-const DeleteCommentParamsSchema = z.object({
-  commentId: z.coerce.number().describe('ID of the comment to delete'),
-  entityType: z.string().optional().describe('Type of entity the comment belongs to (for context)'),
-  entityId: z.coerce.number().optional().describe('ID of the entity the comment belongs to (for context)')
+export const deleteCommentSchema = z.object({
+  commentId: z.coerce.number().describe('ID of the comment to delete')
 });
 
-type DeleteCommentParams = z.infer<typeof DeleteCommentParamsSchema>;
+export type DeleteCommentParams = z.infer<typeof deleteCommentSchema>;
 
 /**
  * Delete Comment Operation
  * 
- * Deletes a specific comment by its ID. Use with caution as this action cannot be undone.
+ * Safely deletes comments with ownership validation and context awareness.
  * 
- * Security considerations:
- * - Only allows deletion of comments by their authors (when user context is available)
- * - Provides confirmation messages and warnings
- * - Validates comment exists before deletion
+ * Features:
+ * - Ownership validation and warnings
+ * - Context fetching to show what's being deleted
+ * - Safe deletion with proper error handling
+ * - Follow-up suggestions for next actions
  */
 export class DeleteCommentOperation implements SemanticOperation<DeleteCommentParams> {
   constructor(private service: TPService) {}
 
-  metadata = {
-    id: 'delete-comment',
-    name: 'Delete Comment',
-    description: 'Delete a specific comment by its ID. Use with caution - this action cannot be undone.',
-    category: 'collaboration',
-    requiredPersonalities: ['default', 'developer', 'tester', 'project-manager', 'product-manager'],
-    examples: [
-      'delete-comment commentId:207220',
-      'delete-comment commentId:207220 entityType:UserStory entityId:54356'
-    ]
-  };
+  get metadata() {
+    return {
+      id: 'delete-comment',
+      name: 'Delete Comment',
+      description: 'Delete comments with ownership validation and safety features',
+      category: 'collaboration',
+      requiredPersonalities: ['default', 'developer', 'tester', 'project-manager', 'product-owner'],
+      examples: [
+        'Delete comment 12345',
+        'Remove comment 67890'
+      ],
+      tags: ['comment', 'communication', 'collaboration']
+    };
+  }
+
+  getSchema() {
+    return deleteCommentSchema;
+  }
 
   async execute(context: ExecutionContext, params: DeleteCommentParams): Promise<OperationResult> {
     try {
-      const validatedParams = DeleteCommentParamsSchema.parse(params);
+      const validatedParams = deleteCommentSchema.parse(params);
       
-      // Optional: Get comment details first for validation and context
-      let commentContext = '';
-      if (validatedParams.entityType && validatedParams.entityId) {
-        try {
-          const comments = await this.service.getComments(
-            validatedParams.entityType,
-            validatedParams.entityId
-          );
-          
-          const targetComment = comments.Items?.find((c: any) => c.Id === validatedParams.commentId);
-          if (targetComment) {
-            const isOwnComment = targetComment.Owner?.Id === context.user.id;
-            commentContext = `\n📝 Comment: "${this.cleanDescription(targetComment.Description)}"\n👤 Author: ${targetComment.Owner?.FullName || 'Unknown'} (${targetComment.Owner?.Login || 'N/A'})`;
-            
-            if (!isOwnComment) {
-              commentContext += '\n⚠️  Warning: This comment was not created by you';
-            }
-          }
-        } catch (error) {
-          // Continue with deletion even if we can't get comment details
-        }
-      }
-
-      // Delete the comment
-      const success = await this.service.deleteComment(validatedParams.commentId);
-
-      if (success) {
-        return {
-          content: [{
-            type: 'text',
-            text: `✅ Comment #${validatedParams.commentId} has been deleted successfully${commentContext}\n\n🗑️ This action cannot be undone.`
-          }],
-          affectedEntities: validatedParams.entityId ? [{
-            id: validatedParams.entityId,
-            type: validatedParams.entityType || 'Unknown',
-            action: 'updated'
-          }] : undefined,
-          metadata: {
-            executionTime: 0,
-            apiCallsCount: commentContext ? 2 : 1,
-            cacheHits: 0
-          }
-        };
+      // Get comment context for user experience
+      const commentContext = await this.getCommentContext(validatedParams.commentId);
+      const warningMessage = this.buildWarningMessage(commentContext, context.user.id);
+      
+      // Perform deletion
+      const deleteResult = await this.service.deleteComment(validatedParams.commentId);
+      
+      if (deleteResult) {
+        return this.buildSuccessResponse(validatedParams.commentId, commentContext, warningMessage, context);
       } else {
-        return {
-          content: [{
-            type: 'error',
-            text: `❌ Failed to delete comment #${validatedParams.commentId}`,
-            data: {
-              error: 'Delete operation returned false',
-              commentId: validatedParams.commentId
-            }
-          }],
-          metadata: {
-            executionTime: 0,
-            apiCallsCount: 1,
-            cacheHits: 0
-          }
-        };
+        return this.buildFailureResponse(validatedParams.commentId);
       }
 
     } catch (error) {
-      return {
-        content: [{
-          type: 'error',
-          text: `❌ Failed to delete comment: ${error instanceof Error ? error.message : 'Unknown error'}`,
-          data: {
-            error: error instanceof Error ? error.message : 'Unknown error',
-            params: params
-          }
-        }],
-        metadata: {
-          executionTime: 0,
-          apiCallsCount: 1,
-          cacheHits: 0
-        }
-      };
+      return this.buildErrorResponse(error);
     }
+  }
+
+  private async getCommentContext(commentId: number): Promise<any> {
+    try {
+      const comments = await this.service.searchEntities(
+        'Comment',
+        `Id = ${commentId}`,
+        ['Id', 'Description', 'User', 'CreateDate', 'IsPrivate', 'General'],
+        1
+      );
+      return (comments && comments.length > 0) ? comments[0] : null;
+    } catch {
+      return null; // Continue with deletion even if context fetch fails
+    }
+  }
+
+  private buildWarningMessage(commentContext: any, userId: number): string {
+    if (commentContext?.User && commentContext.User.Id !== userId) {
+      return `⚠️ You are deleting a comment by ${commentContext.User.FirstName} ${commentContext.User.LastName}. `;
+    }
+    return '';
+  }
+
+  private buildSuccessResponse(commentId: number, commentContext: any, warningMessage: string, context: ExecutionContext): OperationResult {
+    const contextText = commentContext 
+      ? `Comment: "${this.cleanDescription(commentContext.Description)}" from ${commentContext.User?.FirstName} ${commentContext.User?.LastName}`
+      : `Comment #${commentId}`;
+    
+    return {
+      content: [
+        {
+          type: 'text' as const,
+          text: `✅ ${warningMessage}Successfully deleted comment #${commentId}\n\n${contextText}`
+        },
+        {
+          type: 'structured-data' as const,
+          data: {
+            deletedComment: {
+              id: commentId,
+              context: commentContext,
+              deletedBy: context.user.name,
+              deletedAt: new Date().toISOString(),
+              wasOwnComment: commentContext?.User?.Id === context.user.id
+            }
+          }
+        }
+      ],
+      suggestions: this.generateSuggestions(commentContext)
+    };
+  }
+
+  private buildFailureResponse(commentId: number): OperationResult {
+    return {
+      content: [{
+        type: 'error' as const,
+        text: `Failed to delete comment #${commentId}. The comment may not exist or you may not have permission to delete it.`
+      }]
+    };
+  }
+
+  private buildErrorResponse(error: unknown): OperationResult {
+    return {
+      content: [{
+        type: 'error' as const,
+        text: `Failed to delete comment: ${error instanceof Error ? error.message : 'Unknown error'}`
+      }]
+    };
   }
 
   /**
@@ -137,5 +144,30 @@ export class DeleteCommentOperation implements SemanticOperation<DeleteCommentPa
       .replace(/\n/g, ' ')
       .trim()
       .substring(0, 100) + (description.length > 100 ? '...' : '');
+  }
+
+  /**
+   * Generate follow-up suggestions
+   */
+  private generateSuggestions(commentContext: any): string[] {
+    const suggestions: string[] = [];
+    
+    if (commentContext?.General?.Id) {
+      const entityType = commentContext.General.EntityType?.Name || 'Entity';
+      const entityId = commentContext.General.Id;
+      
+      suggestions.push(`show-comments entityType:${entityType} entityId:${entityId} - View remaining comments`);
+      suggestions.push(`add-comment entityType:${entityType} entityId:${entityId} comment:"Your comment here" - Add a new comment`);
+      
+      if (entityType === 'Task') {
+        suggestions.push(`show-my-tasks - View your assigned tasks`);
+      } else if (entityType === 'Bug') {
+        suggestions.push(`show-my-bugs - View your assigned bugs`);
+      }
+    }
+    
+    suggestions.push(`search-work-items - Search for related work items`);
+    
+    return suggestions;
   }
 }

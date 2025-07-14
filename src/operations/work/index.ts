@@ -9,6 +9,7 @@ import { StartWorkingOnOperation } from './start-working-on.js';
 import { CompleteTaskOperation } from './complete-task.js';
 import { ShowMyBugsOperation } from './show-my-bugs.js';
 import { LogTimeOperation } from './log-time.js';
+import { AddCommentOperation } from './add-comment.js';
 import { ShowCommentsOperation } from './show-comments.js';
 import { DeleteCommentOperation } from './delete-comment.js';
 import { logger } from '../../utils/logger.js';
@@ -60,6 +61,7 @@ export class WorkOperations implements FeatureModule {
     this.operations['log-time'] = new LogTimeOperation(this.tpService);
     
     // Comment Operations
+    this.operations['add-comment'] = new AddCommentOperation(this.tpService);
     this.operations['show-comments'] = new ShowCommentsOperation(this.tpService);
     this.operations['delete-comment'] = new DeleteCommentOperation(this.tpService);
     

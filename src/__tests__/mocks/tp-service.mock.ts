@@ -10,6 +10,11 @@ export const createMockTPService = (): jest.Mocked<TPService> => {
     updateEntity: jest.fn(),
     inspectObject: jest.fn(),
     
+    // Comment methods
+    getComments: jest.fn(),
+    createComment: jest.fn(),
+    deleteComment: jest.fn(),
+    
     // Entity type validation
     getValidEntityTypes: jest.fn(),
     

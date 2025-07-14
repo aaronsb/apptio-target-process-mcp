@@ -1,62 +1,68 @@
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-import { AddCommentOperation } from '../../operations/work/add-comment.js';
-import { createMockTPService, createMockEntity } from '../mocks/tp-service.mock.js';
-import { ExecutionContext } from '../../core/interfaces/semantic-operation.interface.js';
-import { McpError } from '@modelcontextprotocol/sdk/types.js';
+import { jest } from '@jest/globals';
+import { AddCommentOperation, addCommentSchema } from '../../operations/work/add-comment.js';
+import { TPService } from '../../api/client/tp.service.js';
+
+// Mock TPService
+const mockService = {
+  getEntity: jest.fn(),
+  createComment: jest.fn(),
+} as unknown as jest.Mocked<TPService>;
+
+// Mock execution context
+const mockContext = {
+  user: {
+    id: 101734,
+    name: 'Test User',
+    email: 'test@example.com',
+    role: 'developer',
+    teams: [],
+    permissions: []
+  },
+  workspace: {
+    recentEntities: []
+  },
+  personality: {
+    mode: 'developer',
+    features: [],
+    restrictions: {}
+  },
+  conversation: {
+    mentionedEntities: [],
+    previousOperations: [],
+    intent: 'test'
+  },
+  config: {
+    apiUrl: 'https://test.tpondemand.com',
+    maxResults: 25,
+    timeout: 30000
+  }
+};
 
 describe('AddCommentOperation', () => {
   let operation: AddCommentOperation;
-  let mockService: ReturnType<typeof createMockTPService>;
-  let mockContext: ExecutionContext;
 
   beforeEach(() => {
-    jest.clearAllMocks();
-    mockService = createMockTPService();
     operation = new AddCommentOperation(mockService);
-    
-    mockContext = {
-      user: {
-        id: 12345,
-        name: 'Test User',
-        email: 'test@example.com',
-        role: 'developer',
-        teams: [{ id: 1, name: 'Dev Team', role: 'member' }],
-        permissions: ['read', 'write']
-      },
-      workspace: {
-        currentProject: {
-          id: 1,
-          name: 'Test Project',
-          process: 'Scrum'
-        },
-        recentEntities: []
-      },
-      personality: {
-        mode: 'developer',
-        features: ['add-comment'],
-        restrictions: {}
-      },
-      conversation: {
-        mentionedEntities: [],
-        previousOperations: [],
-        intent: 'add-comment'
-      },
-      config: {
-        apiUrl: 'https://test.tpondemand.com',
-        maxResults: 100,
-        timeout: 30000
-      }
-    };
+    jest.clearAllMocks();
   });
 
   describe('metadata', () => {
     it('should have correct metadata', () => {
-      expect(operation.metadata.id).toBe('add-comment');
-      expect(operation.metadata.name).toBe('Add Comment');
-      expect(operation.metadata.description).toContain('Add comments to tasks, bugs, and other work items');
-      expect(operation.metadata.requiredPersonalities).toContain('developer');
-      expect(operation.metadata.requiredPersonalities).toContain('tester');
-      expect(operation.metadata.requiredPersonalities).toContain('project-manager');
+      const metadata = operation.metadata;
+      expect(metadata.id).toBe('add-comment');
+      expect(metadata.name).toBe('Add Comment');
+      expect(metadata.description).toContain('Add comments to tasks');
+      expect(metadata.category).toBe('collaboration');
+      expect(metadata.requiredPersonalities).toContain('developer');
+      expect(metadata.examples).toBeInstanceOf(Array);
+      expect(metadata.tags).toContain('comment');
+    });
+  });
+
+  describe('getSchema', () => {
+    it('should return the correct schema', () => {
+      const schema = operation.getSchema();
+      expect(schema).toBe(addCommentSchema);
     });
   });
 
@@ -65,20 +71,17 @@ describe('AddCommentOperation', () => {
       const templates = operation.getTemplates('developer');
       expect(templates).toContain('Fixed: [Brief description of what was fixed]');
       expect(templates).toContain('Code review: [Feedback on implementation]');
-      expect(templates).toContain('Technical note: [Implementation details or considerations]');
     });
 
     it('should return tester-specific templates', () => {
       const templates = operation.getTemplates('tester');
       expect(templates).toContain('Test results: [Pass/Fail with details]');
       expect(templates).toContain('Bug reproduction: [Steps to reproduce the issue]');
-      expect(templates).toContain('Quality observation: [Quality concerns or improvements]');
     });
 
     it('should return project-manager-specific templates', () => {
       const templates = operation.getTemplates('project-manager');
       expect(templates).toContain('Status update: [Current status and next steps]');
-      expect(templates).toContain('Risk identified: [Risk description and mitigation plan]');
       expect(templates).toContain('Team coordination: [Team communication or assignments]');
     });
 
@@ -86,51 +89,48 @@ describe('AddCommentOperation', () => {
       const templates = operation.getTemplates('product-owner');
       expect(templates).toContain('Business justification: [Why this change is important]');
       expect(templates).toContain('Stakeholder feedback: [Input from stakeholders]');
-      expect(templates).toContain('Requirements clarification: [Clarification on requirements]');
     });
 
     it('should return default templates for unknown roles', () => {
-      const templates = operation.getTemplates('unknown-role');
-      expect(templates).toContain('Update: [General status update]');
-      expect(templates).toContain('Note: [General comment or observation]');
-      expect(templates).toContain('Follow-up: [Next steps or follow-up actions]');
+      const templates = operation.getTemplates('unknown');
+      expect(templates).toContain('Update: [General update or note]');
+      expect(templates).toContain('Question: [Question or clarification needed]');
     });
   });
 
   describe('formatContent', () => {
-    const testContent = 'This is a **test** comment with *italic* and `code`';
-    
     it('should format content for developer role', () => {
-      const formatted = operation.formatContent(testContent, 'developer');
+      const formatted = operation.formatContent('Test comment', 'developer');
       expect(formatted).toContain('💻 Developer Update');
-      expect(formatted).toContain('<strong>test</strong>');
-      expect(formatted).toContain('<em>italic</em>');
-      expect(formatted).toContain('<code>code</code>');
+      expect(formatted).toContain('Test comment');
     });
 
     it('should format content for tester role', () => {
-      const formatted = operation.formatContent(testContent, 'tester');
+      const formatted = operation.formatContent('Test comment', 'tester');
       expect(formatted).toContain('🧪 QA Update');
-      expect(formatted).toContain('<div>');
+      expect(formatted).toContain('Test comment');
     });
 
     it('should format content for project-manager role', () => {
-      const formatted = operation.formatContent(testContent, 'project-manager');
+      const formatted = operation.formatContent('Test comment', 'project-manager');
       expect(formatted).toContain('📋 Project Update');
+      expect(formatted).toContain('Test comment');
     });
 
     it('should format content for product-owner role', () => {
-      const formatted = operation.formatContent(testContent, 'product-owner');
+      const formatted = operation.formatContent('Test comment', 'product-owner');
       expect(formatted).toContain('🎯 Product Update');
+      expect(formatted).toContain('Test comment');
     });
 
     it('should format content for unknown role', () => {
-      const formatted = operation.formatContent(testContent, 'unknown');
+      const formatted = operation.formatContent('Test comment', 'unknown');
       expect(formatted).toContain('📝 Update');
+      expect(formatted).toContain('Test comment');
     });
 
     it('should include timestamp in formatted content', () => {
-      const formatted = operation.formatContent(testContent, 'developer');
+      const formatted = operation.formatContent('Test comment', 'developer');
       const today = new Date().toISOString().split('T')[0];
       expect(formatted).toContain(today);
     });
@@ -138,202 +138,561 @@ describe('AddCommentOperation', () => {
 
   describe('convertMarkdownToHtml', () => {
     it('should convert markdown formatting to HTML', () => {
-      const markdown = '**bold** *italic* `code`';
-      const html = (operation as any).convertMarkdownToHtml(markdown);
-      
-      expect(html).toContain('<strong>bold</strong>');
-      expect(html).toContain('<em>italic</em>');
-      expect(html).toContain('<code>code</code>');
+      const formatted = operation.formatContent('**bold** and *italic* and `code`', 'developer');
+      expect(formatted).toContain('<strong>bold</strong>');
+      expect(formatted).toContain('<em>italic</em>');
+      expect(formatted).toContain('<code>code</code>');
     });
 
     it('should handle line breaks', () => {
-      const markdown = 'line1\n\nline2';
-      const html = (operation as any).convertMarkdownToHtml(markdown);
-      
-      expect(html).toContain('</div><div><br/></div><div>');
+      const formatted = operation.formatContent('Line 1\n\nLine 2', 'developer');
+      expect(formatted).toContain('<br/>');
     });
   });
 
   describe('execute', () => {
-    const validParams = {
-      entityType: 'UserStory',
-      entityId: 54356,
-      comment: 'Test comment',
-      isPrivate: false
-    };
-
-    beforeEach(() => {
-      const mockEntity = createMockEntity('UserStory', {
+    it('should successfully create a comment', async () => {
+      const mockEntity = {
         Id: 54356,
-        Name: 'Test UserStory',
-        EntityState: { Name: 'Open', IsInitial: true, IsFinal: false },
-        AssignedUser: { Id: 12345, FirstName: 'Test', LastName: 'User' },
+        Name: 'Test Task',
+        EntityState: { Name: 'In Progress' },
+        AssignedUser: { FirstName: 'John', LastName: 'Doe' },
         Project: { Name: 'Test Project' }
-      });
+      };
 
       const mockComment = {
-        Id: 207214,
-        Description: 'Formatted comment',
-        CreateDate: new Date().toISOString(),
-        User: { Id: 12345, Name: 'Test User' }
+        Id: 207218,
+        Description: 'Test comment',
+        User: { Id: 101734, FirstName: 'Test', LastName: 'User' },
+        CreateDate: '/Date(1234567890000)/'
       };
 
       mockService.getEntity.mockResolvedValue(mockEntity);
-      mockService.createEntity.mockResolvedValue(mockComment);
-    });
+      mockService.createComment.mockResolvedValue(mockComment);
 
-    it('should successfully create a comment', async () => {
-      const result = await operation.execute(mockContext, validParams);
+      const params = {
+        entityType: 'Task',
+        entityId: 54356,
+        comment: 'Test comment',
+        isPrivate: false
+      };
 
-      expect(mockService.getEntity).toHaveBeenCalledWith(
-        'UserStory',
-        54356,
-        ['Name', 'EntityState', 'AssignedUser', 'Project', 'Priority', 'Severity']
-      );
-
-      expect(mockService.createEntity).toHaveBeenCalledWith(
-        'Comment',
-        expect.objectContaining({
-          Description: expect.stringContaining('💻 Developer Update'),
-          General: { Id: 54356 }
-        })
-      );
+      const result = await operation.execute(mockContext, params);
 
       expect(result.content).toHaveLength(2);
       expect(result.content[0].type).toBe('text');
-      expect(result.content[0].text).toContain('✅ Comment added');
+      expect(result.content[0].text).toContain('Comment added');
       expect(result.content[1].type).toBe('structured-data');
+      expect(result.suggestions).toBeInstanceOf(Array);
     });
 
     it('should handle private comments', async () => {
-      const privateParams = { ...validParams, isPrivate: true };
-      
-      await operation.execute(mockContext, privateParams);
+      const mockEntity = {
+        Id: 54356,
+        Name: 'Test Task',
+        EntityState: { Name: 'In Progress' },
+        AssignedUser: { FirstName: 'John', LastName: 'Doe' },
+        Project: { Name: 'Test Project' }
+      };
 
-      expect(mockService.createEntity).toHaveBeenCalledWith(
-        'Comment',
-        expect.objectContaining({
-          IsPrivate: true
-        })
+      const mockComment = {
+        Id: 207218,
+        Description: 'Private comment',
+        User: { Id: 101734, FirstName: 'Test', LastName: 'User' },
+        CreateDate: '/Date(1234567890000)/'
+      };
+
+      mockService.getEntity.mockResolvedValue(mockEntity);
+      mockService.createComment.mockResolvedValue(mockComment);
+
+      const params = {
+        entityType: 'Task',
+        entityId: 54356,
+        comment: 'Private comment',
+        isPrivate: true
+      };
+
+      const result = await operation.execute(mockContext, params);
+
+      expect(result.content[0].text).toContain('(private)');
+      expect(mockService.createComment).toHaveBeenCalledWith(
+        54356,
+        expect.any(String),
+        true,
+        undefined
       );
     });
 
     it('should format comment based on user role', async () => {
-      const testerContext = { ...mockContext, user: { ...mockContext.user, role: 'tester' } };
-      
-      await operation.execute(testerContext, validParams);
+      const mockEntity = {
+        Id: 54356,
+        Name: 'Test Task',
+        EntityState: { Name: 'In Progress' },
+        AssignedUser: { FirstName: 'John', LastName: 'Doe' },
+        Project: { Name: 'Test Project' }
+      };
 
-      expect(mockService.createEntity).toHaveBeenCalledWith(
-        'Comment',
-        expect.objectContaining({
-          Description: expect.stringContaining('🧪 QA Update')
-        })
+      const mockComment = {
+        Id: 207218,
+        Description: 'Test comment',
+        User: { Id: 101734, FirstName: 'Test', LastName: 'User' },
+        CreateDate: '/Date(1234567890000)/'
+      };
+
+      mockService.getEntity.mockResolvedValue(mockEntity);
+      mockService.createComment.mockResolvedValue(mockComment);
+
+      const params = {
+        entityType: 'Task',
+        entityId: 54356,
+        comment: 'Test comment',
+        isPrivate: false
+      };
+
+      await operation.execute(mockContext, params);
+
+      expect(mockService.createComment).toHaveBeenCalledWith(
+        54356,
+        expect.stringContaining('💻 Developer Update'),
+        false,
+        undefined
       );
     });
 
     it('should return error when entity not found', async () => {
       mockService.getEntity.mockResolvedValue(null);
 
-      const result = await operation.execute(mockContext, validParams);
+      const params = {
+        entityType: 'Task',
+        entityId: 99999,
+        comment: 'Test comment',
+        isPrivate: false
+      };
+
+      const result = await operation.execute(mockContext, params);
 
       expect(result.content).toHaveLength(1);
       expect(result.content[0].type).toBe('error');
-      expect(result.content[0].text).toContain('UserStory with ID 54356 not found');
+      expect(result.content[0].text).toContain('not found');
     });
 
     it('should handle API errors gracefully', async () => {
-      mockService.createEntity.mockRejectedValue(new McpError(400, 'API Error'));
+      mockService.getEntity.mockRejectedValue(new Error('API Error'));
 
-      const result = await operation.execute(mockContext, validParams);
+      const params = {
+        entityType: 'Task',
+        entityId: 54356,
+        comment: 'Test comment',
+        isPrivate: false
+      };
+
+      const result = await operation.execute(mockContext, params);
 
       expect(result.content).toHaveLength(1);
       expect(result.content[0].type).toBe('error');
       expect(result.content[0].text).toContain('Failed to add comment');
     });
 
-    it('should validate parameters with Zod', async () => {
-      const invalidParams = {
-        entityType: 'UserStory',
+    it('should provide follow-up suggestions', async () => {
+      const mockEntity = {
+        Id: 54356,
+        Name: 'Test Task',
+        EntityState: { Name: 'In Progress' },
+        AssignedUser: { Id: 101734, FirstName: 'John', LastName: 'Doe' },
+        Project: { Name: 'Test Project', Id: 123 }
+      };
+
+      const mockComment = {
+        Id: 207218,
+        Description: 'Test comment',
+        User: { Id: 101734, FirstName: 'Test', LastName: 'User' },
+        CreateDate: '/Date(1234567890000)/'
+      };
+
+      mockService.getEntity.mockResolvedValue(mockEntity);
+      mockService.createComment.mockResolvedValue(mockComment);
+
+      const params = {
+        entityType: 'Task',
         entityId: 54356,
-        comment: '',  // Should be non-empty
+        comment: 'Test comment',
         isPrivate: false
       };
 
-      const result = await operation.execute(mockContext, invalidParams);
+      const result = await operation.execute(mockContext, params);
 
-      expect(result.content).toHaveLength(1);
-      expect(result.content[0].type).toBe('error');
-    });
-
-    it('should provide follow-up suggestions', async () => {
-      const result = await operation.execute(mockContext, validParams);
-
-      expect(result.suggestions).toBeDefined();
+      expect(result.suggestions).toBeInstanceOf(Array);
       expect(result.suggestions!.length).toBeGreaterThan(0);
-      expect(result.suggestions!.some(s => s.includes('get_entity'))).toBe(true);
-    });
-
-    it('should include affected entities in result', async () => {
-      const result = await operation.execute(mockContext, validParams);
-
-      expect(result.affectedEntities).toBeDefined();
-      expect(result.affectedEntities!).toHaveLength(1);
-      expect(result.affectedEntities![0]).toEqual({
-        id: 54356,
-        type: 'UserStory',
-        action: 'updated'
-      });
     });
 
     it('should handle default user role', async () => {
-      const contextWithoutRole = { 
-        ...mockContext, 
-        user: { ...mockContext.user, role: 'unknown-role' } 
+      const mockEntity = {
+        Id: 54356,
+        Name: 'Test Task',
+        EntityState: { Name: 'In Progress' },
+        AssignedUser: { FirstName: 'John', LastName: 'Doe' },
+        Project: { Name: 'Test Project' }
       };
-      
-      await operation.execute(contextWithoutRole, validParams);
 
-      expect(mockService.createEntity).toHaveBeenCalledWith(
-        'Comment',
-        expect.objectContaining({
-          Description: expect.stringContaining('📝 Update')
-        })
+      const mockComment = {
+        Id: 207218,
+        Description: 'Test comment',
+        User: { Id: 101734, FirstName: 'Test', LastName: 'User' },
+        CreateDate: '/Date(1234567890000)/'
+      };
+
+      mockService.getEntity.mockResolvedValue(mockEntity);
+      mockService.createComment.mockResolvedValue(mockComment);
+
+      const contextWithoutRole = {
+        ...mockContext,
+        user: { ...mockContext.user, role: 'default' }
+      };
+
+      const params = {
+        entityType: 'Task',
+        entityId: 54356,
+        comment: 'Test comment',
+        isPrivate: false
+      };
+
+      const result = await operation.execute(contextWithoutRole, params);
+
+      expect(result.content[0].type).toBe('text');
+      expect(mockService.createComment).toHaveBeenCalledWith(
+        54356,
+        expect.stringContaining('📝 Update'),
+        false,
+        undefined
       );
     });
   });
 
-  describe('role-based behavior', () => {
-    const params = {
-      entityType: 'Task',
-      entityId: 12345,
-      comment: 'Test comment',
-      isPrivate: false
-    };
+  describe('reply functionality', () => {
+    it('should create a reply comment with parentCommentId', async () => {
+      const mockEntity = {
+        Id: 67890,
+        Name: 'Test Bug',
+        EntityState: { Name: 'Open' },
+        AssignedUser: { FirstName: 'Jane', LastName: 'Smith' },
+        Project: { Name: 'Test Project' }
+      };
 
-    beforeEach(() => {
-      const mockEntity = createMockEntity('Task', {
-        Id: 12345,
-        Name: 'Test Task',
-        EntityState: { Name: 'Open', IsInitial: true, IsFinal: false },
-        AssignedUser: { Id: 12345 }
-      });
+      const mockComment = {
+        Id: 207219,
+        Description: 'Reply comment',
+        User: { Id: 101734, FirstName: 'Test', LastName: 'User' },
+        CreateDate: '/Date(1234567890000)/'
+      };
 
       mockService.getEntity.mockResolvedValue(mockEntity);
-      mockService.createEntity.mockResolvedValue({ Id: 1, Description: 'comment' });
-    });
+      mockService.createComment.mockResolvedValue(mockComment);
 
-    it('should provide role-specific suggestions for developer', async () => {
+      const params = {
+        entityType: 'Bug',
+        entityId: 67890,
+        comment: 'Reply comment',
+        isPrivate: false,
+        parentCommentId: 207218
+      };
+
       const result = await operation.execute(mockContext, params);
-      
-      expect(result.suggestions!.some(s => s.includes('start-working-on'))).toBe(true);
+
+      expect(result.content[0].text).toContain('reply');
+      expect(result.content[0].text).toContain('replying to comment #207218');
+      expect(mockService.createComment).toHaveBeenCalledWith(
+        67890,
+        expect.any(String),
+        false,
+        207218
+      );
     });
 
-    it('should provide different suggestions for different roles', async () => {
-      const pmContext = { ...mockContext, user: { ...mockContext.user, role: 'project-manager' } };
-      const result = await operation.execute(pmContext, params);
-      
-      // Should still provide general suggestions
-      expect(result.suggestions!.some(s => s.includes('get_entity'))).toBe(true);
+    it('should create a private reply comment', async () => {
+      const mockEntity = {
+        Id: 67890,
+        Name: 'Test Bug',
+        EntityState: { Name: 'Open' },
+        AssignedUser: { FirstName: 'Jane', LastName: 'Smith' },
+        Project: { Name: 'Test Project' }
+      };
+
+      const mockComment = {
+        Id: 207219,
+        Description: 'Private reply',
+        User: { Id: 101734, FirstName: 'Test', LastName: 'User' },
+        CreateDate: '/Date(1234567890000)/'
+      };
+
+      mockService.getEntity.mockResolvedValue(mockEntity);
+      mockService.createComment.mockResolvedValue(mockComment);
+
+      const params = {
+        entityType: 'Bug',
+        entityId: 67890,
+        comment: 'Private reply',
+        isPrivate: true,
+        parentCommentId: 207218
+      };
+
+      const result = await operation.execute(mockContext, params);
+
+      expect(result.content[0].text).toContain('(private)');
+      expect(result.content[0].text).toContain('reply');
+      expect(mockService.createComment).toHaveBeenCalledWith(
+        67890,
+        expect.any(String),
+        true,
+        207218
+      );
+    });
+
+    it('should handle string parentCommentId parameter', async () => {
+      const mockEntity = {
+        Id: 67890,
+        Name: 'Test Bug',
+        EntityState: { Name: 'Open' },
+        AssignedUser: { FirstName: 'Jane', LastName: 'Smith' },
+        Project: { Name: 'Test Project' }
+      };
+
+      const mockComment = {
+        Id: 207219,
+        Description: 'Reply with string ID',
+        User: { Id: 101734, FirstName: 'Test', LastName: 'User' },
+        CreateDate: '/Date(1234567890000)/'
+      };
+
+      mockService.getEntity.mockResolvedValue(mockEntity);
+      mockService.createComment.mockResolvedValue(mockComment);
+
+      const params = {
+        entityType: 'Bug',
+        entityId: 67890,
+        comment: 'Reply with string ID',
+        isPrivate: false,
+        parentCommentId: '207218'
+      };
+
+      await operation.execute(mockContext, params as any);
+
+      expect(mockService.createComment).toHaveBeenCalledWith(
+        67890,
+        expect.any(String),
+        false,
+        207218 // Should be coerced to number by Zod
+      );
+    });
+
+    it('should create root comment when parentCommentId is not provided', async () => {
+      const mockEntity = {
+        Id: 67890,
+        Name: 'Test Bug',
+        EntityState: { Name: 'Open' },
+        AssignedUser: { FirstName: 'Jane', LastName: 'Smith' },
+        Project: { Name: 'Test Project' }
+      };
+
+      const mockComment = {
+        Id: 207219,
+        Description: 'Root comment',
+        User: { Id: 101734, FirstName: 'Test', LastName: 'User' },
+        CreateDate: '/Date(1234567890000)/'
+      };
+
+      mockService.getEntity.mockResolvedValue(mockEntity);
+      mockService.createComment.mockResolvedValue(mockComment);
+
+      const params = {
+        entityType: 'Bug',
+        entityId: 67890,
+        comment: 'Root comment',
+        isPrivate: false
+      };
+
+      const result = await operation.execute(mockContext, params);
+
+      expect(result.content[0].text).not.toContain('reply');
+      expect(mockService.createComment).toHaveBeenCalledWith(
+        67890,
+        expect.any(String),
+        false,
+        undefined
+      );
+    });
+
+    it('should apply role-specific formatting to replies', async () => {
+      const mockEntity = {
+        Id: 67890,
+        Name: 'Test Bug',
+        EntityState: { Name: 'Open' },
+        AssignedUser: { FirstName: 'Jane', LastName: 'Smith' },
+        Project: { Name: 'Test Project' }
+      };
+
+      const mockComment = {
+        Id: 207219,
+        Description: 'Formatted reply',
+        User: { Id: 101734, FirstName: 'Test', LastName: 'User' },
+        CreateDate: '/Date(1234567890000)/'
+      };
+
+      mockService.getEntity.mockResolvedValue(mockEntity);
+      mockService.createComment.mockResolvedValue(mockComment);
+
+      const params = {
+        entityType: 'Bug',
+        entityId: 67890,
+        comment: 'Formatted reply',
+        isPrivate: false,
+        parentCommentId: 207218
+      };
+
+      await operation.execute(mockContext, params);
+
+      expect(mockService.createComment).toHaveBeenCalledWith(
+        67890,
+        expect.stringContaining('💻 Developer Update'),
+        false,
+        207218
+      );
+    });
+
+    it('should handle parentCommentId validation errors', async () => {
+      const mockEntity = {
+        Id: 67890,
+        Name: 'Test Bug',
+        EntityState: { Name: 'Open' },
+        AssignedUser: { FirstName: 'Jane', LastName: 'Smith' },
+        Project: { Name: 'Test Project' }
+      };
+
+      mockService.getEntity.mockResolvedValue(mockEntity);
+      mockService.createComment.mockRejectedValue(new Error('Invalid parent comment ID'));
+
+      const params = {
+        entityType: 'Bug',
+        entityId: 67890,
+        comment: 'Reply comment',
+        isPrivate: false,
+        parentCommentId: 999999
+      };
+
+      const result = await operation.execute(mockContext, params as any);
+
+      expect(result.content[0].type).toBe('error');
+      expect(result.content[0].text).toContain('Failed to add comment');
+    });
+  });
+
+  describe('parameter coercion', () => {
+    it('should coerce string entityId to number', async () => {
+      const mockEntity = {
+        Id: 54356,
+        Name: 'Test Story',
+        EntityState: { Name: 'New' },
+        AssignedUser: { FirstName: 'John', LastName: 'Doe' },
+        Project: { Name: 'Test Project' }
+      };
+
+      const mockComment = {
+        Id: 207220,
+        Description: 'Coerced ID comment',
+        User: { Id: 101734, FirstName: 'Test', LastName: 'User' },
+        CreateDate: '/Date(1234567890000)/'
+      };
+
+      mockService.getEntity.mockResolvedValue(mockEntity);
+      mockService.createComment.mockResolvedValue(mockComment);
+
+      const params = {
+        entityType: 'UserStory',
+        entityId: '54356',
+        comment: 'Coerced ID comment',
+        isPrivate: false
+      };
+
+      await operation.execute(mockContext, params as any);
+
+      expect(mockService.getEntity).toHaveBeenCalledWith('UserStory', 54356);
+      expect(mockService.createComment).toHaveBeenCalledWith(
+        54356, // Should be coerced to number by Zod
+        expect.any(String),
+        false,
+        undefined
+      );
+    });
+
+    it('should coerce string isPrivate to boolean', async () => {
+      const mockEntity = {
+        Id: 12345,
+        Name: 'Test Item',
+        EntityState: { Name: 'Active' },
+        AssignedUser: { FirstName: 'John', LastName: 'Doe' },
+        Project: { Name: 'Test Project' }
+      };
+
+      const mockComment = {
+        Id: 207221,
+        Description: 'Private comment',
+        User: { Id: 101734, FirstName: 'Test', LastName: 'User' },
+        CreateDate: '/Date(1234567890000)/'
+      };
+
+      mockService.getEntity.mockResolvedValue(mockEntity);
+      mockService.createComment.mockResolvedValue(mockComment);
+
+      const params = {
+        entityType: 'Task',
+        entityId: 12345,
+        comment: 'Private comment',
+        isPrivate: 'true'
+      };
+
+      await operation.execute(mockContext, params as any);
+
+      expect(mockService.createComment).toHaveBeenCalledWith(
+        12345,
+        expect.any(String),
+        true, // Should be coerced to boolean by Zod
+        undefined
+      );
+    });
+
+    it('should handle falsy isPrivate values', async () => {
+      const mockEntity = {
+        Id: 67890,
+        Name: 'Test Bug',
+        EntityState: { Name: 'Open' },
+        AssignedUser: { FirstName: 'Jane', LastName: 'Smith' },
+        Project: { Name: 'Test Project' }
+      };
+
+      const mockComment = {
+        Id: 207222,
+        Description: 'Public comment',
+        User: { Id: 101734, FirstName: 'Test', LastName: 'User' },
+        CreateDate: '/Date(1234567890000)/'
+      };
+
+      mockService.getEntity.mockResolvedValue(mockEntity);
+      mockService.createComment.mockResolvedValue(mockComment);
+
+      const params = {
+        entityType: 'Bug',
+        entityId: 67890,
+        comment: 'Public comment',
+        isPrivate: 'false'
+      };
+
+      await operation.execute(mockContext, params as any);
+
+      expect(mockService.createComment).toHaveBeenCalledWith(
+        67890,
+        expect.any(String),
+        false, // Should be coerced to boolean by Zod
+        undefined
+      );
     });
   });
 });

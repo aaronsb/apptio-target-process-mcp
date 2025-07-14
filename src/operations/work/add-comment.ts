@@ -6,15 +6,20 @@ import {
 } from '../../core/interfaces/semantic-operation.interface.js';
 import { TPService } from '../../api/client/tp.service.js';
 
-const AddCommentParamsSchema = z.object({
+export const addCommentSchema = z.object({
   entityType: z.string().describe('Type of entity to comment on (Task, Bug, UserStory, etc.)'),
   entityId: z.coerce.number().describe('ID of the entity to comment on'),
   comment: z.string().min(1).describe('Comment text to add'),
-  isPrivate: z.coerce.boolean().optional().default(false).describe('Whether the comment should be private (visible only to team members)'),
+  isPrivate: z.union([z.boolean(), z.string()]).optional().default(false).transform((val) => {
+    if (typeof val === 'string') {
+      return val.toLowerCase() === 'true';
+    }
+    return val;
+  }).describe('Whether the comment should be private (visible only to team members)'),
   parentCommentId: z.coerce.number().optional().describe('ID of the parent comment to reply to (leave empty for root comment)')
 });
 
-type AddCommentParams = z.infer<typeof AddCommentParamsSchema>;
+export type AddCommentParams = z.infer<typeof addCommentSchema>;
 
 /**
  * Add Comment Operation
@@ -37,19 +42,25 @@ type AddCommentParams = z.infer<typeof AddCommentParamsSchema>;
 export class AddCommentOperation implements SemanticOperation<AddCommentParams> {
   constructor(private service: TPService) {}
 
-  metadata = {
-    id: 'add-comment',
-    name: 'Add Comment',
-    description: 'Add comments to tasks, bugs, and other work items with smart context awareness and role-specific formatting',
-    category: 'collaboration',
-    requiredPersonalities: ['default', 'developer', 'tester', 'project-manager', 'product-manager'],
-    examples: [
-      'add-comment entityType:Task entityId:12345 comment:"Fixed the login issue, ready for testing"',
-      'add-comment entityType:Bug entityId:67890 comment:"Cannot reproduce in dev environment" isPrivate:true',
-      'add-comment entityType:UserStory entityId:11111 comment:"Added acceptance criteria based on customer feedback"',
-      'add-comment entityType:UserStory entityId:11111 comment:"Thanks for the clarification!" parentCommentId:207218'
-    ]
-  };
+  get metadata() {
+    return {
+      id: 'add-comment',
+      name: 'Add Comment',
+      description: 'Add comments to tasks, bugs, and other work items with smart context awareness and role-specific formatting',
+      category: 'collaboration',
+      requiredPersonalities: ['default', 'developer', 'tester', 'project-manager', 'product-owner'],
+      examples: [
+        'Add comment to task 123: "Fixed the login issue"',
+        'Comment on bug 456: "Unable to reproduce on staging"',
+        'Add private comment to story 789: "Need to discuss with stakeholders"'
+      ],
+      tags: ['comment', 'communication', 'collaboration']
+    };
+  }
+
+  getSchema() {
+    return addCommentSchema;
+  }
 
   /**
    * Get role-specific comment templates
@@ -95,8 +106,8 @@ export class AddCommentOperation implements SemanticOperation<AddCommentParams> 
       
       default:
         return [
-          'Update: [General status update]',
-          'Note: [General comment or observation]',
+          'Update: [General update or note]',
+          'Question: [Question or clarification needed]',
           'Follow-up: [Next steps or follow-up actions]'
         ];
     }
@@ -105,7 +116,7 @@ export class AddCommentOperation implements SemanticOperation<AddCommentParams> 
   /**
    * Format comment content based on role and context
    */
-  formatContent(content: string, role: string, entity?: any): string {
+  formatContent(content: string, role: string, _entity?: any): string {
     const timestamp = new Date().toISOString().split('T')[0];
     
     // Convert basic markdown to HTML for TargetProcess
@@ -147,44 +158,25 @@ export class AddCommentOperation implements SemanticOperation<AddCommentParams> 
       .replace(/\n\n/g, '</div><div><br/></div><div>')
       .replace(/\n/g, '<br/>')
       // Lists (basic support)
-      .replace(/^- (.*$)/gm, '<li>$1</li>')
+      .replace(/^\* (.+)$/gm, '<li>$1</li>')
       .replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
   }
 
   async execute(context: ExecutionContext, params: AddCommentParams): Promise<OperationResult> {
     try {
-      const validatedParams = AddCommentParamsSchema.parse(params);
+      const validatedParams = addCommentSchema.parse(params);
       
-      // First, verify the entity exists and get its details
-      const entity = await this.service.getEntity(
-        validatedParams.entityType,
-        validatedParams.entityId
-      ) as any;
-
+      // Validate entity exists
+      const entity = await this.validateEntity(validatedParams.entityType, validatedParams.entityId);
       if (!entity) {
-        return {
-          content: [{
-            type: 'error',
-            text: `${validatedParams.entityType} with ID ${validatedParams.entityId} not found`,
-            data: {
-              error: 'Entity not found',
-              entityType: validatedParams.entityType,
-              entityId: validatedParams.entityId
-            }
-          }],
-          metadata: {
-            executionTime: 0,
-            apiCallsCount: 1,
-            cacheHits: 0
-          }
-        };
+        return this.createErrorResponse(`${validatedParams.entityType} with ID ${validatedParams.entityId} not found`);
       }
 
-      // Format comment based on user role (with fallback for default/unknown roles)
+      // Create formatted comment
       const userRole = context.user.role || 'default';
       const formattedComment = this.formatContent(validatedParams.comment, userRole, entity);
       
-      // Create the comment using the proper API method
+      // Create comment via API
       const comment = await this.service.createComment(
         validatedParams.entityId,
         formattedComment,
@@ -192,75 +184,81 @@ export class AddCommentOperation implements SemanticOperation<AddCommentParams> 
         validatedParams.parentCommentId
       );
 
-      // Build response with context
-      const contextInfo = this.buildEntityContext(entity);
-      const suggestions = await this.generateFollowUpSuggestions(entity, validatedParams, context);
-
-      return {
-        content: [
-          {
-            type: 'text',
-            text: this.formatSuccessMessage(entity, formattedComment, validatedParams.isPrivate, validatedParams.parentCommentId)
-          },
-          {
-            type: 'structured-data',
-            data: {
-              comment: {
-                id: comment.Id,
-                description: formattedComment,
-                user: comment.User,
-                createdDate: comment.CreateDate,
-                isPrivate: validatedParams.isPrivate,
-                userRole: userRole
-              },
-              entity: {
-                id: entity.Id,
-                name: entity.Name,
-                type: validatedParams.entityType,
-                state: entity.EntityState?.Name,
-                assignedUser: entity.AssignedUser?.FirstName && entity.AssignedUser?.LastName 
-                  ? `${entity.AssignedUser.FirstName} ${entity.AssignedUser.LastName}`
-                  : 'Unassigned',
-                project: entity.Project?.Name || 'Unknown'
-              },
-              contextInfo,
-              nextSteps: suggestions
-            }
-          }
-        ],
-        suggestions: suggestions,
-        affectedEntities: [{
-          id: validatedParams.entityId,
-          type: validatedParams.entityType,
-          action: 'updated'
-        }],
-        metadata: {
-          executionTime: 0,
-          apiCallsCount: 2,
-          cacheHits: 0
-        }
-      };
+      // Build response
+      return this.buildSuccessResponse(entity, comment, validatedParams, userRole, formattedComment, context);
 
     } catch (error) {
-      return {
-        content: [{
-          type: 'error',
-          text: `Failed to add comment: ${error instanceof Error ? error.message : 'Unknown error'}`,
-          data: {
-            error: error instanceof Error ? error.message : 'Unknown error',
-            params: params
-          }
-        }],
-        metadata: {
-          executionTime: 0,
-          apiCallsCount: 1,
-          cacheHits: 0
-        }
-      };
+      return this.createErrorResponse(`Failed to add comment: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
-  private formatSuccessMessage(entity: any, comment: string, isPrivate: boolean, parentCommentId?: number): string {
+  private async validateEntity(entityType: string, entityId: number): Promise<any> {
+    return await this.service.getEntity(entityType, entityId) as any;
+  }
+
+  private createErrorResponse(message: string): OperationResult {
+    return {
+      content: [{
+        type: 'error' as const,
+        text: message
+      }]
+    };
+  }
+
+  private async buildSuccessResponse(
+    entity: any, 
+    comment: any, 
+    params: AddCommentParams, 
+    userRole: string, 
+    formattedComment: string,
+    context: ExecutionContext
+  ): Promise<OperationResult> {
+    const contextInfo = this.buildEntityContext(entity);
+    const suggestions = await this.generateFollowUpSuggestions(entity, params, context);
+    const successMessage = this.formatSuccessMessage(entity, formattedComment, params.isPrivate, params.parentCommentId);
+
+    return {
+      content: [
+        { type: 'text' as const, text: successMessage },
+        {
+          type: 'structured-data' as const,
+          data: {
+            comment: this.buildCommentData(comment, params.isPrivate, userRole, formattedComment),
+            entity: this.buildEntityData(entity, params.entityType),
+            contextInfo,
+            nextSteps: suggestions
+          }
+        }
+      ],
+      suggestions: suggestions
+    };
+  }
+
+  private buildCommentData(comment: any, isPrivate: boolean, userRole: string, formattedComment: string) {
+    return {
+      id: comment.Id,
+      description: formattedComment,
+      user: comment.User,
+      createdDate: comment.CreateDate,
+      isPrivate: isPrivate,
+      userRole: userRole
+    };
+  }
+
+  private buildEntityData(entity: any, entityType: string) {
+    return {
+      id: entity.Id,
+      name: entity.Name,
+      type: entityType,
+      state: entity.EntityState?.Name,
+      assignedUser: entity.AssignedUser?.FirstName && entity.AssignedUser?.LastName 
+        ? `${entity.AssignedUser.FirstName} ${entity.AssignedUser.LastName}`
+        : 'Unassigned',
+      project: entity.Project?.Name || 'Unknown'
+    };
+  }
+
+  private formatSuccessMessage(entity: any, comment: string, isPrivate?: boolean, parentCommentId?: number): string {
     const privacy = isPrivate ? ' (private)' : '';
     const replyText = parentCommentId ? ' reply' : '';
     const preview = comment.length > 50 ? comment.substring(0, 50) + '...' : comment;
@@ -297,45 +295,55 @@ export class AddCommentOperation implements SemanticOperation<AddCommentParams> 
     context: ExecutionContext
   ): Promise<string[]> {
     const suggestions: string[] = [];
+    const entityState = this.getEntityStateInfo(entity);
+    const isAssignedToMe = this.isEntityAssignedToUser(entity, context.user.id);
     
-    // Context-aware suggestions based on entity state and type
-    const isAssignedToMe = entity.AssignedUser?.Items?.some((user: any) => user.Id === context.user.id) ||
-                          entity.AssignedUser?.Id === context.user.id;
-    
-    const isInitialState = entity.EntityState?.IsInitial;
-    const isFinalState = entity.EntityState?.IsFinal;
-
-    if (params.entityType === 'Task') {
-      if (isAssignedToMe && !isFinalState) {
-        if (isInitialState) {
-          suggestions.push(`start-working-on ${params.entityId} - Begin work on this task`);
-        } else {
-          suggestions.push(`complete-task ${params.entityId} - Mark task as complete`);
-          suggestions.push(`log-time entityId:${params.entityId} spent:1.0 - Log time spent`);
-        }
-      }
-      
-      if (!isAssignedToMe && isInitialState) {
-        suggestions.push(`update_entity type:Task id:${params.entityId} - Assign to yourself or update details`);
-      }
-    }
-
-    if (params.entityType === 'Bug') {
-      if (isAssignedToMe) {
-        suggestions.push(`start-working-on ${params.entityId} - Start investigating this bug`);
-        suggestions.push(`log-time entityId:${params.entityId} spent:0.5 - Log investigation time`);
-      }
-      
-      suggestions.push(`show-my-bugs - View all your assigned bugs`);
-    }
-
-    // General suggestions
-    suggestions.push(`get_entity type:${params.entityType} id:${params.entityId} - View updated entity details`);
-    
-    if (entity.Project?.Id) {
-      suggestions.push(`search_entities type:Comment where:"General.Id eq ${params.entityId}" - View all comments on this item`);
-    }
+    // Add entity-specific suggestions
+    this.addTaskSuggestions(suggestions, params, entityState, isAssignedToMe);
+    this.addBugSuggestions(suggestions, params, entityState, isAssignedToMe);
+    this.addGeneralSuggestions(suggestions, entity, params);
 
     return suggestions;
+  }
+
+  private getEntityStateInfo(entity: any) {
+    return {
+      isInitial: entity.EntityState?.IsInitial,
+      isFinal: entity.EntityState?.IsFinal
+    };
+  }
+
+  private isEntityAssignedToUser(entity: any, userId: number): boolean {
+    return entity.AssignedUser?.Items?.some((user: any) => user.Id === userId) ||
+           entity.AssignedUser?.Id === userId;
+  }
+
+  private addTaskSuggestions(suggestions: string[], params: AddCommentParams, entityState: any, isAssignedToMe: boolean) {
+    if (params.entityType !== 'Task') return;
+
+    if (isAssignedToMe && !entityState.isFinal) {
+      if (entityState.isInitial) {
+        suggestions.push(`start-working-on ${params.entityId} - Begin work on this task`);
+      } else {
+        suggestions.push(`complete-task ${params.entityId} - Mark task as complete`);
+        suggestions.push(`log-time entityId:${params.entityId} spent:1.0 - Log time spent`);
+      }
+    }
+    
+    if (!params.parentCommentId) {
+      suggestions.push(`show-comments entityType:${params.entityType} entityId:${params.entityId} - View all comments`);
+    }
+  }
+
+  private addBugSuggestions(suggestions: string[], params: AddCommentParams, entityState: any, isAssignedToMe: boolean) {
+    if (params.entityType === 'Bug' && isAssignedToMe && !entityState.isFinal) {
+      suggestions.push(`show-my-bugs - View all your assigned bugs`);
+    }
+  }
+
+  private addGeneralSuggestions(suggestions: string[], entity: any, _params: AddCommentParams) {
+    if (entity.Project?.Id) {
+      suggestions.push(`search-work-items project:"${entity.Project.Name}" - View related work items`);
+    }
   }
 }

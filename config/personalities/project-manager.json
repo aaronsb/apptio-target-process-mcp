@@ -13,7 +13,9 @@
     "schedule-meeting",
     "create-sprint-report",
     "manage-backlog",
-    "add-comment"
+    "add-comment",
+    "show-comments",
+    "delete-comment"
   ],
   "preferences": {
     "defaultView": "team",

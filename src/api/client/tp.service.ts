@@ -409,7 +409,7 @@ export class TPService {
   /**
    * Get comments for an entity
    */
-  async getComments(entityType: string, entityId: number): Promise<any> {
+  async getComments(entityType: string, entityId: number): Promise<any[]> {
     try {
       // Validate entity type
       const validatedType = await this.validateEntityType(entityType);
@@ -419,10 +419,13 @@ export class TPService {
           headers: this.getHeaders()
         });
 
-        return await this.handleApiResponse<any>(
+        const data = await this.handleApiResponse<ApiResponse<any>>(
           response,
           `get comments for ${validatedType} ${entityId}`
         );
+        
+        // Return the Items array, or empty array if no Items property
+        return data.Items || [];
       }, `get comments for ${validatedType} ${entityId}`);
     } catch (error) {
       if (error instanceof McpError) throw error;

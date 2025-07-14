@@ -111,6 +111,9 @@ Key methods in TPService:
 - `createEntity()`: Create new entities with validation
 - `updateEntity()`: Update existing entities
 - `inspectObject()`: Get metadata about entity types
+- `getComments()`: Retrieve comments for entities with hierarchy support
+- `createComment()`: Create new comments with reply functionality
+- `deleteComment()`: Delete comments with proper validation
 
 ### 3. Tools Layer (`/src/tools`)
 
@@ -260,7 +263,9 @@ TP_USER_EMAIL=user@company.com
 - `complete_task` - Mark complete with time logging
 - `show_my_bugs` - Analyze bugs with severity insights
 - `log_time` - Record time with intelligent discovery
-- `add_comment` - Add contextual comments
+- `add_comment` - Add contextual comments with reply support
+- `show_comments` - View comments with hierarchical organization
+- `delete_comment` - Delete comments with ownership validation
 
 **Key Features:**
 - Dynamic discovery of entity states, priorities, severities
@@ -309,6 +314,7 @@ See the [toolkit integration guide](docs/integration/toolkit-integration.md) for
 - Improved query system with better validation and error handling
 - Added context builder and resource provider components
 - Added IBM watsonx Orchestrate toolkit integration support
+- Added comment management operations: add-comment, show-comments, delete-comment
 
 ## Architecture Notes
 
