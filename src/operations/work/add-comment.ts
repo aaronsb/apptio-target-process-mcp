@@ -17,7 +17,16 @@ export const addCommentSchema = z.object({
     }
     return val;
   }).describe('Whether the comment should be private (visible only to team members)'),
-  parentCommentId: z.coerce.number().optional().describe('ID of the parent comment to reply to (leave empty for root comment)')
+  parentCommentId: z.coerce.number().optional().describe('ID of the parent comment to reply to (leave empty for root comment)'),
+  attachments: z.array(z.object({
+    path: z.string().describe('Path to file to attach'),
+    description: z.string().optional().describe('Description of attachment')
+  })).optional().describe('Files to attach to the comment'),
+  mentions: z.array(z.string()).optional().describe('User names or IDs to mention in comment'),
+  useTemplate: z.string().optional().describe('Template name to use for formatting'),
+  codeLanguage: z.string().optional().describe('Language for code snippet highlighting (e.g., javascript, python)'),
+  linkedCommit: z.string().optional().describe('Git commit SHA to link to this comment'),
+  linkedPR: z.string().optional().describe('Pull request URL or ID to link')
 });
 
 export type AddCommentParams = z.infer<typeof addCommentSchema>;
@@ -64,54 +73,130 @@ export class AddCommentOperation implements SemanticOperation<AddCommentParams> 
   }
 
   /**
-   * Get role-specific comment templates
+   * Discover and get role-specific comment templates
    */
-  getTemplates(role: string): string[] {
+  async getTemplates(role: string, entityType: string, entityContext: any): Promise<any[]> {
+    const templates: any[] = [];
+    
+    try {
+      // Try to discover comment templates from TP instance
+      const discoveredTemplates = await this.service.searchEntities(
+        'CommentTemplate',
+        `(EntityType.Name eq '${entityType}' or EntityType eq null) and (Role.Name eq '${role}' or Role eq null)`,
+        ['Name', 'Description', 'Content', 'Role', 'EntityType'],
+        20
+      ).catch(() => []);
+
+      if (discoveredTemplates.length > 0) {
+        return discoveredTemplates.map((t: any) => ({
+          id: t.Id,
+          name: t.Name,
+          description: t.Description,
+          content: t.Content,
+          isDefault: t.Role?.Name === role && t.EntityType?.Name === entityType
+        }));
+      }
+    } catch (error) {
+      logger.debug('CommentTemplate entity not available, using defaults');
+    }
+
+    // Fallback to intelligent defaults based on role and context
+    return this.getDefaultTemplates(role, entityType, entityContext);
+  }
+
+  private getDefaultTemplates(role: string, entityType: string, entityContext: any): any[] {
+    const templates: any[] = [];
+    const isBlocked = entityContext?.workflowStage?.isBlocked;
+    const isInitial = entityContext?.workflowStage?.isInitial;
+    const isFinal = entityContext?.workflowStage?.isFinal;
+
+    // Base templates for all roles
+    if (isBlocked) {
+      templates.push({
+        name: 'Unblocking Update',
+        content: 'Resolved blocker: [describe what was blocking and how it was resolved]',
+        priority: 1
+      });
+    }
+
+    // Role-specific templates
     switch (role) {
       case 'developer':
-        return [
-          'Fixed: [Brief description of what was fixed]',
-          'Code review: [Feedback on implementation]',
-          'Technical note: [Implementation details or considerations]',
-          'Testing: [Test results or testing approach]',
-          'Blocked: [What is blocking progress and next steps]'
-        ];
+        if (entityType === 'Bug') {
+          templates.push(
+            { name: 'Bug Fixed', content: `Fixed: [root cause]\nSolution: [what was changed]\nTesting: [how to verify]`, priority: 1 },
+            { name: 'Cannot Reproduce', content: `Unable to reproduce on [environment]\nSteps tried: [list steps]\nNeed more info: [what's needed]`, priority: 2 }
+          );
+        }
+        if (entityType === 'Task') {
+          templates.push(
+            { name: 'Implementation Complete', content: `Completed: [what was implemented]\nCode location: [files/modules]\nNext steps: [testing/review needed]`, priority: 1 },
+            { name: 'Code Review', content: `Review feedback:\n✅ Good: [positive aspects]\n⚠️ Concerns: [issues found]\n💡 Suggestions: [improvements]`, priority: 2 }
+          );
+        }
+        templates.push(
+          { name: 'Technical Blocker', content: `Blocked by: [technical issue]\nAttempted solutions: [what was tried]\nHelp needed: [specific assistance required]`, priority: 3 },
+          { name: 'Progress Update', content: `Progress: [percentage]%\nCompleted: [what's done]\nRemaining: [what's left]\nETA: [estimated completion]`, priority: 4 }
+        );
+        break;
       
       case 'tester':
-        return [
-          'Test results: [Pass/Fail with details]',
-          'Bug reproduction: [Steps to reproduce the issue]',
-          'Test coverage: [Areas tested and coverage notes]',
-          'Quality observation: [Quality concerns or improvements]',
-          'Ready for testing: [Item ready for QA review]'
-        ];
+        templates.push(
+          { name: 'Test Pass', content: `✅ Testing PASSED\nEnvironment: [test env]\nScenarios tested: [list]\nEvidence: [screenshots/logs attached]`, priority: 1 },
+          { name: 'Test Fail', content: `❌ Testing FAILED\nEnvironment: [test env]\nFailure: [what failed]\nSteps to reproduce:\n1. [step 1]\n2. [step 2]\nExpected: [expected result]\nActual: [actual result]`, priority: 1 },
+          { name: 'Regression Found', content: `🐛 Regression detected\nWorking in: [previous version]\nBroken in: [current version]\nImpact: [severity and affected areas]`, priority: 2 }
+        );
+        if (entityType === 'Bug') {
+          templates.push(
+            { name: 'Bug Verified', content: `Verified fixed in [version/environment]\nTest steps: [verification steps]\nNo regression found`, priority: 1 }
+          );
+        }
+        break;
       
       case 'project-manager':
-        return [
-          'Status update: [Current status and next steps]',
-          'Team coordination: [Team communication or assignments]',
-          'Risk identified: [Risk description and mitigation plan]',
-          'Meeting notes: [Key decisions or action items]',
-          'Resource allocation: [Resource changes or needs]'
-        ];
+        templates.push(
+          { name: 'Status Report', content: `Status: [Red/Yellow/Green]\nProgress: [summary]\nBlockers: [list blockers]\nNext milestone: [date and deliverable]`, priority: 1 },
+          { name: 'Risk Alert', content: `⚠️ Risk identified: [risk description]\nImpact: [potential impact]\nProbability: [High/Medium/Low]\nMitigation: [proposed actions]`, priority: 2 },
+          { name: 'Team Update', content: `Team update:\n- [team member 1]: [status]\n- [team member 2]: [status]\nOverall velocity: [on track/behind/ahead]`, priority: 3 }
+        );
+        if (isFinal) {
+          templates.push(
+            { name: 'Completion Report', content: `✅ Completed\nDelivered: [what was delivered]\nLessons learned: [key takeaways]\nFollow-up items: [if any]`, priority: 1 }
+          );
+        }
+        break;
       
-      case 'product-manager':
       case 'product-owner':
-        return [
-          'Business justification: [Why this change is important]',
-          'Stakeholder feedback: [Input from stakeholders]',
-          'Requirements clarification: [Clarification on requirements]',
-          'Acceptance criteria: [Updated or new acceptance criteria]',
-          'Priority change: [Priority adjustment with reasoning]'
-        ];
-      
-      default:
-        return [
-          'Update: [General update or note]',
-          'Question: [Question or clarification needed]',
-          'Follow-up: [Next steps or follow-up actions]'
-        ];
+      case 'product-manager':
+        templates.push(
+          { name: 'Requirement Clarification', content: `Clarification on requirement:\nOriginal: [original requirement]\nClarified: [updated requirement]\nReason: [why the change]`, priority: 1 },
+          { name: 'Stakeholder Decision', content: `Decision: [decision made]\nStakeholders: [who was involved]\nRationale: [business reasoning]\nImpact: [what this affects]`, priority: 2 },
+          { name: 'Priority Adjustment', content: `Priority changed: [old] → [new]\nReason: [business justification]\nImpact on roadmap: [timeline changes]`, priority: 3 }
+        );
+        if (isInitial) {
+          templates.push(
+            { 
+              name: 'Acceptance Criteria', 
+              content: 'Acceptance Criteria:\n' +
+                '1. Given [context], When [action], Then [outcome]\n' +
+                '2. Given [context], When [action], Then [outcome]\n\n' +
+                'Definition of Done:\n' +
+                '- [ ] [criterion 1]\n' +
+                '- [ ] [criterion 2]', 
+              priority: 1 
+            }
+          );
+        }
+        break;
     }
+
+    // Add generic templates for all
+    templates.push(
+      { name: 'Custom', content: '', priority: 99 },
+      { name: 'Question', content: 'Question: [your question]\nContext: [why you\'re asking]\nNeeded by: [when you need answer]', priority: 98 }
+    );
+
+    return templates.sort((a, b) => a.priority - b.priority);
   }
 
   /**
@@ -143,27 +228,110 @@ export class AddCommentOperation implements SemanticOperation<AddCommentParams> 
   }
 
   /**
-   * Convert basic markdown to HTML for TargetProcess
+   * Convert rich markdown to HTML for TargetProcess with enhanced features
    */
-  private convertMarkdownToHtml(content: string): string {
-    return content
-      // Bold: **text** or __text__
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/__(.*?)__/g, '<strong>$1</strong>')
-      // Italic: *text* or _text_
-      .replace(/\*(.*?)\*/g, '<em>$1</em>')
-      .replace(/_(.*?)_/g, '<em>$1</em>')
-      // Code: `code`
-      .replace(/`(.*?)`/g, '<code>$1</code>')
-      // Line breaks
-      .replace(/\n\n/g, '</div><div><br/></div><div>')
-      .replace(/\n/g, '<br/>')
-      // Lists (basic support)
-      .replace(/^\* (.+)$/gm, '<li>$1</li>')
-      .replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
+  private convertMarkdownToHtml(content: string, options?: any): string {
+    let html = content;
+    
+    // Code blocks with syntax highlighting
+    if (options?.codeLanguage) {
+      html = html.replace(/```(\w+)?\n([\s\S]*?)```/g, (match, lang, code) => {
+        const language = lang || options.codeLanguage || 'text';
+        return `<div class="code-block" data-language="${language}"><pre><code>${this.escapeHtml(code.trim())}</code></pre></div>`;
+      });
+    } else {
+      // Simple code blocks
+      html = html.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
+    }
+    
+    // Inline code
+    html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+    
+    // User mentions
+    if (options?.mentions?.length > 0) {
+      options.mentions.forEach((user: any) => {
+        const mentionPattern = new RegExp(`@${user.name}|@${user.login}`, 'gi');
+        html = html.replace(mentionPattern, `<span class="mention" data-user-id="${user.id}">@${user.name}</span>`);
+      });
+    }
+    
+    // Links to commits/PRs
+    if (options?.linkedCommit) {
+      html = html.replace(/commit:(\w+)/gi, `<a href="#" class="commit-link" data-commit="${options.linkedCommit}">commit:${options.linkedCommit.substring(0, 7)}</a>`);
+    }
+    if (options?.linkedPR) {
+      html = html.replace(/PR#(\d+)/gi, `<a href="${options.linkedPR}" class="pr-link">PR#$1</a>`);
+    }
+    
+    // Tables (GitHub-flavored markdown)
+    html = html.replace(/\n\|(.+)\|\n\|(:?-+:?\|)+\n((?:\|.+\|\n?)+)/g, (match, header, separator, body) => {
+      const headers = header.split('|').filter(Boolean).map((h: string) => `<th>${h.trim()}</th>`).join('');
+      const rows = body.trim().split('\n').map((row: string) => {
+        const cells = row.split('|').filter(Boolean).map((c: string) => `<td>${c.trim()}</td>`).join('');
+        return `<tr>${cells}</tr>`;
+      }).join('');
+      return `<table><thead><tr>${headers}</tr></thead><tbody>${rows}</tbody></table>`;
+    });
+    
+    // Checklists
+    html = html.replace(/^- \[([ x])\] (.+)$/gm, (match, checked, text) => {
+      const isChecked = checked.toLowerCase() === 'x';
+      return `<div class="checklist-item"><input type="checkbox" ${isChecked ? 'checked' : ''} disabled> ${text}</div>`;
+    });
+    
+    // Bold and italic (order matters)
+    html = html.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
+    html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    html = html.replace(/__(.+?)__/g, '<strong>$1</strong>');
+    html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+    html = html.replace(/_(.+?)_/g, '<em>$1</em>');
+    
+    // Headers
+    html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+    html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+    html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+    
+    // Blockquotes
+    html = html.replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>');
+    
+    // Lists
+    html = html.replace(/^\* (.+)$/gm, '<li>$1</li>');
+    html = html.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
+    html = html.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
+    html = html.replace(/(<li>.*<\/li>)(?!.*<\/[uo]l>)/s, '<ol>$1</ol>');
+    
+    // Line breaks and paragraphs
+    html = html.replace(/\n\n/g, '</p><p>');
+    html = html.replace(/\n/g, '<br/>');
+    
+    // Wrap in div for TargetProcess
+    html = `<div>${html}</div>`;
+    
+    // Attachments section
+    if (options?.attachments?.length > 0) {
+      const attachmentHtml = options.attachments.map((att: any) => 
+        `<div class="attachment">📎 ${att.description || att.path}</div>`
+      ).join('');
+      html += `<div class="attachments-section"><hr/><strong>Attachments:</strong>${attachmentHtml}</div>`;
+    }
+    
+    return html;
+  }
+  
+  private escapeHtml(text: string): string {
+    const map: Record<string, string> = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#039;'
+    };
+    return text.replace(/[&<>"']/g, m => map[m]);
   }
 
   async execute(context: ExecutionContext, params: AddCommentParams): Promise<OperationResult> {
+    const startTime = Date.now();
+    
     try {
       const validatedParams = addCommentSchema.parse(params);
       
@@ -179,13 +347,36 @@ export class AddCommentOperation implements SemanticOperation<AddCommentParams> 
       // Analyze entity context for intelligent suggestions
       const entityContext = await this.analyzeEntityContext(entity, validatedParams.entityType);
       
+      // Get available templates
+      const availableTemplates = await this.getTemplates(context.user.role, validatedParams.entityType, entityContext);
+      
+      // Process mentions if provided
+      const mentionedUsers = validatedParams.mentions ? 
+        await this.resolveMentions(validatedParams.mentions) : [];
+      
+      // Apply template if requested
+      let processedComment = validatedParams.comment;
+      if (validatedParams.useTemplate) {
+        const template = availableTemplates.find(t => t.name === validatedParams.useTemplate);
+        if (template) {
+          processedComment = this.applyTemplate(template.content, validatedParams.comment);
+        }
+      }
+      
       // Generate role-based comment with discovered context
       const formattedComment = await this.generateIntelligentComment(
-        validatedParams.comment, 
+        processedComment, 
         context.user.role,
         entity,
         entityContext,
-        commentCapabilities
+        commentCapabilities,
+        {
+          mentions: mentionedUsers,
+          codeLanguage: validatedParams.codeLanguage,
+          linkedCommit: validatedParams.linkedCommit,
+          linkedPR: validatedParams.linkedPR,
+          attachments: validatedParams.attachments
+        }
       );
       
       // Create comment with proper error handling
@@ -209,7 +400,8 @@ export class AddCommentOperation implements SemanticOperation<AddCommentParams> 
         validatedParams, 
         context,
         entityContext,
-        formattedComment
+        formattedComment,
+        startTime
       );
 
     } catch (error) {
@@ -354,12 +546,14 @@ export class AddCommentOperation implements SemanticOperation<AddCommentParams> 
     role: string,
     entity: any,
     entityContext: any,
-    capabilities: any
+    capabilities: any,
+    options?: any
   ): Promise<string> {
     const timestamp = new Date().toISOString().split('T')[0];
+    const startTime = Date.now();
     
-    // Convert basic markdown to HTML
-    const htmlContent = this.convertMarkdownToHtml(content);
+    // Convert rich markdown to HTML with all features
+    const htmlContent = this.convertMarkdownToHtml(content, options);
     
     // Add contextual prefix based on entity state and role
     let prefix = this.getRolePrefix(role, timestamp);
@@ -372,8 +566,53 @@ export class AddCommentOperation implements SemanticOperation<AddCommentParams> 
     } else if (entityContext.timing.isOverdue) {
       prefix += ' ⚠️ Overdue';
     }
+    
+    // Add performance metric
+    const processingTime = Date.now() - startTime;
+    logger.debug(`Comment formatting took ${processingTime}ms`);
 
-    return `<div><strong>${prefix}</strong></div><div><br/></div><div>${htmlContent}</div>`;
+    return `<div><strong>${prefix}</strong></div><div><br/></div>${htmlContent}`;
+  }
+  
+  private async resolveMentions(mentions: string[]): Promise<any[]> {
+    const resolvedUsers: any[] = [];
+    
+    for (const mention of mentions) {
+      try {
+        // Try to find user by name or login
+        const users = await this.service.searchEntities(
+          'GeneralUser',
+          `(FirstName contains '${mention}') or (LastName contains '${mention}') or (Login eq '${mention}') or (Email eq '${mention}')`,
+          ['FirstName', 'LastName', 'Login', 'Email'],
+          5
+        );
+        
+        if (users.length > 0) {
+          const user = users[0] as any;
+          resolvedUsers.push({
+            id: user.Id,
+            name: `${user.FirstName || ''} ${user.LastName || ''}`.trim(),
+            login: user.Login,
+            email: user.Email
+          });
+        }
+      } catch (error) {
+        logger.warn(`Failed to resolve mention for ${mention}`);
+      }
+    }
+    
+    return resolvedUsers;
+  }
+  
+  private applyTemplate(templateContent: string, userInput: string): string {
+    // Simple template application - replace first placeholder or append
+    if (templateContent.includes('[')) {
+      // Replace first placeholder with user input
+      return templateContent.replace(/\[.*?\]/, userInput);
+    } else {
+      // Append user input to template
+      return `${templateContent}\n\n${userInput}`;
+    }
   }
 
   private getRolePrefix(role: string, timestamp: string): string {
@@ -540,7 +779,8 @@ You can still try adding a basic comment without advanced features.`
     params: AddCommentParams,
     context: ExecutionContext,
     entityContext: any,
-    formattedComment: string
+    formattedComment: string,
+    startTime?: number
   ): Promise<OperationResult> {
     const suggestions = await this.generateWorkflowAwareSuggestions(
       entity,
@@ -550,6 +790,11 @@ You can still try adding a basic comment without advanced features.`
     );
 
     const preview = this.extractCommentPreview(formattedComment);
+    const executionTime = startTime ? Date.now() - startTime : 0;
+    
+    // Get available templates for suggestions
+    const templates = await this.getTemplates(context.user.role, params.entityType, entityContext);
+    const templateNames = templates.slice(0, 3).map(t => t.name);
     
     return {
       content: [
@@ -566,7 +811,10 @@ You can still try adding a basic comment without advanced features.`
               entityType: params.entityType,
               isPrivate: params.isPrivate || false,
               parentId: params.parentCommentId,
-              preview: preview
+              preview: preview,
+              hasAttachments: (params.attachments?.length || 0) > 0,
+              hasMentions: (params.mentions?.length || 0) > 0,
+              hasCodeBlock: params.codeLanguage ? true : false
             },
             entity: {
               id: entity.Id,
@@ -580,6 +828,10 @@ You can still try adding a basic comment without advanced features.`
               isBlocked: entityContext.workflowStage.isBlocked,
               daysInState: entityContext.timing.daysInCurrentState,
               assigneeCount: entityContext.teamContext.assignedUsers.length
+            },
+            templates: {
+              available: templateNames,
+              count: templates.length
             }
           }
         }
@@ -589,7 +841,12 @@ You can still try adding a basic comment without advanced features.`
         id: params.entityId,
         type: params.entityType,
         action: 'updated' as const
-      }]
+      }],
+      metadata: {
+        executionTime: executionTime,
+        apiCallsCount: 5, // Approximate based on operations
+        cacheHits: 0
+      }
     };
   }
 
@@ -641,6 +898,13 @@ You can still try adding a basic comment without advanced features.`
   ): Promise<string[]> {
     const suggestions: string[] = [];
     
+    // Template suggestions based on role and context
+    const templates = await this.getTemplates(context.user.role, params.entityType, entityContext);
+    if (templates.length > 0 && !params.useTemplate) {
+      const topTemplate = templates[0];
+      suggestions.push(`add-comment entityType:${params.entityType} entityId:${params.entityId} useTemplate:"${topTemplate.name}" - Use ${topTemplate.name} template`);
+    }
+    
     // Context-aware suggestions based on entity state
     if (entityContext.workflowStage.isInitial && entityContext.teamContext.assignedUsers.length === 0) {
       suggestions.push(`assign-to user:"${context.user.name}" - Assign this ${params.entityType} to yourself`);
@@ -666,6 +930,19 @@ You can still try adding a basic comment without advanced features.`
     
     // Comment-specific suggestions
     suggestions.push(`show-comments entityType:${params.entityType} entityId:${params.entityId} - View all comments`);
+    
+    // Code and documentation suggestions for developers
+    if (context.user.role === 'developer' && params.entityType === 'Task') {
+      suggestions.push(`add-comment entityType:${params.entityType} entityId:${params.entityId} codeLanguage:javascript - Add code snippet`);
+      if (params.linkedCommit) {
+        suggestions.push(`search_entities type:Task where:"Description contains '${params.linkedCommit}'" - Find related tasks`);
+      }
+    }
+    
+    // Testing suggestions for testers
+    if (context.user.role === 'tester' && params.entityType === 'Bug') {
+      suggestions.push(`add-comment entityType:${params.entityType} entityId:${params.entityId} attachments:[{path:"screenshot.png"}] - Add test evidence`);
+    }
     
     if (entityContext.timing.daysInCurrentState > 5) {
       suggestions.push(`analyze-blockers entityId:${params.entityId} - Identify why this is taking longer than usual`);
