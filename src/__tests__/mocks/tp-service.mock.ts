@@ -10,8 +10,12 @@ export const createMockTPService = (): jest.Mocked<TPService> => {
     updateEntity: jest.fn(),
     inspectObject: jest.fn(),
     
+    // Comment methods
+    getComments: jest.fn(),
+    createComment: jest.fn(),
+    deleteComment: jest.fn(),
+    
     // Entity type validation
-    validateEntityType: jest.fn(),
     getValidEntityTypes: jest.fn(),
     
     // Configuration
@@ -25,7 +29,6 @@ export const createMockTPService = (): jest.Mocked<TPService> => {
   } as unknown as jest.Mocked<TPService>;
 
   // Default implementations
-  mockService.validateEntityType.mockResolvedValue(true);
   mockService.getValidEntityTypes.mockResolvedValue([
     'UserStory', 'Bug', 'Task', 'Feature', 'Epic', 
     'Project', 'Team', 'Iteration', 'Release'

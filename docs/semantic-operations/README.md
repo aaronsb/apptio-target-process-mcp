@@ -56,7 +56,9 @@ Product strategy and stakeholder management
 Core operations used across all roles with role-specific adaptations:
 - `show-my-tasks` - Task visibility with role-appropriate filtering
 - `show-my-bugs` - Bug management with role-specific context
-- `add-comment` - Documentation with role-appropriate templates
+- `add-comment` - Intelligent comment creation with entity context detection and role-based templates
+- `show-comments` - Context-aware comment viewing with pattern recognition and hierarchical threading
+- `delete-comment` - Safe comment deletion with ownership validation
 - `log-time` - Time tracking with activity categorization
 
 ### Role-Specific Operations
@@ -123,6 +125,32 @@ The system learns from usage patterns and provides:
 - Process improvement suggestions
 - Risk identification and mitigation
 - Resource allocation guidance
+
+## Comment Operations: A Semantic Case Study
+
+The comment operations (`add-comment`, `show-comments`, `delete-comment`) exemplify our semantic approach:
+
+### Entity Context Detection
+- **Workflow Stage Analysis**: Comments adapt based on whether item is in planning, development, testing, or done
+- **Team Dynamics**: Recognizes blockers, dependencies, and collaboration patterns
+- **Timing Intelligence**: Understands sprint phases, deadlines, and work duration
+
+### Role-Based Intelligence
+- **Developer**: Technical templates, code reference suggestions, debugging context
+- **Tester**: Test result formats, defect documentation, quality metrics
+- **Project Manager**: Status updates, stakeholder communication, risk documentation
+- **Product Owner**: Feature insights, ROI analysis, strategic alignment
+
+### Pattern Recognition
+- **Content Analysis**: Identifies questions, blockers, achievements, and decisions
+- **Collaboration Patterns**: Detects @mentions, action items, and follow-ups
+- **Knowledge Extraction**: Surfaces important information and decisions
+
+### Rich Capabilities
+- **Markdown to HTML**: Automatic formatting with code highlighting
+- **Hierarchical Threading**: Parent-child comment relationships
+- **Smart Suggestions**: Context-aware next actions based on comment content
+- **Performance Tracking**: Sub-500ms response times with detailed metrics
 
 ## Implementation Notes
 

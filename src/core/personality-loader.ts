@@ -1,5 +1,6 @@
 import { readFileSync, readdirSync, existsSync } from 'fs';
-import { join } from 'path';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 import { 
   ExecutionContext, 
   PersonalityConfig,
@@ -19,8 +20,14 @@ export class PersonalityLoader implements IPersonalityLoader {
   private personalities: Map<string, PersonalityConfig> = new Map();
   private configPath: string;
 
-  constructor(configPath: string = './config/personalities') {
-    this.configPath = configPath;
+  constructor(configPath?: string) {
+    if (configPath) {
+      this.configPath = configPath;
+    } else {
+      // Get the directory of the current module and go up to find config
+      const currentDir = dirname(fileURLToPath(import.meta.url));
+      this.configPath = join(currentDir, '../../config/personalities');
+    }
     this.loadPersonalities();
   }
 

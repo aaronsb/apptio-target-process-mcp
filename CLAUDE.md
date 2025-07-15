@@ -111,6 +111,9 @@ Key methods in TPService:
 - `createEntity()`: Create new entities with validation
 - `updateEntity()`: Update existing entities
 - `inspectObject()`: Get metadata about entity types
+- `getComments()`: Retrieve comments for entities with hierarchy support
+- `createComment()`: Create new comments with reply functionality
+- `deleteComment()`: Delete comments with proper validation
 
 ### 3. Tools Layer (`/src/tools`)
 
@@ -260,7 +263,9 @@ TP_USER_EMAIL=user@company.com
 - `complete_task` - Mark complete with time logging
 - `show_my_bugs` - Analyze bugs with severity insights
 - `log_time` - Record time with intelligent discovery
-- `add_comment` - Add contextual comments
+- `add_comment` - Add contextual comments with reply support
+- `show_comments` - View comments with hierarchical organization
+- `delete_comment` - Delete comments with ownership validation
 
 **Key Features:**
 - Dynamic discovery of entity states, priorities, severities
@@ -309,6 +314,17 @@ See the [toolkit integration guide](docs/integration/toolkit-integration.md) for
 - Improved query system with better validation and error handling
 - Added context builder and resource provider components
 - Added IBM watsonx Orchestrate toolkit integration support
+- **Implemented true semantic comment operations (Issue #51)** - Transformed add-comment, show-comments, and delete-comment from basic API wrappers into intelligent semantic operations with:
+  - Dynamic discovery of comment capabilities and templates
+  - Entity context detection (workflow stage, blocked status, timing, assignments)
+  - Role-based templates and formatting (developer, tester, PM, PO)
+  - Pattern recognition in comments (blockers, decisions, key discussions)
+  - Rich text support with Markdown to HTML conversion
+  - Hierarchical comment threading with parent/child relationships
+  - User mention resolution with @-mention support
+  - Performance tracking with 500ms target
+  - Educational error responses with actionable guidance
+  - Comprehensive test coverage (first semantic operations with full tests)
 
 ## Architecture Notes
 

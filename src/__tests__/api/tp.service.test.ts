@@ -222,4 +222,331 @@ describe('TPService', () => {
 
   // These tests were removed as validateEntityType is now a private method
   // The functionality is tested through the public API methods that use it
+
+  describe('comment methods', () => {
+    // Mock fetch globally for comment methods that use fetch instead of axios
+    const mockFetch = jest.fn() as jest.Mock;
+    // @ts-ignore - global fetch mock for tests
+    // eslint-disable-next-line no-undef
+    (global as any).fetch = mockFetch;
+
+    beforeEach(() => {
+      mockFetch.mockClear();
+    });
+
+    describe('getComments', () => {
+      it('should get comments for an entity', async () => {
+        const mockResponse = {
+          Items: [
+            {
+              Id: 207220,
+              Description: 'Test comment',
+              ParentId: null,
+              CreateDate: '/Date(1752265210000+0200)/',
+              IsPrivate: false,
+              General: { Id: 54356, Name: 'Test Story' },
+              Owner: { Id: 101732, FullName: 'Test User', Login: 'test@example.com' }
+            }
+          ]
+        };
+
+        mockFetch.mockResolvedValue({
+          ok: true,
+          json: async () => mockResponse
+        } as any);
+
+        const result = await service.getComments('UserStory', 54356);
+
+        expect(result).toEqual(mockResponse.Items);
+        expect(mockFetch).toHaveBeenCalledWith(
+          'https://test.tpondemand.com/api/v1/UserStory/54356/Comments',
+          expect.objectContaining({
+            headers: expect.objectContaining({
+              'Authorization': expect.stringContaining('Basic')
+            })
+          })
+        );
+      });
+
+      it('should handle invalid entity type', async () => {
+        await expect(service.getComments('InvalidType', 54356))
+          .rejects
+          .toThrow(McpError);
+      });
+
+      it('should handle API errors', async () => {
+        mockFetch.mockResolvedValue({
+          ok: false,
+          status: 404,
+          statusText: 'Not Found',
+          text: async () => 'Entity not found'
+        } as any);
+
+        await expect(service.getComments('UserStory', 99999))
+          .rejects
+          .toThrow();
+      });
+
+      it('should retry on failure', async () => {
+        // First call fails, second succeeds
+        mockFetch
+          .mockResolvedValueOnce({
+            ok: false,
+            status: 500,
+            statusText: 'Internal Server Error',
+            text: async () => 'Server error'
+          } as any)
+          .mockResolvedValueOnce({
+            ok: true,
+            json: async () => ({ Items: [] })
+          } as any);
+
+        const result = await service.getComments('Task', 12345);
+
+        expect(result).toEqual([]);
+        expect(mockFetch).toHaveBeenCalledTimes(2);
+      });
+    });
+
+    describe('createComment', () => {
+      it('should create a basic comment', async () => {
+        const mockComment = {
+          Id: 207221,
+          Description: 'New comment',
+          CreateDate: '/Date(1752265210000+0200)/',
+          General: { Id: 54356 }
+        };
+
+        mockFetch.mockResolvedValue({
+          ok: true,
+          json: async () => mockComment
+        } as any);
+
+        const result = await service.createComment(54356, 'New comment');
+
+        expect(result).toEqual(mockComment);
+        expect(mockFetch).toHaveBeenCalledWith(
+          'https://test.tpondemand.com/api/v1/Comments',
+          expect.objectContaining({
+            method: 'POST',
+            headers: expect.objectContaining({
+              'Content-Type': 'application/json',
+              'Authorization': expect.stringContaining('Basic')
+            }),
+            body: JSON.stringify({
+              General: { Id: 54356 },
+              Description: 'New comment'
+            })
+          })
+        );
+      });
+
+      it('should create a private comment', async () => {
+        const mockComment = {
+          Id: 207222,
+          Description: 'Private comment',
+          IsPrivate: true,
+          General: { Id: 54356 }
+        };
+
+        mockFetch.mockResolvedValue({
+          ok: true,
+          json: async () => mockComment
+        } as any);
+
+        await service.createComment(54356, 'Private comment', true);
+
+        expect(mockFetch).toHaveBeenCalledWith(
+          'https://test.tpondemand.com/api/v1/Comments',
+          expect.objectContaining({
+            body: JSON.stringify({
+              General: { Id: 54356 },
+              Description: 'Private comment',
+              IsPrivate: true
+            })
+          })
+        );
+      });
+
+      it('should create a reply comment', async () => {
+        const mockReply = {
+          Id: 207223,
+          Description: 'Reply comment',
+          ParentId: 207220,
+          General: { Id: 54356 }
+        };
+
+        mockFetch.mockResolvedValue({
+          ok: true,
+          json: async () => mockReply
+        } as any);
+
+        await service.createComment(54356, 'Reply comment', false, 207220);
+
+        expect(mockFetch).toHaveBeenCalledWith(
+          'https://test.tpondemand.com/api/v1/Comments',
+          expect.objectContaining({
+            body: JSON.stringify({
+              General: { Id: 54356 },
+              Description: 'Reply comment',
+              ParentId: 207220
+            })
+          })
+        );
+      });
+
+      it('should create a private reply comment', async () => {
+        const mockReply = {
+          Id: 207224,
+          Description: 'Private reply',
+          ParentId: 207220,
+          IsPrivate: true,
+          General: { Id: 54356 }
+        };
+
+        mockFetch.mockResolvedValue({
+          ok: true,
+          json: async () => mockReply
+        } as any);
+
+        await service.createComment(54356, 'Private reply', true, 207220);
+
+        expect(mockFetch).toHaveBeenCalledWith(
+          'https://test.tpondemand.com/api/v1/Comments',
+          expect.objectContaining({
+            body: JSON.stringify({
+              General: { Id: 54356 },
+              Description: 'Private reply',
+              IsPrivate: true,
+              ParentId: 207220
+            })
+          })
+        );
+      });
+
+      it('should handle API errors', async () => {
+        mockFetch.mockResolvedValue({
+          ok: false,
+          status: 400,
+          statusText: 'Bad Request',
+          text: async () => 'Invalid comment data'
+        } as any);
+
+        await expect(service.createComment(54356, 'Test comment'))
+          .rejects
+          .toThrow();
+      });
+
+      it('should retry on failure', async () => {
+        const mockComment = { Id: 207225, Description: 'Retry comment' };
+
+        mockFetch
+          .mockResolvedValueOnce({
+            ok: false,
+            status: 503,
+            statusText: 'Service Unavailable',
+            text: async () => 'Service temporarily unavailable'
+          } as any)
+          .mockResolvedValueOnce({
+            ok: true,
+            json: async () => mockComment
+          } as any);
+
+        const result = await service.createComment(54356, 'Retry comment');
+
+        expect(result).toEqual(mockComment);
+        expect(mockFetch).toHaveBeenCalledTimes(2);
+      });
+    });
+
+    describe('deleteComment', () => {
+      it('should delete a comment successfully', async () => {
+        mockFetch.mockResolvedValue({
+          ok: true,
+          status: 200
+        } as any);
+
+        const result = await service.deleteComment(207220);
+
+        expect(result).toBe(true);
+        expect(mockFetch).toHaveBeenCalledWith(
+          'https://test.tpondemand.com/api/v1/Comments/207220',
+          expect.objectContaining({
+            method: 'DELETE',
+            headers: expect.objectContaining({
+              'Authorization': expect.stringContaining('Basic')
+            })
+          })
+        );
+      });
+
+      it('should handle delete failures', async () => {
+        mockFetch.mockResolvedValue({
+          ok: false,
+          status: 404,
+          statusText: 'Not Found',
+          text: async () => 'Comment not found'
+        } as any);
+
+        await expect(service.deleteComment(999999))
+          .rejects
+          .toThrow('Failed to delete comment 999999: 404 - Comment not found');
+      });
+
+      it('should handle unauthorized deletion', async () => {
+        mockFetch.mockResolvedValue({
+          ok: false,
+          status: 403,
+          statusText: 'Forbidden',
+          text: async () => 'Insufficient permissions'
+        } as any);
+
+        await expect(service.deleteComment(207220))
+          .rejects
+          .toThrow('Failed to delete comment 207220: 403 - Insufficient permissions');
+      });
+
+      it('should retry on transient failures', async () => {
+        mockFetch
+          .mockResolvedValueOnce({
+            ok: false,
+            status: 500,
+            statusText: 'Internal Server Error',
+            text: async () => 'Temporary server error'
+          } as any)
+          .mockResolvedValueOnce({
+            ok: true,
+            status: 200
+          } as any);
+
+        const result = await service.deleteComment(207220);
+
+        expect(result).toBe(true);
+        expect(mockFetch).toHaveBeenCalledTimes(2);
+      });
+
+      it('should not retry on 4xx errors', async () => {
+        mockFetch.mockResolvedValue({
+          ok: false,
+          status: 400,
+          statusText: 'Bad Request',
+          text: async () => 'Invalid comment ID'
+        } as any);
+
+        await expect(service.deleteComment(-1))
+          .rejects
+          .toThrow();
+
+        expect(mockFetch).toHaveBeenCalledTimes(1); // No retry on 4xx
+      });
+
+      it('should handle network failures', async () => {
+        mockFetch.mockRejectedValue(new Error('Network error'));
+
+        await expect(service.deleteComment(207220))
+          .rejects
+          .toThrow();
+      });
+    });
+  });
 });
