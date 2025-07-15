@@ -5,6 +5,8 @@ import { TPService } from '../../api/client/tp.service.js';
 // Mock TPService
 const mockService = {
   getComments: jest.fn(),
+  getEntity: jest.fn(),
+  searchEntities: jest.fn(),
 } as unknown as jest.Mocked<TPService>;
 
 // Mock execution context
@@ -50,7 +52,7 @@ describe('ShowCommentsOperation', () => {
       const metadata = operation.metadata;
       expect(metadata.id).toBe('show-comments');
       expect(metadata.name).toBe('Show Comments');
-      expect(metadata.description).toContain('View all comments');
+      expect(metadata.description).toContain('View comments with intelligent context awareness');
       expect(metadata.category).toBe('collaboration');
       expect(metadata.requiredPersonalities).toContain('developer');
       expect(metadata.examples).toBeInstanceOf(Array);
@@ -68,35 +70,61 @@ describe('ShowCommentsOperation', () => {
   describe('execute', () => {
     it('should handle no comments found', async () => {
       mockService.getComments.mockResolvedValue([]);
+      mockService.getEntity.mockResolvedValue({
+        Id: 54356,
+        Name: 'Test Task',
+        EntityType: { Name: 'Task' },
+        EntityState: { Name: 'In Progress' }
+      });
+      mockService.searchEntities.mockResolvedValue([]);
 
       const params = {
         entityType: 'Task',
         entityId: 54356,
-        includePrivate: true
+        includePrivate: true,
+        filter: 'all' as const,
+        groupBy: 'none' as const,
+        sortOrder: 'newest' as const,
+        limit: 50
       };
 
       const result = await operation.execute(mockContext, params);
 
-      expect(result.content).toHaveLength(1);
+      expect(result.content).toHaveLength(2);
       expect(result.content[0].type).toBe('text');
-      expect(result.content[0].text).toContain('No comments found');
+      expect(result.content[0].text).toContain('No Comments Yet');
+      expect(result.content[1].type).toBe('text');
+      expect(result.content[1].text).toContain('Be the first to comment');
     });
 
     it('should handle null or undefined Items', async () => {
       // The service now returns empty array when no comments found
       mockService.getComments.mockResolvedValue([]);
+      mockService.getEntity.mockResolvedValue({
+        Id: 54356,
+        Name: 'Test Task',
+        EntityType: { Name: 'Task' },
+        EntityState: { Name: 'In Progress' }
+      });
+      mockService.searchEntities.mockResolvedValue([]);
 
       const params = {
         entityType: 'Task',
         entityId: 54356,
-        includePrivate: true
+        includePrivate: true,
+        filter: 'all' as const,
+        groupBy: 'none' as const,
+        sortOrder: 'newest' as const,
+        limit: 50
       };
 
       const result = await operation.execute(mockContext, params);
 
-      expect(result.content).toHaveLength(1);
+      expect(result.content).toHaveLength(2);
       expect(result.content[0].type).toBe('text');
-      expect(result.content[0].text).toContain('No comments found');
+      expect(result.content[0].text).toContain('No Comments Yet');
+      expect(result.content[1].type).toBe('text');
+      expect(result.content[1].text).toContain('Be the first to comment');
     });
 
     it('should organize and display comments with replies', async () => {
@@ -120,21 +148,38 @@ describe('ShowCommentsOperation', () => {
       ];
 
       mockService.getComments.mockResolvedValue(mockComments);
+      mockService.getEntity.mockResolvedValue({
+        Id: 54356,
+        Name: 'Test Task',
+        EntityType: { Name: 'Task' },
+        EntityState: { Name: 'In Progress' }
+      });
+      mockService.searchEntities.mockResolvedValue([]);
 
       const params = {
         entityType: 'Task',
         entityId: 54356,
-        includePrivate: true
+        includePrivate: true,
+        filter: 'all' as const,
+        groupBy: 'none' as const,
+        sortOrder: 'newest' as const,
+        limit: 50
       };
 
       const result = await operation.execute(mockContext, params);
 
-      expect(result.content).toHaveLength(2);
+      expect(result.content.length).toBeGreaterThanOrEqual(2);
       expect(result.content[0].type).toBe('text');
-      expect(result.content[0].text).toContain('Comments for Task 54356');
-      expect(result.content[0].text).toContain('John Doe');
-      expect(result.content[0].text).toContain('Jane Smith');
-      expect(result.content[1].type).toBe('structured-data');
+      
+      // Find the content that contains the comments
+      const textContent = result.content.filter(c => c.type === 'text').map(c => c.text).join('\n');
+      expect(textContent).toContain('Task #54356');
+      expect(textContent).toContain('John Doe');
+      expect(textContent).toContain('Jane Smith');
+      
+      // Check for structured data
+      const structuredData = result.content.find(c => c.type === 'structured-data');
+      expect(structuredData).toBeDefined();
       expect(result.suggestions).toBeInstanceOf(Array);
     });
 
@@ -151,16 +196,29 @@ describe('ShowCommentsOperation', () => {
       ];
 
       mockService.getComments.mockResolvedValue(mockComments);
+      mockService.getEntity.mockResolvedValue({
+        Id: 54356,
+        Name: 'Test Task',
+        EntityType: { Name: 'Task' },
+        EntityState: { Name: 'In Progress' }
+      });
+      mockService.searchEntities.mockResolvedValue([]);
 
       const params = {
         entityType: 'Task',
         entityId: 54356,
-        includePrivate: true
+        includePrivate: true,
+        filter: 'all' as const,
+        groupBy: 'none' as const,
+        sortOrder: 'newest' as const,
+        limit: 50
       };
 
       const result = await operation.execute(mockContext, params);
 
-      expect(result.content[0].text).toContain('2009'); // Date should be parsed correctly
+      // Find the content that contains the comments
+      const textContent = result.content.filter(c => c.type === 'text').map(c => c.text).join('\n');
+      expect(textContent).toContain('2009'); // Date should be parsed correctly
     });
 
     it('should clean HTML from comment descriptions', async () => {
@@ -176,18 +234,31 @@ describe('ShowCommentsOperation', () => {
       ];
 
       mockService.getComments.mockResolvedValue(mockComments);
+      mockService.getEntity.mockResolvedValue({
+        Id: 54356,
+        Name: 'Test Task',
+        EntityType: { Name: 'Task' },
+        EntityState: { Name: 'In Progress' }
+      });
+      mockService.searchEntities.mockResolvedValue([]);
 
       const params = {
         entityType: 'Task',
         entityId: 54356,
-        includePrivate: true
+        includePrivate: true,
+        filter: 'all' as const,
+        groupBy: 'none' as const,
+        sortOrder: 'newest' as const,
+        limit: 50
       };
 
       const result = await operation.execute(mockContext, params);
 
-      expect(result.content[0].text).toContain('Bold and italic text');
-      expect(result.content[0].text).not.toContain('<div>');
-      expect(result.content[0].text).not.toContain('<strong>');
+      // Find the content that contains the comments
+      const textContent = result.content.filter(c => c.type === 'text').map(c => c.text).join('\n');
+      expect(textContent).toContain('Bold and italic text');
+      expect(textContent).not.toContain('<div>');
+      expect(textContent).not.toContain('<strong>');
     });
 
     it('should handle parameter validation errors', async () => {
@@ -196,13 +267,18 @@ describe('ShowCommentsOperation', () => {
       const params = {
         entityType: 'Task',
         entityId: -1, // Invalid ID that will cause service error
-        includePrivate: true
+        includePrivate: true,
+        filter: 'all' as const,
+        groupBy: 'none' as const,
+        sortOrder: 'newest' as const,
+        limit: 50
       };
 
       const result = await operation.execute(mockContext, params);
 
-      expect(result.content[0].type).toBe('error');
-      expect(result.content[0].text).toContain('Failed to fetch comments');
+      // The semantic operation might handle errors differently
+      const textContent = result.content.filter(c => c.type === 'text' || c.type === 'error').map(c => c.text).join('\n');
+      expect(textContent).toContain('Comment Discovery Issue');
     });
 
     it('should handle service errors gracefully', async () => {
@@ -211,14 +287,19 @@ describe('ShowCommentsOperation', () => {
       const params = {
         entityType: 'Task',
         entityId: 54356,
-        includePrivate: true
+        includePrivate: true,
+        filter: 'all' as const,
+        groupBy: 'none' as const,
+        sortOrder: 'newest' as const,
+        limit: 50
       };
 
       const result = await operation.execute(mockContext, params);
 
-      expect(result.content).toHaveLength(1);
-      expect(result.content[0].type).toBe('error');
-      expect(result.content[0].text).toContain('Failed to fetch comments');
+      // The semantic operation provides educational error responses
+      expect(result.content.length).toBeGreaterThanOrEqual(1);
+      const textContent = result.content.filter(c => c.type === 'text' || c.type === 'error').map(c => c.text).join('\n');
+      expect(textContent).toContain('Comment Discovery Issue');
     });
 
     it('should sort root comments by creation date (newest first)', async () => {
@@ -242,19 +323,30 @@ describe('ShowCommentsOperation', () => {
       ];
 
       mockService.getComments.mockResolvedValue(mockComments);
+      mockService.getEntity.mockResolvedValue({
+        Id: 54356,
+        Name: 'Test Task',
+        EntityType: { Name: 'Task' },
+        EntityState: { Name: 'In Progress' }
+      });
+      mockService.searchEntities.mockResolvedValue([]);
 
       const params = {
         entityType: 'Task',
         entityId: 54356,
-        includePrivate: true
+        includePrivate: true,
+        filter: 'all' as const,
+        groupBy: 'none' as const,
+        sortOrder: 'newest' as const,
+        limit: 50
       };
 
       const result = await operation.execute(mockContext, params);
 
       // Check that newer comment appears first
-      const text = result.content[0].text as string;
-      const newerIndex = text.indexOf('Newer comment');
-      const olderIndex = text.indexOf('Older comment');
+      const textContent = result.content.filter(c => c.type === 'text').map(c => c.text).join('\n');
+      const newerIndex = textContent.indexOf('Newer comment');
+      const olderIndex = textContent.indexOf('Older comment');
       expect(newerIndex).toBeLessThan(olderIndex);
     });
 
@@ -287,19 +379,31 @@ describe('ShowCommentsOperation', () => {
       ];
 
       mockService.getComments.mockResolvedValue(mockComments);
+      mockService.getEntity.mockResolvedValue({
+        Id: 54356,
+        Name: 'Test Task',
+        EntityType: { Name: 'Task' },
+        EntityState: { Name: 'In Progress' }
+      });
+      mockService.searchEntities.mockResolvedValue([]);
 
       const params = {
         entityType: 'Task',
         entityId: 54356,
-        includePrivate: true
+        includePrivate: true,
+        filter: 'all' as const,
+        groupBy: 'none' as const,
+        sortOrder: 'newest' as const,
+        limit: 50
       };
 
       const result = await operation.execute(mockContext, params);
 
-      expect(result.content[0].text).toContain('Root comment');
-      expect(result.content[0].text).toContain('First reply');
-      expect(result.content[0].text).toContain('Reply to reply');
-      expect(result.content[0].text).toContain('↳'); // Reply indicator
+      const textContent = result.content.filter(c => c.type === 'text').map(c => c.text).join('\n');
+      expect(textContent).toContain('Root comment');
+      expect(textContent).toContain('First reply');
+      expect(textContent).toContain('Reply to reply');
+      expect(textContent).toContain('↳'); // Reply indicator
     });
   });
 });
