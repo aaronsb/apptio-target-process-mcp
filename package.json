@@ -30,7 +30,7 @@
     "prepare": "[ \"$NODE_ENV\" != \"production\" ] && npm run build || exit 0",
     "watch": "tsc --watch",
     "inspector": "npx @modelcontextprotocol/inspector build/index.js",
-    "lint": "rm -rf build && eslint 'src/**/*.ts'",
+    "lint": "rm -rf build && eslint \"src/**/*.ts\"",
     "test": "jest",
     "check:secrets": "node scripts/check-secrets.cjs",
     "prebuild": "npm run lint",
@@ -51,6 +51,7 @@
     "eslint": "^9.30.1",
     "glob": "^11.0.3",
     "jest": "^30.0.4",
+    "rimraf": "^6.0.1",
     "ts-jest": "^29.4.0",
     "typescript": "^5.8.3"
   }

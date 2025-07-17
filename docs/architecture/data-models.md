@@ -275,7 +275,7 @@ interface TeamIteration extends BaseEntity {
 }
 ```
 
-## Custom Fields
+## Custom Fields (Enhanced Discovery v2.0+)
 
 Custom fields are handled through the `CustomFields` property on the BaseEntity:
 
@@ -298,6 +298,25 @@ Example:
     "ReleaseNotes": "Added secure login capability",
     "Stakeholder": "Product Team"
   }
+}
+```
+
+### Custom Field Discovery
+
+**Current Approach** (v2.0+):
+- Basic entity information indicates if custom fields are supported
+- Actual custom field discovery requires additional API calls
+- Use `search_entities` with `include=[CustomFields]` for discovery
+
+**Enhanced Metadata Response**:
+```json
+{
+  "basic_info": {
+    "name": "StatusReport",
+    "supportsCustomFields": true,
+    "source": "API"
+  },
+  "note": "For detailed custom field information, use search_entities with include=[CustomFields]"
 }
 ```
 

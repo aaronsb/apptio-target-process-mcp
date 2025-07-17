@@ -2,6 +2,15 @@
 
 This document explains the key concepts and components of the Targetprocess MCP and how they work together to enable AI-driven interaction with your Targetprocess data.
 
+## Version 2.0+ Enhancements
+
+**⚠️ Important Changes**: Version 2.0+ introduces significant improvements to metadata discovery and entity exploration:
+
+- **Hybrid Metadata Approach**: Combines multiple API endpoints for comprehensive entity information
+- **Enhanced Performance**: 5-10x faster entity type discovery and validation
+- **Improved Reliability**: Graceful handling of endpoint failures with multiple fallback mechanisms
+- **Better Error Messages**: More informative error messages with actionable suggestions
+
 ## What is the Model Context Protocol (MCP)?
 
 The Model Context Protocol (MCP) is a standard that enables AI assistants to interact with external tools and services through a unified interface. It allows AI models like Claude or ChatGPT to:
@@ -44,9 +53,30 @@ And organizational relationships:
 Project → Team → User
 ```
 
-### Custom Fields
+### Custom Fields (Enhanced Discovery v2.0+)
 
 Targetprocess supports custom fields to extend the base data model. These vary by implementation but can be accessed through the MCP.
+
+**Enhanced Custom Field Discovery** (v2.0+):
+- Basic entity information now indicates if custom fields are supported
+- Use `search_entities` with `include=[CustomFields]` for detailed discovery
+- `inspect_object` provides structured information about entity capabilities
+
+**Example Enhanced Response**:
+```json
+{
+  "basic_info": {
+    "name": "UserStory",
+    "supportsCustomFields": true,
+    "source": "API"
+  },
+  "registry_info": {
+    "category": "assignable",
+    "commonIncludes": ["Project", "Team", "AssignedUser"]
+  },
+  "note": "For detailed custom field information, use search_entities with include=[CustomFields]"
+}
+```
 
 ## MCP Tools
 

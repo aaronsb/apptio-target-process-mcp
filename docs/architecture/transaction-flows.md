@@ -2,6 +2,10 @@
 
 This document outlines the key transaction flows in the Targetprocess MCP, including sequence diagrams for common operations and error handling patterns.
 
+## Version 2.0+ Updates
+
+**⚠️ Important Changes**: The inspect_object tool and metadata fetching have been significantly enhanced with a hybrid approach for improved performance and reliability. See the [Enhanced Inspect Object Flow](#inspect-object-flow-enhanced-v20) section for details.
+
 ## Search Flow
 
 The search flow is used to find entities matching specific criteria:
@@ -123,9 +127,9 @@ sequenceDiagram
     Server-->>-Client: Return tool response
 ```
 
-## Inspect Object Flow
+## Inspect Object Flow (Enhanced v2.0+)
 
-The inspect object flow examines metadata about entities and properties:
+The inspect object flow examines metadata about entities and properties using a hybrid approach:
 
 ```mermaid
 sequenceDiagram
@@ -133,6 +137,7 @@ sequenceDiagram
     participant Server as MCP Server
     participant InspectTool as Inspect Object Tool
     participant TPService as TP Service
+    participant EntityRegistry as Entity Registry
     participant TP as Target Process API
     
     Client->>+Server: Call inspect_object tool
@@ -141,38 +146,59 @@ sequenceDiagram
     
     alt action == "list_types"
         InspectTool->>+TPService: getValidEntityTypes()
-        TPService->>TPService: Check cache
-        
-        alt cache valid
-            TPService-->>InspectTool: Return cached types
-        else cache invalid
-            TPService->>+TP: GET /api/v1/EntityTypes
-            TP-->>-TPService: Return entity types
-            TPService->>TPService: Update cache
-            TPService-->>InspectTool: Return entity types
-        end
+        TPService->>TPService: Get static types from EntityRegistry
+        TPService->>+TP: GET /api/v1/EntityTypes (paginated)
+        TP-->>-TPService: Return entity types batch
+        TPService->>TPService: Merge API + Registry types
+        TPService->>TPService: Register custom types
+        TPService-->>-InspectTool: Return complete entity types
     else action == "get_properties"
-        InspectTool->>+TP: GET /api/v1/{EntityType}s/$metadata
-        TP-->>-InspectTool: Return entity properties
-    else action == "get_property_details"
-        InspectTool->>+TP: GET /api/v1/{EntityType}s/$metadata
-        TP-->>-InspectTool: Return entity properties
-        InspectTool->>InspectTool: Extract property details
-    else action == "discover_api_structure"
-        InspectTool->>InspectTool: Try direct metadata first
-        InspectTool->>+TP: GET /api/v1/$metadata
+        InspectTool->>+TPService: fetchMetadata()
         
-        alt direct metadata succeeds
-            TP-->>-InspectTool: Return API metadata
-        else direct metadata fails
-            TP-->>-InspectTool: Return error
-            InspectTool->>+TP: GET /api/v1/InvalidType/1
-            TP-->>-InspectTool: Return error with valid types
+        Note over TPService: Hybrid Metadata Approach
+        TPService->>+TP: GET /api/v1/EntityTypes (Primary)
+        TP-->>-TPService: Return basic entity info
+        
+        TPService->>+TP: GET /api/v1/meta (Secondary)
+        alt meta endpoint succeeds
+            TP-->>-TPService: Return detailed metadata
+            TPService->>TPService: Attempt JSON repair if needed
+        else meta endpoint fails
+            TP-->>-TPService: Return error
+            Note over TPService: Graceful degradation
+        end
+        
+        TPService->>TPService: createHybridMetadata()
+        TPService->>+EntityRegistry: enhanceWithSystemTypes()
+        EntityRegistry-->>-TPService: Return enhanced metadata
+        TPService-->>-InspectTool: Return hybrid metadata
+        
+        InspectTool->>InspectTool: extractEntityProperties()
+        InspectTool->>+EntityRegistry: getEntityTypeInfo()
+        EntityRegistry-->>-InspectTool: Return registry info
+        
+    else action == "get_property_details"
+        InspectTool->>+TPService: fetchMetadata()
+        Note over TPService: Same hybrid approach as above
+        TPService-->>-InspectTool: Return hybrid metadata
+        InspectTool->>InspectTool: extractPropertyDetails()
+        InspectTool->>+EntityRegistry: getEntityTypeInfo()
+        EntityRegistry-->>-InspectTool: Return registry info
+        
+    else action == "discover_api_structure"
+        InspectTool->>+TPService: fetchMetadata()
+        TPService-->>-InspectTool: Return hybrid metadata
+        
+        alt hybrid metadata succeeds
+            InspectTool->>InspectTool: Extract entity types
+        else hybrid metadata fails
+            InspectTool->>+TP: GET /api/v1/NonExistentType/1
+            TP-->>-InspectTool: Return error with entity types
             InspectTool->>InspectTool: Extract types from error
         end
     end
     
-    InspectTool->>InspectTool: Format MCP response
+    InspectTool->>InspectTool: Format MCP response with limitations
     InspectTool-->>-Server: Return formatted result
     Server-->>-Client: Return tool response
 ```
@@ -208,36 +234,31 @@ flowchart TD
     ThrowError --> End
 ```
 
-## Entity Type Validation Flow
+## Enhanced Entity Type Validation Flow (v2.0+)
 
-The entity type validation flow:
+The enhanced entity type validation flow with hybrid approach:
 
 ```mermaid
 flowchart TD
-    Start([Validate Entity Type]) --> CheckCache{Cache Valid?}
+    Start([Validate Entity Type]) --> GetStatic[Get Static Types from EntityRegistry]
+    GetStatic --> InitSet[Initialize Entity Type Set]
     
-    CheckCache -->|Yes| UseCache[Use Cached Entity Types]
-    CheckCache -->|No| CheckInit{Cache Init in Progress?}
+    InitSet --> FetchEntityTypes[Fetch from /api/v1/EntityTypes]
+    FetchEntityTypes --> CheckPagination{More Pages?}
     
-    CheckInit -->|Yes| WaitForInit[Wait for Initialization]
-    CheckInit -->|No| InitCache[Initialize Cache]
+    CheckPagination -->|Yes| FetchNextPage[Fetch Next Page]
+    FetchNextPage --> MergeTypes[Merge with Existing Types]
+    MergeTypes --> CheckPagination
     
-    InitCache --> FetchAPI[Fetch Entity Types from API]
-    FetchAPI --> CacheResults[Cache Results]
-    CacheResults --> SetTimestamp[Set Cache Timestamp]
+    CheckPagination -->|No| RegisterCustom[Register Custom Types]
+    RegisterCustom --> CacheResults[Cache All Entity Types]
+    CacheResults --> ValidateType{Type Valid?}
     
-    WaitForInit --> UseCache
-    SetTimestamp --> UseCache
-    
-    UseCache --> ValidateType{Type Valid?}
     ValidateType -->|Yes| Return[Return Validated Type]
-    ValidateType -->|No| FallbackCheck{Fallback to Static List?}
+    ValidateType -->|No| FallbackStatic{Type in Static Registry?}
     
-    FallbackCheck -->|Yes| CheckStatic{Type in Static List?}
-    FallbackCheck -->|No| ThrowError[Throw McpError]
-    
-    CheckStatic -->|Yes| Return
-    CheckStatic -->|No| ThrowError
+    FallbackStatic -->|Yes| Return
+    FallbackStatic -->|No| ThrowError[Throw McpError]
     
     Return --> End([End])
     ThrowError --> End
@@ -343,4 +364,52 @@ sequenceDiagram
     end
 ```
 
-These transaction flows demonstrate the key paths through the system and how different components interact during various operations.
+## Metadata Fetching Flow (New v2.0+)
+
+The enhanced metadata fetching flow with hybrid approach:
+
+```mermaid
+flowchart TD
+    Start([Fetch Metadata]) --> FetchEntityTypes["Primary: GET /api/v1/EntityTypes (Paginated)"]
+    FetchEntityTypes --> ProcessPages[Process All Pages]
+    ProcessPages --> TryMetaEndpoint["Secondary: GET /api/v1/meta"]
+    
+    TryMetaEndpoint --> ParseMeta{Parse Meta JSON}
+    ParseMeta -->|Success| ExtractRelationships[Extract Relationships]
+    ParseMeta -->|Malformed JSON| AttemptRepair[Attempt JSON Repair]
+    ParseMeta -->|Failed| WarnAndContinue[Warn & Continue Without Meta]
+    
+    AttemptRepair --> RepairSuccess{Repair Success?}
+    RepairSuccess -->|Yes| ExtractRelationships
+    RepairSuccess -->|No| WarnAndContinue
+    
+    ExtractRelationships --> ExtractProperties[Extract Properties]
+    ExtractProperties --> ExtractHierarchy[Extract Hierarchy]
+    ExtractHierarchy --> CombineData[Combine EntityTypes + Meta Data]
+    
+    WarnAndContinue --> UseEntityTypesOnly[Use EntityTypes Data Only]
+    UseEntityTypesOnly --> CombineData
+    
+    CombineData --> EnhanceWithRegistry[Enhance with EntityRegistry]
+    EnhanceWithRegistry --> FinalMetadata[Return Hybrid Metadata]
+    FinalMetadata --> End([End])
+```
+
+## Performance Improvements (v2.0+)
+
+### Response Time Comparison
+- **v1.x**: `/api/v1/Index/meta` - 2-5 seconds (large response, JSON issues)
+- **v2.0+**: `/api/v1/EntityTypes` - 0.3-1 second (paginated, reliable)
+
+### Reliability Improvements
+- **Graceful Fallback**: Works even if `/meta` endpoint fails
+- **JSON Repair**: Attempts to fix malformed JSON responses
+- **Pagination**: Handles large instances with 100+ entity types
+- **Comprehensive Coverage**: Combines API + Registry for complete entity list
+
+### Error Handling Enhancements
+- **Informative Messages**: Clear explanations of limitations
+- **Helpful Suggestions**: Guidance on alternative approaches
+- **Graceful Degradation**: Continues to work with reduced functionality
+
+These transaction flows demonstrate the key paths through the system and how different components interact during various operations. The v2.0+ enhancements provide significantly improved performance and reliability while maintaining backwards compatibility.

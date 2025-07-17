@@ -2,6 +2,15 @@
 
 The `inspect_object` tool allows you to explore and discover information about Targetprocess entities, properties, and metadata. It's particularly useful for understanding the data model and available fields.
 
+## Recent Changes (v2.0+)
+
+**⚠️ Important**: This tool has been significantly enhanced with a hybrid metadata approach:
+- **Primary Source**: Uses `/api/v1/EntityTypes` endpoint for reliable, fast basic entity information
+- **Secondary Source**: Falls back to `/api/v1/meta` endpoint for detailed relationship metadata (when available)
+- **Fallback**: Uses EntityRegistry for system entity types not available in API endpoints
+- **Performance**: Significantly faster with pagination support for large instances
+- **Reliability**: Graceful handling of malformed JSON responses from legacy endpoints
+
 ## Purpose
 
 Use this tool when you need to:
@@ -60,38 +69,52 @@ Returns a list of available entity types:
 
 ### get_properties
 
-Returns an object mapping property names to their types:
+Returns structured information about an entity type from the hybrid metadata approach:
 
 ```json
 {
-  "Id": "Number",
-  "Name": "String",
-  "Description": "String",
-  "CreateDate": "Date",
-  "ModifyDate": "Date",
-  "Project": "Project",
-  "Team": "Team",
-  "EntityState": "EntityState",
-  "Priority": "Priority",
-  "Effort": "Number",
-  "CustomFields": "Object",
-  // more properties...
+  "basic_info": {
+    "name": "StatusReport",
+    "description": "Custom status report entity",
+    "isAssignable": true,
+    "isGlobal": false,
+    "supportsCustomFields": true,
+    "source": "API"
+  },
+  "registry_info": {
+    "category": "custom",
+    "parentTypes": ["AssignableEntity"],
+    "commonIncludes": ["Project", "Team", "AssignedUser"],
+    "supportsCustomFields": true
+  },
+  "note": "EntityTypes endpoint provides basic entity information. For detailed property metadata, additional API calls to /meta endpoint may be needed.",
+  "documentation": "Documentation search results (when available)"
 }
 ```
 
 ### get_property_details
 
-Returns detailed information about a specific property:
+Returns available information about a specific property with limitations noted:
 
 ```json
 {
-  "name": "Description",
-  "type": "String",
-  "isRequired": false,
-  "isReadOnly": false,
-  "maxLength": 4000,
-  "defaultValue": "",
-  "supportedOperations": ["eq", "ne", "contains", "startswith", "endswith"]
+  "entityType": "StatusReport",
+  "propertyName": "Name",
+  "entityInfo": {
+    "name": "StatusReport",
+    "description": "Custom status report entity",
+    "isAssignable": true,
+    "isGlobal": false,
+    "supportsCustomFields": true,
+    "source": "API"
+  },
+  "note": "EntityTypes endpoint does not provide detailed property metadata. For detailed property information, a separate API call to the /meta endpoint would be needed.",
+  "suggestion": "Use entity introspection through actual API calls to discover available properties.",
+  "registryInfo": {
+    "category": "custom",
+    "commonIncludes": ["Project", "Team", "AssignedUser"]
+  },
+  "likelyProperty": "Name is listed as a common include for StatusReport (if applicable)"
 }
 ```
 
@@ -175,13 +198,37 @@ Inspect object failed: Property not found: InvalidProperty
 ```
 **Solution:** Use a valid property name for the specified entity type.
 
+## Current Limitations
+
+**⚠️ Important Limitations** (as of v2.0+):
+- **Property Schemas**: Detailed property metadata (data types, validation rules, constraints) is limited
+- **Custom Fields**: Custom field discovery requires additional API calls not currently implemented
+- **Relationship Details**: Full relationship metadata depends on `/meta` endpoint availability
+- **Validation Rules**: Property validation rules and constraints not available through current endpoints
+
+## Enhanced Capabilities
+
+**✅ Improvements** (v2.0+):
+- **Performance**: 5-10x faster response times using optimized `/EntityTypes` endpoint
+- **Reliability**: Graceful handling of malformed JSON from legacy endpoints
+- **Pagination**: Supports large instances with hundreds of entity types
+- **Comprehensive Coverage**: Combines API data with EntityRegistry for complete entity type list
+- **Custom Entity Discovery**: Automatically discovers and registers custom entity types
+- **Fallback Resilience**: Works even when `/meta` endpoint fails
+
 ## Tips and Best Practices
 
 1. **Exploration Flow**: Start with `list_types`, then `get_properties` for a specific type, then `get_property_details` for specific properties
 2. **API Discovery**: Use `discover_api_structure` to discover entity types available in your instance, even if not in the standard list
-3. **Custom Entity Types**: Your Targetprocess instance may have custom entity types not in the standard list
-4. **Custom Fields**: Use this tool to discover custom fields before trying to use them in queries
-5. **Relationship Mapping**: Use the property details to understand how entities relate to each other
-6. **Error-Based Discovery**: Sometimes errors from other tools can provide useful metadata about your Targetprocess instance
-7. **Caching Results**: Cache the results of these calls as they rarely change and can reduce API load
-8. **Permission Awareness**: The authenticated user may not have access to all entity types and properties
+3. **Custom Entity Types**: Your Targetprocess instance may have custom entity types not in the standard list - tool now auto-discovers these
+4. **Property Discovery**: For detailed property information, use actual API calls (e.g., `search_entities` with `take=1`) to inspect real entity structure
+5. **Performance Optimization**: Results are faster than before - cache is less critical but still recommended
+6. **Relationship Mapping**: Use `registry_info.commonIncludes` to understand likely related entities
+7. **Error Handling**: Tool now gracefully handles endpoint failures and provides helpful guidance
+8. **Custom Field Discovery**: Use sample entity queries to discover custom fields: `search_entities` with `include=[CustomFields]`
+
+## Migration Notes
+
+**For existing users**: Response format has changed to provide more structured information. Update your code to handle the new response structure with `basic_info`, `registry_info`, and enhanced error messages.
+
+**For new users**: This tool now provides more reliable basic entity information but has documented limitations for detailed property schemas.

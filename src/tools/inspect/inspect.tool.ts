@@ -1,6 +1,7 @@
 import { McpError, ErrorCode } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
 import { TPService } from '../../api/client/tp.service.js';
+import { EntityRegistry } from '../../core/entity-registry.js';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import path from 'path';
@@ -198,24 +199,40 @@ export class InspectObjectTool {
   }
 
   /**
-   * Extract properties for a specific entity type
+   * Extract properties for a specific entity type from /EntityTypes endpoint response
+   * Note: EntityTypes endpoint provides basic entity info but not detailed property metadata
    */
   private extractEntityProperties(metadata: any, entityType: string): Record<string, any> {
-    // Implementation will depend on the structure of the metadata
-    // This is a placeholder
     const properties: Record<string, any> = {};
     
     if (metadata && metadata.Items) {
       const entityMeta = metadata.Items.find((item: any) => item.Name === entityType);
       
-      if (entityMeta && entityMeta.Fields) {
-        for (const field of entityMeta.Fields) {
-          properties[field.Name] = {
-            type: field.Type,
-            isRequired: field.IsRequired,
-            isReadOnly: field.IsReadOnly,
+      if (entityMeta) {
+        // EntityTypes endpoint provides basic entity information
+        properties['basic_info'] = {
+          name: entityMeta.Name,
+          description: entityMeta.Description,
+          isAssignable: entityMeta.IsAssignable,
+          isGlobal: entityMeta.IsGlobal,
+          supportsCustomFields: entityMeta.SupportsCustomFields,
+          source: entityMeta.Source || 'API'
+        };
+        
+        // Add EntityRegistry information if available
+        const entityInfo = EntityRegistry.getEntityTypeInfo(entityType);
+        if (entityInfo) {
+          properties['registry_info'] = {
+            category: entityInfo.category,
+            parentTypes: entityInfo.parentTypes,
+            commonIncludes: entityInfo.commonIncludes,
+            supportsCustomFields: entityInfo.supportsCustomFields
           };
         }
+        
+        // Note: For detailed property metadata, use the original /meta endpoint
+        // or implement a separate method that can handle the /meta endpoint's structure
+        properties['note'] = 'EntityTypes endpoint provides basic entity information. For detailed property metadata, additional API calls to /meta endpoint may be needed.';
       }
     }
     
@@ -223,28 +240,46 @@ export class InspectObjectTool {
   }
 
   /**
-   * Extract detailed information about a specific property
+   * Extract detailed information about a specific property from /EntityTypes endpoint response
+   * Note: EntityTypes endpoint doesn't provide detailed property metadata
    */
   private extractPropertyDetails(metadata: any, entityType: string, propertyName: string): any {
-    // Implementation will depend on the structure of the metadata
-    // This is a placeholder
-    let propertyDetails = null;
+    let propertyDetails: any = null;
     
     if (metadata && metadata.Items) {
       const entityMeta = metadata.Items.find((item: any) => item.Name === entityType);
       
-      if (entityMeta && entityMeta.Fields) {
-        const field = entityMeta.Fields.find((f: any) => f.Name === propertyName);
+      if (entityMeta) {
+        // EntityTypes endpoint doesn't provide detailed property information
+        // Return basic entity information and suggest using detailed metadata endpoint
+        propertyDetails = {
+          entityType: entityType,
+          propertyName: propertyName,
+          entityInfo: {
+            name: entityMeta.Name,
+            description: entityMeta.Description,
+            isAssignable: entityMeta.IsAssignable,
+            isGlobal: entityMeta.IsGlobal,
+            supportsCustomFields: entityMeta.SupportsCustomFields,
+            source: entityMeta.Source || 'API'
+          },
+          note: 'EntityTypes endpoint does not provide detailed property metadata. For detailed property information, a separate API call to the /meta endpoint would be needed.',
+          suggestion: 'Use entity introspection through actual API calls to discover available properties.'
+        };
         
-        if (field) {
-          propertyDetails = {
-            name: field.Name,
-            type: field.Type,
-            isRequired: field.IsRequired,
-            isReadOnly: field.IsReadOnly,
-            description: field.Description,
-            allowedValues: field.AllowedValues,
+        // Add EntityRegistry information if available
+        const entityInfo = EntityRegistry.getEntityTypeInfo(entityType);
+        if (entityInfo) {
+          propertyDetails.registryInfo = {
+            category: entityInfo.category,
+            commonIncludes: entityInfo.commonIncludes,
+            parentTypes: entityInfo.parentTypes
           };
+          
+          // Check if propertyName is in common includes
+          if (entityInfo.commonIncludes?.includes(propertyName)) {
+            propertyDetails.likelyProperty = `${propertyName} is listed as a common include for ${entityType}, suggesting it's a related entity reference.`;
+          }
         }
       }
     }
