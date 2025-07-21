@@ -4,6 +4,16 @@ This guide helps you diagnose and fix common issues with the Targetprocess MCP s
 
 > **Looking for Semantic Operations issues?** See the dedicated [Semantic Operations Troubleshooting Guide](../semantic-operations/troubleshooting.md) for role-based operations, discovery failures, and context handling problems.
 
+## Version 2.0+ Changes
+
+**⚠️ Important**: Version 2.0+ includes significant improvements to metadata fetching and error handling. Many previous issues with metadata endpoints have been resolved through the hybrid approach.
+
+### Enhanced Error Handling (v2.0+)
+- **Graceful Degradation**: Tool continues to work even if some endpoints fail
+- **Informative Messages**: Better error messages with actionable suggestions
+- **Fallback Mechanisms**: Multiple fallback strategies for reliability
+- **JSON Repair**: Automatic attempts to fix malformed JSON responses
+
 ## Connection Issues
 
 ### Problem: Cannot Connect to Targetprocess API
