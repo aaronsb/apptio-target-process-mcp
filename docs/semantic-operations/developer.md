@@ -81,20 +81,68 @@ The Developer role focuses on personal productivity and task management. Operati
 ### Collaboration & Documentation
 
 #### add-comment
-**Purpose**: Add contextual comments to tasks, bugs, or other work items.
+**Purpose**: Add intelligent, context-aware comments that understand entity state and suggest follow-up actions.
 
 **Parameters**:
 - `entityId` (number, required): ID of the entity to comment on
 - `entityType` (string, required): Type of entity ('UserStory', 'Bug', 'Task', etc.)
-- `comment` (string, required): Comment text
-- `isStatusUpdate` (boolean, optional): Mark as status update (default: false)
+- `content` (string, required): Comment text (supports Markdown)
+- `parentId` (number, optional): ID of comment to reply to
+
+**Intelligent Features**:
+- **Entity Context Detection**: Analyzes workflow stage, team dynamics, and timing
+- **Rich Text Formatting**: Automatic Markdown to HTML conversion with code highlighting
+- **Smart Templates**: Role-based comment suggestions based on context
+- **Pattern Recognition**: Identifies blockers, questions, and achievements
+- **User Mentions**: Resolves @mentions to actual user references
+- **Performance Tracking**: Ensures sub-500ms response times
 
 **Effects**:
-- Adds comment to the specified entity
-- Notifies relevant team members
-- Creates audit trail
+- Adds enriched comment with contextual metadata
+- Provides intelligent follow-up suggestions
+- Tracks performance metrics
+- Creates comprehensive audit trail
 
-**Next Actions**: Contextual based on current work
+**Next Actions**: Dynamic based on entity state and comment content
+
+---
+
+#### show-comments
+**Purpose**: View comments with intelligent filtering, grouping, and pattern analysis.
+
+**Parameters**:
+- `entityId` (number, required): ID of the entity
+- `entityType` (string, required): Type of entity
+- `filter` (string, optional): Filter type ('all', 'mentions', 'blockers', 'decisions')
+- `groupBy` (string, optional): Grouping strategy ('none', 'author', 'date', 'type')
+- `sortOrder` (string, optional): Sort order ('asc', 'desc')
+- `limit` (number, optional): Maximum comments to return
+
+**Intelligent Features**:
+- **Pattern Analysis**: Categorizes comments by type (blocker, question, decision, etc.)
+- **Hierarchical Display**: Shows parent-child comment relationships
+- **Smart Filtering**: Context-aware filters based on user role
+- **Entity Context**: Shows related entity state and metadata
+- **Collaboration Insights**: Highlights important discussions and decisions
+
+**Returns**: Organized comments with patterns, metrics, and navigation aids
+
+**Next Actions**: `add-comment`, `delete-comment`, task management operations
+
+---
+
+#### delete-comment
+**Purpose**: Safely delete comments with ownership validation.
+
+**Parameters**:
+- `commentId` (number, required): ID of the comment to delete
+
+**Safety Features**:
+- **Ownership Validation**: Only comment owner can delete
+- **Cascade Handling**: Manages child comment relationships
+- **Audit Trail**: Maintains deletion history
+
+**Next Actions**: `show-comments`, `add-comment`
 
 ---
 
