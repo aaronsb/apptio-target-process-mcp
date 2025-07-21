@@ -1052,4 +1052,76 @@ export class TPService {
     }
     return params
   }
+
+  /**
+   * Get attachment metadata information
+   */
+  async getAttachmentInfo(attachmentId: number): Promise<any> {
+    try {
+      return await this.executeWithRetry(async () => {
+        const response = await fetch(`${this.baseUrl}/Attachments/${attachmentId}`, {
+          headers: this.getHeaders()
+        });
+
+        return await this.handleApiResponse<any>(
+          response,
+          `get attachment info for ${attachmentId}`
+        );
+      }, `get attachment info for ${attachmentId}`);
+    } catch (error) {
+      if (error instanceof McpError) throw error;
+      throw new McpError(
+        ErrorCode.InternalError,
+        `Failed to get attachment info: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+  }
+
+  /**
+   * Download attachment content as base64
+   */
+  async downloadAttachment(attachmentId: number): Promise<any> {
+    try {
+      return await this.executeWithRetry(async () => {
+        // First get attachment metadata
+        const attachmentInfo = await this.getAttachmentInfo(attachmentId);
+        
+        // Download the actual file content
+        const response = await fetch(attachmentInfo.Uri, {
+          headers: this.getHeaders()
+        });
+
+        if (!response.ok) {
+          const errorMessage = await this.extractErrorMessage(response);
+          throw new McpError(
+            ErrorCode.InvalidRequest,
+            `Download failed: ${response.status} - ${errorMessage}`
+          );
+        }
+
+        // Convert to base64
+        const arrayBuffer = await response.arrayBuffer();
+        const base64Content = Buffer.from(arrayBuffer).toString('base64');
+
+        return {
+          attachmentId,
+          filename: attachmentInfo.Name,
+          mimeType: attachmentInfo.MimeType,
+          size: attachmentInfo.Size,
+          base64Content,
+          uploadDate: attachmentInfo.Date,
+          owner: attachmentInfo.Owner ? {
+            id: attachmentInfo.Owner.Id,
+            name: `${attachmentInfo.Owner.FirstName || ''} ${attachmentInfo.Owner.LastName || ''}`.trim()
+          } : null
+        };
+      }, `download attachment ${attachmentId}`);
+    } catch (error) {
+      if (error instanceof McpError) throw error;
+      throw new McpError(
+        ErrorCode.InternalError,
+        `Failed to download attachment: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+  }
 }
