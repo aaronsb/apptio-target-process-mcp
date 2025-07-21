@@ -407,6 +407,89 @@ export class TPService {
   }
 
   /**
+   * Get comments for an entity
+   */
+  async getComments(entityType: string, entityId: number): Promise<any[]> {
+    try {
+      // Validate entity type
+      const validatedType = await this.validateEntityType(entityType);
+
+      return await this.executeWithRetry(async () => {
+        const response = await fetch(`${this.baseUrl}/${validatedType}/${entityId}/Comments`, {
+          headers: this.getHeaders()
+        });
+
+        const data = await this.handleApiResponse<ApiResponse<any>>(
+          response,
+          `get comments for ${validatedType} ${entityId}`
+        );
+        
+        // Return the Items array, or empty array if no Items property
+        return data.Items || [];
+      }, `get comments for ${validatedType} ${entityId}`);
+    } catch (error) {
+      if (error instanceof McpError) throw error;
+      throw new McpError(
+        ErrorCode.InternalError,
+        `Failed to get comments: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+  }
+
+  /**
+   * Delete a comment by ID
+   */
+  async deleteComment(commentId: number): Promise<boolean> {
+    return await this.executeWithRetry(async () => {
+      const response = await fetch(`${this.baseUrl}/Comments/${commentId}`, {
+        method: 'DELETE',
+        headers: this.getHeaders()
+      });
+
+      if (response.ok) {
+        return true;
+      } else {
+        const errorText = await this.extractErrorMessage(response);
+        throw new Error(`Failed to delete comment ${commentId}: ${response.status} - ${errorText}`);
+      }
+    }, `delete comment ${commentId}`);
+  }
+
+  /**
+   * Create a comment on an entity
+   */
+  async createComment(entityId: number, description: string, isPrivate?: boolean, parentCommentId?: number): Promise<any> {
+    const commentData: any = {
+      General: { Id: entityId },
+      Description: description
+    };
+
+    if (isPrivate) {
+      commentData.IsPrivate = true;
+    }
+
+    if (parentCommentId) {
+      commentData.ParentId = parentCommentId;
+    }
+
+    return await this.executeWithRetry(async () => {
+      const response = await fetch(`${this.baseUrl}/Comments`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...this.getHeaders()
+        },
+        body: JSON.stringify(commentData)
+      });
+
+      return await this.handleApiResponse<any>(
+        response,
+        `create comment on entity ${entityId}`
+      );
+    }, `create comment on entity ${entityId}`);
+  }
+
+  /**
    * Get a single entity by ID
    */
   async getEntity<T>(
