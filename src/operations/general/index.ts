@@ -4,6 +4,7 @@ import { SearchWorkItemsOperation } from './search-work-items.js';
 import { AddCommentOperation } from '../work/add-comment.js';
 import { ShowCommentsOperation } from '../work/show-comments.js';
 import { DeleteCommentOperation } from '../work/delete-comment.js';
+import { AnalyzeAttachmentOperation } from './analyze-attachment.js';
 
 /**
  * General operations available to all users including default personality
@@ -37,6 +38,10 @@ export class GeneralOperations implements FeatureModule {
     
     const deleteComment = new DeleteCommentOperation(this.service);
     this._operations[deleteComment.metadata.id] = deleteComment;
+    
+    // Register attachment analysis
+    const analyzeAttachment = new AnalyzeAttachmentOperation(this.service);
+    this._operations[analyzeAttachment.metadata.id] = analyzeAttachment;
   }
 
   get operations() {

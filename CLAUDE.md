@@ -266,6 +266,7 @@ TP_USER_EMAIL=user@company.com
 - `add_comment` - Add contextual comments with reply support
 - `show_comments` - View comments with hierarchical organization
 - `delete_comment` - Delete comments with ownership validation
+- `analyze_attachment` - Securely analyze TargetProcess attachments with AI vision support
 
 **Key Features:**
 - Dynamic discovery of entity states, priorities, severities
@@ -325,6 +326,18 @@ See the [toolkit integration guide](docs/integration/toolkit-integration.md) for
   - Performance tracking with 500ms target
   - Educational error responses with actionable guidance
   - Comprehensive test coverage (first semantic operations with full tests)
+- **Fixed metadata endpoint issues (Issue #56)** - Implemented hybrid approach for metadata fetching:
+  - Primary: `/EntityTypes` endpoint for reliable entity information
+  - Secondary: `/meta` endpoint for detailed properties when available
+  - Fallback: EntityRegistry for system types
+  - Graceful degradation when endpoints fail
+  - Enhanced error handling with informative messages
+- **Implemented secure attachment analysis (Based on PR #21)** - Added AI vision-ready attachment processing with security-first approach:
+  - Security validation: MIME type whitelist, file size limits (50MB max), suspicious filename detection
+  - Safe base64 encoding for AI framework consumption
+  - Model-agnostic output format (works with Claude, GPT-4V, etc.)
+  - Support for images and safe document types
+  - Performance tracking and educational error responses
 
 ## Architecture Notes
 
