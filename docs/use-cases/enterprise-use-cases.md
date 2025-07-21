@@ -18,36 +18,38 @@ This document outlines complex enterprise use cases for using the Targetprocess 
   "action": "list_types"
 }
 
-// Explore entity properties
+// Explore entity properties (Enhanced v2.0+)
 {
   "action": "get_properties",
   "entityType": "UserStory"
 }
 
-// Get detailed property information
+// Get detailed property information (Enhanced v2.0+)
 {
   "action": "get_property_details",
   "entityType": "UserStory",
   "propertyName": "CustomFields"
 }
 
-// Discover API structure through error messages
+// Discover API structure through enhanced metadata
 {
   "action": "discover_api_structure"
 }
 ```
 
-**Implementation Steps:**
-1. Use `inspect_object` with `list_types` to discover all entity types
-2. For each entity type, use `get_properties` to list available properties
-3. For custom fields, use `get_property_details` to understand their structure
-4. Create a relationship map by examining entity references
+**Enhanced Implementation Steps** (v2.0+):
+1. Use `inspect_object` with `list_types` to discover all entity types (now 5-10x faster)
+2. For each entity type, use `get_properties` to get structured basic information
+3. For detailed property discovery, use `search_entities` with `take=1` and `include=[CustomFields]`
+4. Create a relationship map using `registry_info.commonIncludes` as guidance
 5. Document the discovered data model for future reference
 
-**Performance Considerations:**
-- Cache metadata results to avoid repeated API calls
-- Implement progressive discovery to avoid overwhelming the API
-- Consider running discovery during off-peak hours for large instances
+**Enhanced Performance Considerations** (v2.0+):
+- Metadata discovery is now significantly faster with hybrid approach
+- Results include structured information about entity capabilities
+- Graceful handling of endpoint failures with fallback mechanisms
+- Pagination support for large instances with many custom entity types
+- Enhanced error messages with actionable suggestions
 
 ## Enterprise Analytics and Reporting
 
