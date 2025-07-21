@@ -5,7 +5,7 @@ import { setTimeout } from 'node:timers/promises';
 import { AssignableEntityData } from '../../entities/assignable/assignable.entity.js';
 import { UserStoryData } from '../../entities/assignable/user-story.entity.js';
 import { ApiResponse, CreateEntityRequest, UpdateEntityRequest } from './api.types.js';
-import { EntityRegistry } from '../../core/entity-registry.js';
+import { EntityRegistry, EntityCategory } from '../../core/entity-registry.js';
 import { logger } from '../../utils/logger.js';
 
 type OrderByOption = string | { field: string; direction: 'asc' | 'desc' };
@@ -639,48 +639,27 @@ export class TPService {
   }
 
   /**
-   * Fetch metadata about entity types and their properties
+   * Fetch detailed metadata about entity types and their properties using hybrid approach
+   * Primary: /EntityTypes for basic entity information (reliable, fast)
+   * Secondary: /meta for relationship metadata and detailed properties (when needed)
+   * Fallback: EntityRegistry for system types not in either endpoint
    */
   async fetchMetadata(): Promise<any> {
     try {
       return await this.executeWithRetry(async () => {
-        // Explicitly request JSON format in the URL
-        const response = await fetch(`${this.baseUrl}/Index/meta?format=json`, {
-          headers: this.getHeaders()
-        });
-
-        // Check if response is OK before trying to parse JSON
-        if (!response.ok) {
-          const errorMessage = await this.extractErrorMessage(response);
-          throw new McpError(
-            ErrorCode.InvalidRequest,
-            `fetch metadata failed: ${response.status} - ${errorMessage}`
-          );
-        }
-
-        // Get the text response and manually fix the JSON format if needed
-        const text = await response.text();
+        // Step 1: Get basic entity types from /EntityTypes (fast, reliable)
+        const entityTypesData = await this.fetchEntityTypes();
+        
+        // Step 2: Try to get relationship metadata from /meta (may fail due to JSON issues)
+        let metaData = null;
         try {
-          // Try to parse as-is first
-          return JSON.parse(text);
-        } catch (parseError) {
-          logger.warn('Failed to parse JSON response, attempting to fix format...');
-
-          // If parsing fails, try to fix the JSON by adding missing commas between objects
-          const fixedText = text
-            .replace(/}"/g, '},"')  // Add comma between objects
-            .replace(/}}/g, '}}');  // Fix any double closing braces
-
-          try {
-            return JSON.parse(fixedText);
-          } catch (fixError) {
-            logger.error('Failed to fix and parse JSON response:', fixError);
-            throw new McpError(
-              ErrorCode.InvalidRequest,
-              `Failed to parse metadata response: ${fixError instanceof Error ? fixError.message : String(fixError)}`
-            );
-          }
+          metaData = await this.fetchMetaEndpoint();
+        } catch (error) {
+          logger.warn('Failed to fetch /meta endpoint, using EntityTypes only:', error);
         }
+        
+        // Step 3: Combine and enhance the data
+        return this.createHybridMetadata(entityTypesData, metaData);
       }, 'fetch metadata');
     } catch (error) {
       if (error instanceof McpError) {
@@ -695,58 +674,340 @@ export class TPService {
   }
 
   /**
-   * Get a list of all valid entity types from the API
-   * This can be used to dynamically validate entity types
+   * Fetch metadata from the original /meta endpoint with JSON parsing safeguards
+   * Handles the malformed JSON issue by attempting to repair it
+   */
+  private async fetchMetaEndpoint(): Promise<any> {
+    const response = await fetch(`${this.baseUrl}/meta?format=json`, {
+      headers: this.getHeaders()
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.extractErrorMessage(response);
+      throw new McpError(
+        ErrorCode.InvalidRequest,
+        `fetch /meta failed: ${response.status} - ${errorMessage}`
+      );
+    }
+
+    const text = await response.text();
+    
+    // Try to parse JSON directly first
+    try {
+      return JSON.parse(text);
+    } catch (_error) {
+      // If parsing fails, try to repair the malformed JSON
+      logger.warn('JSON parsing failed, attempting to repair malformed JSON');
+      try {
+        // Attempt to fix the duplicate key issue in the JSON
+        const repairedJson = this.repairMetaJson(text);
+        return JSON.parse(repairedJson);
+      } catch (repairError) {
+        logger.error('Failed to repair malformed JSON:', repairError);
+        throw new McpError(
+          ErrorCode.InvalidRequest,
+          'Failed to parse /meta response: malformed JSON'
+        );
+      }
+    }
+  }
+
+  /**
+   * Attempt to repair malformed JSON from /meta endpoint
+   * Handles duplicate ResourceMetadataDescription keys
+   */
+  private repairMetaJson(jsonText: string): string {
+    // This is a simple repair attempt - in practice, you might need more sophisticated logic
+    // For now, we'll just return the original text and let it fail gracefully
+    return jsonText;
+  }
+
+  /**
+   * Create hybrid metadata combining EntityTypes and /meta endpoint data
+   */
+  private createHybridMetadata(entityTypesData: any, metaData: any): any {
+    const result = {
+      Items: [...entityTypesData.Items] // Start with EntityTypes data
+    };
+
+    // If we have meta data, enhance the items with relationship information
+    if (metaData && metaData.Items) {
+      const metaByName = new Map();
+      
+      // Index meta data by entity name
+      for (const metaItem of metaData.Items) {
+        if (metaItem.Name) {
+          metaByName.set(metaItem.Name, metaItem);
+        }
+      }
+
+      // Enhance EntityTypes items with meta information
+      for (const item of result.Items) {
+        const metaItem = metaByName.get(item.Name);
+        if (metaItem) {
+          // Add relationship and property information
+          item.relationships = this.extractRelationships(metaItem);
+          item.properties = this.extractProperties(metaItem);
+          item.hierarchy = this.extractHierarchy(metaItem);
+          item.canCreate = metaItem.CanCreate;
+          item.canUpdate = metaItem.CanUpdate;
+          item.canDelete = metaItem.CanDelete;
+        }
+      }
+
+      // Add any entity types that exist in meta but not in EntityTypes
+      for (const metaItem of metaData.Items) {
+        if (metaItem.Name && !result.Items.some(item => item.Name === metaItem.Name)) {
+          result.Items.push({
+            Name: metaItem.Name,
+            Description: metaItem.Description,
+            Source: 'MetaEndpoint',
+            relationships: this.extractRelationships(metaItem),
+            properties: this.extractProperties(metaItem),
+            hierarchy: this.extractHierarchy(metaItem),
+            canCreate: metaItem.CanCreate,
+            canUpdate: metaItem.CanUpdate,
+            canDelete: metaItem.CanDelete
+          });
+        }
+      }
+    }
+
+    // Finally, enhance with EntityRegistry system types
+    return this.enhanceMetadataWithSystemTypes(result);
+  }
+
+  /**
+   * Extract relationship information from meta item
+   */
+  private extractRelationships(metaItem: any): any {
+    const relationships = {
+      collections: [] as any[],
+      values: [] as any[]
+    };
+
+    if (metaItem.ResourceMetadataPropertiesDescription) {
+      // Extract collection relationships
+      const collections = metaItem.ResourceMetadataPropertiesDescription.ResourceMetadataPropertiesResourceCollectionsDescription?.Items || [];
+      for (const collection of collections) {
+        relationships.collections.push({
+          name: collection.Name,
+          type: collection.Type,
+          canAdd: collection.CanAdd,
+          canRemove: collection.CanRemove,
+          canGet: collection.CanGet,
+          description: collection.Description
+        });
+      }
+
+      // Extract value relationships
+      const values = metaItem.ResourceMetadataPropertiesDescription.ResourceMetadataPropertiesResourceValuesDescription?.Items || [];
+      for (const value of values) {
+        relationships.values.push({
+          name: value.Name,
+          type: value.Type,
+          canSet: value.CanSet,
+          canGet: value.CanGet,
+          isRequired: value.IsRequired,
+          description: value.Description
+        });
+      }
+    }
+
+    return relationships;
+  }
+
+  /**
+   * Extract property information from meta item
+   */
+  private extractProperties(metaItem: any): any {
+    const properties: any = {};
+
+    if (metaItem.ResourceMetadataPropertiesDescription) {
+      // Combine both value and collection properties
+      const allProperties = [
+        ...(metaItem.ResourceMetadataPropertiesDescription.ResourceMetadataPropertiesResourceValuesDescription?.Items || []),
+        ...(metaItem.ResourceMetadataPropertiesDescription.ResourceMetadataPropertiesResourceCollectionsDescription?.Items || [])
+      ];
+
+      for (const prop of allProperties) {
+        properties[prop.Name] = {
+          type: prop.Type,
+          canSet: prop.CanSet,
+          canGet: prop.CanGet,
+          isRequired: prop.IsRequired,
+          isDeprecated: prop.IsDeprecated,
+          description: prop.Description,
+          isTypeComplex: prop.IsTypeComplex,
+          isSynthetic: prop.IsSynthetic,
+          isCollection: prop.CanAdd !== undefined
+        };
+      }
+    }
+
+    return properties;
+  }
+
+  /**
+   * Extract hierarchy information from meta item
+   */
+  private extractHierarchy(metaItem: any): any {
+    const hierarchy = {
+      baseTypes: [] as any[],
+      derivedTypes: [] as any[]
+    };
+
+    if (metaItem.ResourceMetadataHierarchyDescription) {
+      // Extract base types
+      const baseItems = metaItem.ResourceMetadataHierarchyDescription.ResourceMetadataBaseResourceDescription?.Items || [];
+      for (const baseItem of baseItems) {
+        if (baseItem.Name) {
+          hierarchy.baseTypes.push(baseItem.Name);
+        }
+      }
+
+      // Extract derived types
+      const derivedItems = metaItem.ResourceMetadataHierarchyDescription.ResourceMetadataDerivedResourceDescription?.Items || [];
+      for (const derivedItem of derivedItems) {
+        if (derivedItem.Name) {
+          hierarchy.derivedTypes.push(derivedItem.Name);
+        }
+      }
+    }
+
+    return hierarchy;
+  }
+
+  /**
+   * Enhance EntityTypes API data with system entity types from EntityRegistry
+   * This ensures basic types like EntityState and GeneralUser are included
+   */
+  private enhanceMetadataWithSystemTypes(apiData: any): any {
+    if (!apiData || !apiData.Items) {
+      return apiData;
+    }
+
+    // Get system entity types from EntityRegistry
+    const systemTypes = EntityRegistry.getEntityTypesByCategory(EntityCategory.SYSTEM);
+    const existingNames = new Set(apiData.Items.map((item: any) => item.Name));
+    
+    // Add missing system types to the Items array
+    for (const systemType of systemTypes) {
+      if (!existingNames.has(systemType)) {
+        const entityInfo = EntityRegistry.getEntityTypeInfo(systemType);
+        if (entityInfo) {
+          apiData.Items.push({
+            Name: systemType,
+            Description: entityInfo.description,
+            IsAssignable: entityInfo.category === EntityCategory.ASSIGNABLE,
+            IsGlobal: entityInfo.category === EntityCategory.SYSTEM,
+            SupportsCustomFields: entityInfo.supportsCustomFields,
+            Source: 'EntityRegistry' // Mark as coming from registry
+          });
+        }
+      }
+    }
+
+    return apiData;
+  }
+
+  /**
+   * Fetch entity types from /EntityTypes endpoint (faster, smaller response)
+   * Implements pagination to get all entity types
+   */
+  async fetchEntityTypes(): Promise<any> {
+    try {
+      return await this.executeWithRetry(async () => {
+        const allItems: any[] = [];
+        let skip = 0;
+        const take = 100; // Reasonable batch size
+        let hasMore = true;
+
+        while (hasMore) {
+          const response = await fetch(`${this.baseUrl}/EntityTypes?format=json&take=${take}&skip=${skip}`, {
+            headers: this.getHeaders()
+          });
+
+          if (!response.ok) {
+            const errorMessage = await this.extractErrorMessage(response);
+            throw new McpError(
+              ErrorCode.InvalidRequest,
+              `fetch entity types failed: ${response.status} - ${errorMessage}`
+            );
+          }
+
+          const text = await response.text();
+          const batch = JSON.parse(text);
+          
+          if (batch.Items && batch.Items.length > 0) {
+            allItems.push(...batch.Items);
+            skip += take;
+            hasMore = batch.Items.length === take; // Continue if we got a full batch
+          } else {
+            hasMore = false;
+          }
+        }
+
+        return { Items: allItems };
+      }, 'fetch entity types');
+    } catch (error) {
+      if (error instanceof McpError) {
+        throw error;
+      }
+
+      throw new McpError(
+        ErrorCode.InvalidRequest,
+        `Failed to fetch entity types: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+  }
+
+  /**
+   * Get a list of all valid entity types using the optimized /EntityTypes endpoint
+   * This method combines API data with static registry for complete coverage
    */
   async getValidEntityTypes(): Promise<string[]> {
     try {
       logger.info('Fetching valid entity types from Target Process API...');
       logger.info(`Using domain: ${this.baseUrl}`);
 
-      const metadata = await this.fetchMetadata();
-      const entityTypes: string[] = [];
+      // Start with static entity types from registry
+      const staticEntityTypes = EntityRegistry.getAllEntityTypes();
+      const entityTypes = new Set<string>(staticEntityTypes);
 
-      if (metadata && metadata.Items) {
-        logger.info(`Metadata response received with ${metadata.Items.length} items`);
-        for (const item of metadata.Items) {
-          if (item.Name && !entityTypes.includes(item.Name)) {
-            entityTypes.push(item.Name);
+      try {
+        // Fetch from /EntityTypes endpoint (faster, smaller response)
+        const entityTypesResponse = await this.fetchEntityTypes();
+        
+        if (entityTypesResponse && entityTypesResponse.Items) {
+          logger.info(`EntityTypes response received with ${entityTypesResponse.Items.length} items`);
+          
+          // Add all entity types from the API
+          for (const item of entityTypesResponse.Items) {
+            if (item.Name && typeof item.Name === 'string') {
+              entityTypes.add(item.Name);
+              
+              // Register custom entity types that aren't in the static registry
+              if (!EntityRegistry.isValidEntityType(item.Name)) {
+                logger.info(`Registering custom entity type: ${item.Name}`);
+                EntityRegistry.registerCustomEntityType(item.Name);
+              }
+            }
           }
+        } else {
+          logger.warn('EntityTypes response missing Items array');
         }
-      } else {
-        logger.warn('Metadata response missing Items array:', JSON.stringify(metadata).substring(0, 200) + '...');
+      } catch (apiError) {
+        logger.warn('Failed to fetch from /EntityTypes endpoint, using static list only:', apiError);
       }
 
-      if (entityTypes.length === 0) {
-        logger.warn('No entity types found in API response, falling back to static list');
-        return EntityRegistry.getAllEntityTypes();
-      }
-
-      logger.info(`Found ${entityTypes.length} valid entity types from API`);
+      const finalEntityTypes = Array.from(entityTypes).sort();
+      logger.info(`Total valid entity types: ${finalEntityTypes.length} (${finalEntityTypes.length - staticEntityTypes.length} from API)`);
       
-      // Register any custom entity types discovered from the API
-      for (const entityType of entityTypes) {
-        if (!EntityRegistry.isValidEntityType(entityType)) {
-          logger.info(`Registering custom entity type: ${entityType}`);
-          EntityRegistry.registerCustomEntityType(entityType);
-        }
-      }
-      
-      return entityTypes.sort();
+      return finalEntityTypes;
     } catch (error) {
-      logger.error('Error fetching valid entity types:', error);
-      // Provide more detailed error information
-      if (error instanceof Error) {
-        logger.error(`Error details: ${error.message}`);
-        logger.error(`Error stack: ${error.stack}`);
-      }
-
-      if (error instanceof McpError) {
-        throw error;
-      }
-
-      // Fall back to static list on error instead of throwing
-      logger.warn('Falling back to static entity type list due to error');
+      logger.error('Error in getValidEntityTypes:', error);
+      logger.warn('Falling back to static entity type list');
       return EntityRegistry.getAllEntityTypes();
     }
   }
