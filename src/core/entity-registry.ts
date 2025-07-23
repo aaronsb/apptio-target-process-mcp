@@ -22,6 +22,15 @@ export interface EntityTypeInfo {
 
 export class EntityRegistry {
   private static readonly ENTITY_TYPES: Map<string, EntityTypeInfo> = new Map([
+    // Base type for all assignable work items
+    ['Assignable', {
+      name: 'Assignable',
+      category: EntityCategory.ASSIGNABLE,
+      description: 'Base type for all assignable work items (UserStory, Bug, Task, Feature, Epic, etc.)',
+      supportsCustomFields: false,
+      commonIncludes: ['EntityType', 'Project', 'Priority', 'EntityState', 'AssignedUser', 'Tags', 'Impediments']
+    }],
+    
     // Assignable entities (work items that can be assigned to users)
     ['UserStory', {
       name: 'UserStory',
