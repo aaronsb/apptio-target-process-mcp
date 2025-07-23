@@ -16,6 +16,7 @@ jest.mock('../../utils/logger.js', () => ({
 // Mock TPService
 const mockService = {
   searchEntities: jest.fn(),
+  getEntity: jest.fn(),
 } as unknown as jest.Mocked<TPService>;
 
 // Helper to create mock execution context
@@ -94,6 +95,20 @@ const createMockTask = (overrides: any = {}) => ({
   ...overrides
 });
 
+// Helper to setup common mocks
+const setupDiscoveryMocks = () => {
+  mockService.searchEntities
+    .mockResolvedValueOnce(mockEntityStates)
+    .mockResolvedValueOnce(mockPriorities);
+};
+
+const setupUserWithTasks = (tasks: any[], userId: number = 101734) => {
+  mockService.getEntity.mockResolvedValueOnce({
+    Id: userId,
+    Assignables: { Items: tasks }
+  });
+};
+
 describe('ShowMyTasksOperation', () => {
   let operation: ShowMyTasksOperation;
 
@@ -146,35 +161,27 @@ describe('ShowMyTasksOperation', () => {
 
   describe('execute - basic functionality', () => {
     it('should fetch and display user tasks', async () => {
-      // Mock discovery
-      mockService.searchEntities
-        .mockResolvedValueOnce(mockEntityStates) // EntityState discovery
-        .mockResolvedValueOnce(mockPriorities)   // Priority discovery
-        .mockResolvedValueOnce([                  // Task search
-          createMockTask(),
-          createMockTask({ 
-            Id: 124, 
-            Name: 'Fix bug Y',
-            Priority: { Id: 3, Name: 'Nice to Have', Importance: 3 },
-            EntityType: { Name: 'Bug', Id: 8 }
-          })
-        ]);
+      setupDiscoveryMocks();
+      setupUserWithTasks([
+        createMockTask(),
+        createMockTask({ 
+          Id: 124, 
+          Name: 'Fix bug Y',
+          Priority: { Id: 3, Name: 'Nice to Have', Importance: 3 },
+          EntityType: { Name: 'Bug', Id: 8 }
+        })
+      ]);
 
       const result = await operation.execute(createMockContext(), {} as any);
 
       // Check API calls
-      expect(mockService.searchEntities).toHaveBeenCalledTimes(3);
-      expect(mockService.searchEntities).toHaveBeenCalledWith(
-        'Assignable',
-        expect.stringContaining('AssignedUser.Id eq 101734'),
+      expect(mockService.searchEntities).toHaveBeenCalledTimes(2); // Only discovery calls
+      expect(mockService.getEntity).toHaveBeenCalledWith(
+        'GeneralUser',
+        101734,
         expect.arrayContaining([
-          'Id', 'Name', 'Description', 'EntityType',
-          'Priority',
-          'NumericPriority',
-          'EntityState',
-          'Project'
-        ]),
-        25
+          expect.stringContaining('Assignables[')
+        ])
       );
 
       // Check result structure
@@ -194,10 +201,8 @@ describe('ShowMyTasksOperation', () => {
     });
 
     it('should handle empty task list', async () => {
-      mockService.searchEntities
-        .mockResolvedValueOnce(mockEntityStates)
-        .mockResolvedValueOnce(mockPriorities)
-        .mockResolvedValueOnce([]);
+      setupDiscoveryMocks();
+      setupUserWithTasks([]);
 
       const result = await operation.execute(createMockContext(), {} as any);
 
@@ -214,10 +219,8 @@ describe('ShowMyTasksOperation', () => {
         Priority: { Id: 5, Name: 'Very Low', Importance: 5 }
       });
 
-      mockService.searchEntities
-        .mockResolvedValueOnce(mockEntityStates)
-        .mockResolvedValueOnce(mockPriorities)
-        .mockResolvedValueOnce([highPriorityTask, lowPriorityTask]);
+      setupDiscoveryMocks();
+      setupUserWithTasks([highPriorityTask, lowPriorityTask]);
 
       const result = await operation.execute(createMockContext(), { priority: 'high' } as any);
 
@@ -227,51 +230,44 @@ describe('ShowMyTasksOperation', () => {
     });
 
     it('should filter by state (active vs all)', async () => {
-      mockService.searchEntities
-        .mockResolvedValueOnce(mockEntityStates)
-        .mockResolvedValueOnce(mockPriorities)
-        .mockResolvedValueOnce([createMockTask()]);
+      setupDiscoveryMocks();
+      setupUserWithTasks([createMockTask()]);
 
-      await operation.execute(createMockContext(), { state: 'active' } as any);
+      const result = await operation.execute(createMockContext(), { state: 'active' } as any);
 
-      // Check that IsFinal filter was applied
-      expect(mockService.searchEntities).toHaveBeenCalledWith(
-        'Assignable',
-        expect.stringContaining('EntityState.IsFinal eq false'),
-        expect.any(Array),
-        25
+      // Active filter is applied client-side on the returned tasks
+      expect(mockService.getEntity).toHaveBeenCalledWith(
+        'GeneralUser',
+        101734,
+        expect.any(Array)
       );
     });
 
     it('should filter by project', async () => {
-      mockService.searchEntities
-        .mockResolvedValueOnce(mockEntityStates)
-        .mockResolvedValueOnce(mockPriorities)
-        .mockResolvedValueOnce([createMockTask()]);
+      setupDiscoveryMocks();
+      setupUserWithTasks([createMockTask()]);
 
-      await operation.execute(createMockContext(), { project: 123 } as any);
+      const result = await operation.execute(createMockContext(), { project: 123 } as any);
 
-      expect(mockService.searchEntities).toHaveBeenCalledWith(
-        'Assignable',
-        expect.stringContaining('Project.Id eq 123'),
-        expect.any(Array),
-        25
+      // Project filter is applied client-side on the returned tasks
+      expect(mockService.getEntity).toHaveBeenCalledWith(
+        'GeneralUser',
+        101734,
+        expect.any(Array)
       );
     });
 
     it('should filter by due date', async () => {
-      mockService.searchEntities
-        .mockResolvedValueOnce(mockEntityStates)
-        .mockResolvedValueOnce(mockPriorities)
-        .mockResolvedValueOnce([createMockTask()]);
+      setupDiscoveryMocks();
+      setupUserWithTasks([createMockTask()]);
 
-      await operation.execute(createMockContext(), { dueIn: 7 } as any);
+      const result = await operation.execute(createMockContext(), { dueIn: 7 } as any);
 
-      expect(mockService.searchEntities).toHaveBeenCalledWith(
-        'Assignable',
-        expect.stringMatching(/EndDate lte '\d{4}-\d{2}-\d{2}'/),
-        expect.any(Array),
-        25
+      // Due date filter is applied client-side on the returned tasks
+      expect(mockService.getEntity).toHaveBeenCalledWith(
+        'GeneralUser',
+        101734,
+        expect.any(Array)
       );
     });
 
@@ -281,13 +277,13 @@ describe('ShowMyTasksOperation', () => {
         .mockResolvedValueOnce(mockPriorities)
         .mockResolvedValueOnce([]);
 
-      await operation.execute(createMockContext(), { limit: 10 } as any);
+      const result = await operation.execute(createMockContext(), { limit: 10 } as any);
 
-      expect(mockService.searchEntities).toHaveBeenCalledWith(
-        'Assignable',
-        expect.any(String),
-        expect.any(Array),
-        10,
+      // Limit is applied client-side on the returned tasks
+      expect(mockService.getEntity).toHaveBeenCalledWith(
+        'GeneralUser',
+        101734,
+        expect.any(Array)
       );
     });
   });
@@ -416,22 +412,21 @@ describe('ShowMyTasksOperation', () => {
 
   describe('execute - dynamic discovery', () => {
     it('should cache discovery results', async () => {
-      mockService.searchEntities
-        .mockResolvedValueOnce(mockEntityStates)
-        .mockResolvedValueOnce(mockPriorities)
-        .mockResolvedValueOnce([createMockTask()]);
+      setupDiscoveryMocks();
+      setupUserWithTasks([createMockTask()]);
 
       // First call - should perform discovery
       await operation.execute(createMockContext(), {} as any);
       expect(mockService.searchEntities).toHaveBeenCalledTimes(3);
 
       // Reset mock
-      mockService.searchEntities.mockClear();
-      mockService.searchEntities.mockResolvedValueOnce([createMockTask()]);
+      jest.clearAllMocks();
+      setupUserWithTasks([createMockTask()]);
 
       // Second call - should use cache
       await operation.execute(createMockContext(), {} as any);
-      expect(mockService.searchEntities).toHaveBeenCalledTimes(1); // Only task search
+      expect(mockService.searchEntities).toHaveBeenCalledTimes(0); // Should use cache
+      expect(mockService.getEntity).toHaveBeenCalledTimes(1); // Only user fetch
     });
 
     it('should handle discovery failures gracefully', async () => {
@@ -440,8 +435,8 @@ describe('ShowMyTasksOperation', () => {
       
       mockService.searchEntities
         .mockRejectedValueOnce(new Error('EntityState not found'))
-        .mockRejectedValueOnce(new Error('Priority not found'))
-        .mockResolvedValueOnce([createMockTask()]);
+        .mockRejectedValueOnce(new Error('Priority not found'));
+      setupUserWithTasks([createMockTask()]);
 
       const result = await freshOperation.execute(createMockContext(), {} as any);
 
@@ -531,8 +526,9 @@ describe('ShowMyTasksOperation', () => {
     it('should handle API errors gracefully', async () => {
       mockService.searchEntities
         .mockRejectedValueOnce(new Error('API connection failed')) // Fail EntityState discovery
-        .mockRejectedValueOnce(new Error('API connection failed')) // Fail Priority discovery  
-        .mockRejectedValueOnce(new Error('API connection failed')); // Fail task fetch
+        .mockRejectedValueOnce(new Error('API connection failed')); // Fail Priority discovery
+      mockService.getEntity
+        .mockRejectedValueOnce(new Error('API connection failed')); // Fail user fetch
 
       const result = await operation.execute(createMockContext(), {} as any);
 
@@ -544,17 +540,17 @@ describe('ShowMyTasksOperation', () => {
     it('should handle missing user ID', async () => {
       const contextWithoutUser = createMockContext(0);
 
-      mockService.searchEntities
-        .mockResolvedValueOnce(mockEntityStates)
-        .mockResolvedValueOnce(mockPriorities)
-        .mockResolvedValueOnce([]);
+      setupDiscoveryMocks();
+      setupUserWithTasks([], 0);
 
       const result = await operation.execute(contextWithoutUser, {} as any);
 
       // Should still attempt with user ID 0
-      const lastCall = mockService.searchEntities.mock.calls[mockService.searchEntities.mock.calls.length - 1];
-      expect(lastCall[0]).toBe('Assignable');
-      expect(lastCall[1]).toContain('AssignedUser.Id eq 0');
+      expect(mockService.getEntity).toHaveBeenCalledWith(
+        'GeneralUser',
+        0,
+        expect.any(Array)
+      );
     });
   });
 

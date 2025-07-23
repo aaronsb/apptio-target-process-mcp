@@ -140,73 +140,71 @@ export class ShowMyTasksOperation implements SemanticOperation<ShowMyTasksParams
    * Fetch user's assigned tasks with filters
    */
   private async fetchUserTasks(userId: number, params: ShowMyTasksParams): Promise<any[]> {
-    // Build where clause
-    const whereClauses: string[] = [`AssignedUser.Id eq ${userId}`];
-    
-    // State filter
-    if (params.state === 'active') {
-      whereClauses.push('(EntityState.IsFinal eq false)');
+    try {
+      // Fetch user with their assignables included
+      const user = await this.service.getEntity<any>(
+        'GeneralUser',
+        userId,
+        [
+          'Assignables[Id,Name,Description,EntityType,Priority,NumericPriority,EntityState,EndDate,StartDate,CreateDate,ModifyDate,Project,Release,Iteration,TeamIteration,Tags,Impediments,Effort,EffortCompleted,EffortToDo,Progress,TimeSpent,TimeRemain,IsNow,IsNext,LastCommentDate]'
+        ]
+      );
+      
+      // Extract assignables from user response
+      let tasks = user?.Assignables?.Items || [];
+      
+      // Apply filters
+      // State filter
+      if (params.state === 'active') {
+        tasks = tasks.filter((task: any) => !task.EntityState?.IsFinal);
+      }
+      
+      // Project filter
+      if (params.project) {
+        tasks = tasks.filter((task: any) => task.Project?.Id === params.project);
+      }
+      
+      // Due date filter
+      if (params.dueIn) {
+        const futureDate = new Date();
+        futureDate.setDate(futureDate.getDate() + params.dueIn);
+        tasks = tasks.filter((task: any) => {
+          if (!task.EndDate) return false;
+          const endDate = new Date(task.EndDate);
+          return endDate <= futureDate;
+        });
+      }
+      
+      // Sort by priority importance (lower = higher priority)
+      if (tasks.length > 0) {
+        tasks.sort((a: any, b: any) => {
+          const aImportance = a.Priority?.Importance || 999;
+          const bImportance = b.Priority?.Importance || 999;
+          return aImportance - bImportance;
+        });
+      }
+      
+      // Priority filter
+      if (params.priority) {
+        const priorityRanges = this.getPriorityRanges();
+        tasks = tasks.filter((task: any) => {
+          const importance = task.Priority?.Importance || 999;
+          const range = priorityRanges[params.priority!];
+          return importance >= range.min && importance <= range.max;
+        });
+      }
+      
+      // Apply limit
+      if (params.limit && tasks.length > params.limit) {
+        tasks = tasks.slice(0, params.limit);
+      }
+      
+      return tasks;
+      
+    } catch (error) {
+      logger.error('Failed to fetch user tasks:', error);
+      throw error;
     }
-    
-    // Project filter
-    if (params.project) {
-      whereClauses.push(`(Project.Id eq ${params.project})`);
-    }
-    
-    // Due date filter
-    if (params.dueIn) {
-      const futureDate = new Date();
-      futureDate.setDate(futureDate.getDate() + params.dueIn);
-      const dateStr = futureDate.toISOString().split('T')[0];
-      whereClauses.push(`(EndDate lte '${dateStr}')`);
-    }
-    
-    // Priority filter (requires post-filtering since API doesn't support Importance in where)
-    const whereClause = whereClauses.join(' and ');
-    
-    // Fetch tasks with all needed fields
-    const tasks = await this.service.searchEntities(
-      'Assignable',
-      whereClause,
-      [
-        'Id', 'Name', 'Description', 'EntityType',
-        'Priority',
-        'NumericPriority',
-        'EntityState',
-        'Project',
-        'Tags', 'Impediments',
-        'CreateDate', 'ModifyDate', 'EndDate', 'StartDate',
-        'Effort', 'EffortCompleted', 'EffortToDo', 'Progress',
-        'TimeSpent', 'TimeRemain',
-        'IsNow', 'IsNext',
-        'LastCommentDate',
-        'Release',
-        'Iteration',
-        'TeamIteration'
-      ],
-      params.limit || 25
-    );
-    
-    // Sort by priority importance (lower = higher priority)
-    if (tasks && tasks.length > 0) {
-      tasks.sort((a: any, b: any) => {
-        const aImportance = a.Priority?.Importance || 999;
-        const bImportance = b.Priority?.Importance || 999;
-        return aImportance - bImportance;
-      });
-    }
-    
-    // Post-filter by priority if needed
-    if (params.priority && tasks) {
-      const priorityRanges = this.getPriorityRanges();
-      return tasks.filter((task: any) => {
-        const importance = task.Priority?.Importance || 999;
-        const range = priorityRanges[params.priority!];
-        return importance >= range.min && importance <= range.max;
-      });
-    }
-    
-    return tasks || [];
   }
 
   /**
