@@ -170,18 +170,19 @@ export class ShowMyTasksOperation implements SemanticOperation<ShowMyTasksParams
       whereClause,
       [
         'Id', 'Name', 'Description', 'EntityType',
-        'Priority[Id,Name,Importance]',
-        'EntityState[Id,Name,IsFinal,NumericPriority]',
-        'Project[Id,Name]',
+        'Priority',
+        'NumericPriority',
+        'EntityState',
+        'Project',
         'Tags', 'Impediments',
         'CreateDate', 'ModifyDate', 'EndDate', 'StartDate',
         'Effort', 'EffortCompleted', 'EffortToDo', 'Progress',
         'TimeSpent', 'TimeRemain',
         'IsNow', 'IsNext',
         'LastCommentDate',
-        'Release[Id,Name]',
-        'Iteration[Id,Name]',
-        'TeamIteration[Id,Name]'
+        'Release',
+        'Iteration',
+        'TeamIteration'
       ],
       params.limit || 25
     );

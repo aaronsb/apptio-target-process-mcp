@@ -167,7 +167,13 @@ describe('ShowMyTasksOperation', () => {
       expect(mockService.searchEntities).toHaveBeenCalledWith(
         'Assignable',
         expect.stringContaining('AssignedUser.Id eq 101734'),
-        expect.any(Array),
+        expect.arrayContaining([
+          'Id', 'Name', 'Description', 'EntityType',
+          'Priority',
+          'NumericPriority',
+          'EntityState',
+          'Project'
+        ]),
         25
       );
 
