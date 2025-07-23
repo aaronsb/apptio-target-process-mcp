@@ -4,37 +4,51 @@ import { ExecutionContext, SemanticOperation, OperationResult } from '../../core
 import { logger } from '../../utils/logger.js';
 
 export const showMyTasksSchema = z.object({
-  includeCompleted: z.boolean().optional().default(false),
-  projectFilter: z.string().optional(),
-  priority: z.enum(['all', 'high', 'medium', 'low']).optional().default('all'),
-  limit: z.number().optional().default(20)
+  priority: z.enum(['high', 'medium', 'low']).optional().describe('Filter by priority level'),
+  state: z.enum(['active', 'all']).optional().default('active').describe('Filter by task state'),
+  project: z.coerce.number().optional().describe('Filter by project ID'),
+  dueIn: z.coerce.number().optional().describe('Filter tasks due within X days'),
+  limit: z.coerce.number().optional().default(25).describe('Maximum number of tasks to return')
 });
 
 export type ShowMyTasksParams = z.infer<typeof showMyTasksSchema>;
 
 /**
- * Semantic operation: show-my-tasks
+ * Show My Tasks Operation
  * 
- * This operation retrieves tasks assigned to the current user,
- * with smart filtering based on context and user preferences.
+ * Developer-focused semantic operation that displays assigned tasks with intelligent
+ * filtering, priority visualization, and workflow context.
+ * 
+ * Features (per acceptance criteria):
+ * - Visual priority indicators (🔴🟡🔵)
+ * - Multiple filtering options
+ * - Overdue and blocked status detection
+ * - Task age/staleness indicators
+ * - Mobile-friendly formatting
+ * - <1s performance target
  */
 export class ShowMyTasksOperation implements SemanticOperation<ShowMyTasksParams> {
+  private entityStateCache: Map<string, any> = new Map();
+  private priorityCache: Map<string, any> = new Map();
+  private lastDiscoveryTime: number = 0;
+  private readonly CACHE_TTL = 300000; // 5 minutes
+
   constructor(private service: TPService) {}
 
   get metadata() {
     return {
       id: 'show-my-tasks',
       name: 'Show My Tasks',
-      description: 'View tasks assigned to you with smart filtering',
-      category: 'task-management',
-      requiredPersonalities: ['developer', 'tester', 'project-manager', 'administrator'],
+      description: 'View your assigned tasks with smart filtering, priority indicators, and workflow insights',
+      category: 'work',
+      requiredPersonalities: ['developer'], // Developer-only operation
       examples: [
         'Show my tasks',
-        'What am I working on?',
-        'Show my high priority tasks',
-        'List my tasks in Project Alpha'
+        'Show high priority tasks',
+        'Show tasks due in 7 days',
+        'Show active tasks for project 123'
       ],
-      tags: ['task', 'personal', 'workflow']
+      tags: ['tasks', 'assignments', 'developer', 'workflow']
     };
   }
 
@@ -43,189 +57,493 @@ export class ShowMyTasksOperation implements SemanticOperation<ShowMyTasksParams
   }
 
   async execute(context: ExecutionContext, params: ShowMyTasksParams): Promise<OperationResult> {
-    // Build the where clause based on context and parameters
-    const whereConditions: string[] = [];
+    const startTime = Date.now();
     
-    // For now, let's get all tasks and filter in code
-    // TODO: Find correct syntax for AssignedUser filtering
-
-    // Add state filter - discover final states dynamically
-    if (!params.includeCompleted) {
-      try {
-        const finalStates = await this.service.searchEntities(
-          'EntityState',
-          `(EntityType.Name eq 'Task') and (IsFinal eq true)`,
-          ['EntityType', 'IsFinal'],
-          10
-        );
-        
-        if (finalStates.length > 0) {
-          const finalStateNames = finalStates.map((s: any) => s.Name);
-          finalStateNames.forEach(stateName => {
-            whereConditions.push(`EntityState.Name ne '${stateName}'`);
-          });
-        } else {
-          // Fallback to common completed state if discovery fails
-          whereConditions.push(`EntityState.Name ne 'Done'`);
-        }
-      } catch (stateError) {
-        // Fallback to common completed state if discovery fails
-        logger.warn('Failed to discover final states:', stateError);
-        whereConditions.push(`EntityState.Name ne 'Done'`);
-      }
-    }
-
-    // Add project filter if specified
-    if (params.projectFilter) {
-      whereConditions.push(`Project.Name contains '${params.projectFilter}'`);
-    }
-
-    // Add priority filter - discover available priorities dynamically
-    if (params.priority !== 'all') {
-      try {
-        const priorities = await this.service.searchEntities(
-          'Priority',
-          undefined,
-          ['Name', 'Importance'],
-          20
-        );
-        
-        // Group priorities by user's filter preference based on Importance
-        let targetPriorities: string[] = [];
-        if (params.priority === 'high') {
-          // Find highest importance (usually lowest number)
-          const sortedByImportance = priorities.sort((a: any, b: any) => 
-            (a.Importance || 999) - (b.Importance || 999)
-          );
-          targetPriorities = sortedByImportance.slice(0, 2).map((p: any) => p.Name);
-        } else if (params.priority === 'medium') {
-          // Find middle importance levels
-          const sortedByImportance = priorities.sort((a: any, b: any) => 
-            (a.Importance || 999) - (b.Importance || 999)
-          );
-          const midIndex = Math.floor(sortedByImportance.length / 2);
-          targetPriorities = sortedByImportance.slice(midIndex, midIndex + 1).map((p: any) => p.Name);
-        } else if (params.priority === 'low') {
-          // Find lower importance levels
-          const sortedByImportance = priorities.sort((a: any, b: any) => 
-            (a.Importance || 999) - (b.Importance || 999)
-          );
-          targetPriorities = sortedByImportance.slice(-2).map((p: any) => p.Name);
-        }
-        
-        if (targetPriorities.length > 0) {
-          whereConditions.push(`Priority.Name in ['${targetPriorities.join("','")}']`);
-        }
-      } catch (priorityError) {
-        // If priority discovery fails, continue without priority filter
-        logger.warn('Failed to discover priorities:', priorityError);
-      }
-    }
-
     try {
-      const whereClause = whereConditions.length > 0 ? whereConditions.join(' and ') : undefined;
-      logger.debug('ShowMyTasks - User ID:', context.user.id);
-      logger.debug('ShowMyTasks - Params:', JSON.stringify(params));
-      logger.debug('ShowMyTasks - Where conditions:', whereConditions);
-      logger.debug('ShowMyTasks - Where clause:', whereClause || '(none)');
+      const validatedParams = showMyTasksSchema.parse(params);
       
-      // Search for tasks
-      const allTasks = await this.service.searchEntities(
-        'Task',
-        whereClause, // Already undefined if no conditions
-        ['Project', 'Priority', 'Iteration', 'EntityState', 'Tags', 'AssignedUser'],
-        params.limit * 10 // Get more to filter
-        // TODO: Fix orderBy parameter format
+      // Perform dynamic discovery
+      await this.performDynamicDiscovery();
+      
+      // Build and execute query
+      const tasks = await this.fetchUserTasks(context.user.id, validatedParams);
+      
+      // Analyze and format results
+      const result = this.formatTaskResults(tasks, validatedParams, context);
+      
+      // Add performance metadata
+      result.metadata = {
+        executionTime: Date.now() - startTime,
+        apiCallsCount: 1 + (this.lastDiscoveryTime === startTime ? 2 : 0),
+        cacheHits: this.lastDiscoveryTime !== startTime ? 2 : 0
+      };
+      
+      return result;
+      
+    } catch (error) {
+      logger.error('ShowMyTasksOperation error:', error);
+      return this.buildErrorResponse(error);
+    }
+  }
+
+  /**
+   * Perform dynamic discovery of EntityStates and Priorities
+   */
+  private async performDynamicDiscovery(): Promise<void> {
+    const now = Date.now();
+    
+    // Check cache validity
+    if (now - this.lastDiscoveryTime < this.CACHE_TTL) {
+      return;
+    }
+    
+    try {
+      // Discover EntityStates
+      const states = await this.service.searchEntities(
+        'EntityState',
+        '',
+        ['Id', 'Name', 'IsFinal', 'IsInitial', 'NumericPriority'],
+        100
       );
       
-      // Filter for assigned user in code
-      const tasks = allTasks.filter((task: any) => {
-        const assignedUsers = task.AssignedUser?.Items || [];
-        return assignedUsers.some((user: any) => user.Id === context.user.id);
-      }).slice(0, params.limit);
-
-      // Generate summary
-      const summary = this.generateSummary(tasks, params);
-
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: summary
-          },
-          {
-            type: 'structured-data' as const,
-            data: {
-              tasks,
-              metadata: {
-                totalItems: tasks.length,
-                filters: params
-              }
-            }
-          }
-        ],
-        suggestions: this.generateSuggestions(tasks)
-      };
+      if (states && states.length > 0) {
+        states.forEach((state: any) => {
+          this.entityStateCache.set(state.Name, state);
+        });
+        logger.debug(`Discovered ${states.length} entity states`);
+      }
+      
+      // Discover Priorities
+      const priorities = await this.service.searchEntities(
+        'Priority',
+        '',
+        ['Id', 'Name', 'Importance'],
+        20
+      );
+      
+      if (priorities && priorities.length > 0) {
+        priorities.forEach((priority: any) => {
+          this.priorityCache.set(priority.Name, priority);
+        });
+        logger.debug(`Discovered ${priorities.length} priorities`);
+      }
+      
+      this.lastDiscoveryTime = now;
+      
     } catch (error) {
+      logger.warn('Dynamic discovery failed, using defaults:', error);
+      // Continue with defaults if discovery fails
+    }
+  }
+
+  /**
+   * Fetch user's assigned tasks with filters
+   */
+  private async fetchUserTasks(userId: number, params: ShowMyTasksParams): Promise<any[]> {
+    // Build where clause
+    const whereClauses: string[] = [`AssignedUser.Id eq ${userId}`];
+    
+    // State filter
+    if (params.state === 'active') {
+      whereClauses.push('(EntityState.IsFinal eq false)');
+    }
+    
+    // Project filter
+    if (params.project) {
+      whereClauses.push(`(Project.Id eq ${params.project})`);
+    }
+    
+    // Due date filter
+    if (params.dueIn) {
+      const futureDate = new Date();
+      futureDate.setDate(futureDate.getDate() + params.dueIn);
+      const dateStr = futureDate.toISOString().split('T')[0];
+      whereClauses.push(`(EndDate lte '${dateStr}')`);
+    }
+    
+    // Priority filter (requires post-filtering since API doesn't support Importance in where)
+    const whereClause = whereClauses.join(' and ');
+    
+    // Fetch tasks with all needed fields
+    const tasks = await this.service.searchEntities(
+      'Assignable',
+      whereClause,
+      [
+        'Id', 'Name', 'Description', 'EntityType',
+        'Priority[Id,Name,Importance]',
+        'EntityState[Id,Name,IsFinal,NumericPriority]',
+        'Project[Id,Name]',
+        'Tags', 'Impediments',
+        'CreateDate', 'ModifyDate', 'EndDate', 'StartDate',
+        'Effort', 'EffortCompleted', 'EffortToDo', 'Progress',
+        'TimeSpent', 'TimeRemain',
+        'IsNow', 'IsNext',
+        'LastCommentDate',
+        'Release[Id,Name]',
+        'Iteration[Id,Name]',
+        'TeamIteration[Id,Name]'
+      ],
+      params.limit || 25
+    );
+    
+    // Sort by priority importance (lower = higher priority)
+    if (tasks && tasks.length > 0) {
+      tasks.sort((a: any, b: any) => {
+        const aImportance = a.Priority?.Importance || 999;
+        const bImportance = b.Priority?.Importance || 999;
+        return aImportance - bImportance;
+      });
+    }
+    
+    // Post-filter by priority if needed
+    if (params.priority && tasks) {
+      const priorityRanges = this.getPriorityRanges();
+      return tasks.filter((task: any) => {
+        const importance = task.Priority?.Importance || 999;
+        const range = priorityRanges[params.priority!];
+        return importance >= range.min && importance <= range.max;
+      });
+    }
+    
+    return tasks || [];
+  }
+
+  /**
+   * Get priority importance ranges based on discovered data
+   */
+  private getPriorityRanges(): Record<string, { min: number; max: number }> {
+    // Use discovered priorities to determine ranges
+    const importanceValues = Array.from(this.priorityCache.values())
+      .map(p => p.Importance)
+      .sort((a, b) => a - b);
+    
+    if (importanceValues.length >= 3) {
+      const third = Math.floor(importanceValues.length / 3);
       return {
-        content: [{
-          type: 'error' as const,
-          text: `Failed to fetch tasks: ${error instanceof Error ? error.message : String(error)}`
-        }]
+        high: { min: 0, max: importanceValues[third] },
+        medium: { min: importanceValues[third] + 1, max: importanceValues[third * 2] },
+        low: { min: importanceValues[third * 2] + 1, max: 999 }
       };
     }
-  }
-
-  private generateSummary(tasks: any[], params: ShowMyTasksParams): string {
-    if (tasks.length === 0) {
-      return params.includeCompleted 
-        ? "You don't have any tasks assigned."
-        : "You don't have any active tasks assigned. Great job staying on top of things!";
-    }
-
-    const parts: string[] = [];
-    parts.push(`You have ${tasks.length} ${params.includeCompleted ? '' : 'active '}tasks assigned:`);
     
-    // State breakdown
-    const byState = tasks.reduce((acc, task) => {
-      const state = task.EntityState?.Name || 'Unknown';
-      acc[state] = (acc[state] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-
-    Object.entries(byState).forEach(([state, count]) => {
-      parts.push(`- ${count} ${state}`);
-    });
-
-    return parts.join('\n');
+    // Fallback ranges
+    return {
+      high: { min: 0, max: 2 },
+      medium: { min: 3, max: 4 },
+      low: { min: 5, max: 999 }
+    };
   }
 
-  private generateSuggestions(tasks: any[]): string[] {
+  /**
+   * Format task results with visual indicators and context
+   */
+  private formatTaskResults(tasks: any[], params: ShowMyTasksParams, context: ExecutionContext): OperationResult {
+    if (!tasks || tasks.length === 0) {
+      return this.buildEmptyResponse(params);
+    }
+    
+    const formattedTasks = tasks.map(task => this.formatSingleTask(task));
+    const summary = this.buildTaskSummary(tasks);
+    const suggestions = this.generateSuggestions(tasks, context);
+    
+    return {
+      content: [
+        {
+          type: 'text' as const,
+          text: `📋 **Your Tasks** (${tasks.length} ${params.state === 'all' ? 'total' : 'active'})\n\n${summary}`
+        },
+        {
+          type: 'text' as const,
+          text: formattedTasks.join('\n\n')
+        },
+        {
+          type: 'structured-data' as const,
+          data: {
+            totalTasks: tasks.length,
+            byPriority: this.groupByPriority(tasks),
+            byState: this.groupByState(tasks),
+            overdueTasks: tasks.filter(t => this.isOverdue(t)).length,
+            blockedTasks: tasks.filter(t => this.isBlocked(t)).length
+          }
+        }
+      ],
+      suggestions
+    };
+  }
+
+  /**
+   * Format a single task with visual indicators
+   */
+  private formatSingleTask(task: any): string {
+    const priority = this.getPriorityIndicator(task.Priority);
+    const state = this.getStateDisplay(task.EntityState);
+    const status = this.getTaskStatus(task);
+    const age = this.getTaskAge(task);
+    const effort = this.getEffortDisplay(task);
+    
+    // Mobile-friendly format
+    const header = `${priority} **${task.Name}** ${status}`;
+    const metadata = `${state} | ${task.EntityType?.Name || 'Task'} #${task.Id} | ${age}`;
+    const project = `📁 ${task.Project?.Name || 'Unknown Project'}${task.Release ? ` → ${task.Release.Name}` : ''}`;
+    const details = effort ? `⏱️ ${effort}` : '';
+    
+    return [header, metadata, project, details].filter(Boolean).join('\n');
+  }
+
+  /**
+   * Get visual priority indicator
+   */
+  private getPriorityIndicator(priority: any): string {
+    if (!priority) return '⚪';
+    
+    const importance = priority.Importance || 999;
+    const ranges = this.getPriorityRanges();
+    
+    if (importance <= ranges.high.max) return '🔴';
+    if (importance <= ranges.medium.max) return '🟡';
+    return '🔵';
+  }
+
+  /**
+   * Get state display with workflow context
+   */
+  private getStateDisplay(state: any): string {
+    if (!state) return '❓ Unknown';
+    
+    const stateName = state.Name;
+    const cached = this.entityStateCache.get(stateName);
+    
+    if (cached?.IsInitial) return `🆕 ${stateName}`;
+    if (cached?.IsFinal) return `✅ ${stateName}`;
+    if (stateName.toLowerCase().includes('progress')) return `🔄 ${stateName}`;
+    
+    return `📌 ${stateName}`;
+  }
+
+  /**
+   * Get task status indicators (overdue, blocked, etc.)
+   */
+  private getTaskStatus(task: any): string {
+    const statuses: string[] = [];
+    
+    if (this.isOverdue(task)) {
+      statuses.push('⚠️ Overdue');
+    }
+    
+    if (this.isBlocked(task)) {
+      statuses.push('🚧 Blocked');
+    }
+    
+    if (task.IsNow) {
+      statuses.push('👉 Current');
+    } else if (task.IsNext) {
+      statuses.push('⏭️ Next');
+    }
+    
+    return statuses.length > 0 ? `(${statuses.join(', ')})` : '';
+  }
+
+  /**
+   * Check if task is overdue
+   */
+  private isOverdue(task: any): boolean {
+    if (!task.EndDate) return false;
+    
+    const endDate = new Date(task.EndDate);
+    const now = new Date();
+    return endDate < now && !task.EntityState?.IsFinal;
+  }
+
+  /**
+   * Check if task is blocked
+   */
+  private isBlocked(task: any): boolean {
+    // Check Tags for 'blocked'
+    if (task.Tags?.Items) {
+      const hasBlockedTag = task.Tags.Items.some((tag: any) => 
+        tag.Name?.toLowerCase().includes('blocked')
+      );
+      if (hasBlockedTag) return true;
+    }
+    
+    // Check Impediments
+    if (task.Impediments?.Items && task.Impediments.Items.length > 0) {
+      return true;
+    }
+    
+    return false;
+  }
+
+  /**
+   * Get task age display
+   */
+  private getTaskAge(task: any): string {
+    if (!task.CreateDate) return '';
+    
+    const created = new Date(task.CreateDate);
+    const now = new Date();
+    const days = Math.floor((now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (days === 0) return 'Created today';
+    if (days === 1) return 'Created yesterday';
+    if (days < 7) return `${days} days old`;
+    if (days < 30) return `${Math.floor(days / 7)} weeks old`;
+    
+    // Mark as stale if over 30 days
+    return `⚡ ${Math.floor(days / 30)} months old`;
+  }
+
+  /**
+   * Get effort display
+   */
+  private getEffortDisplay(task: any): string {
+    const parts: string[] = [];
+    
+    if (task.Progress) {
+      parts.push(`${Math.round(task.Progress)}% complete`);
+    }
+    
+    if (task.TimeSpent) {
+      parts.push(`${task.TimeSpent}h spent`);
+    }
+    
+    if (task.TimeRemain) {
+      parts.push(`${task.TimeRemain}h remaining`);
+    }
+    
+    return parts.join(' | ');
+  }
+
+  /**
+   * Build task summary
+   */
+  private buildTaskSummary(tasks: any[]): string {
+    const overdue = tasks.filter(t => this.isOverdue(t)).length;
+    const blocked = tasks.filter(t => this.isBlocked(t)).length;
+    const inProgress = tasks.filter(t => t.EntityState?.Name?.toLowerCase().includes('progress')).length;
+    
+    const parts: string[] = [];
+    
+    if (overdue > 0) parts.push(`⚠️ ${overdue} overdue`);
+    if (blocked > 0) parts.push(`🚧 ${blocked} blocked`);
+    if (inProgress > 0) parts.push(`🔄 ${inProgress} in progress`);
+    
+    return parts.length > 0 ? parts.join(' | ') : 'All tasks up to date';
+  }
+
+  /**
+   * Group tasks by priority
+   */
+  private groupByPriority(tasks: any[]): Record<string, number> {
+    const groups = { high: 0, medium: 0, low: 0 };
+    const ranges = this.getPriorityRanges();
+    
+    tasks.forEach(task => {
+      const importance = task.Priority?.Importance || 999;
+      if (importance <= ranges.high.max) groups.high++;
+      else if (importance <= ranges.medium.max) groups.medium++;
+      else groups.low++;
+    });
+    
+    return groups;
+  }
+
+  /**
+   * Group tasks by state
+   */
+  private groupByState(tasks: any[]): Record<string, number> {
+    const groups: Record<string, number> = {};
+    
+    tasks.forEach(task => {
+      const stateName = task.EntityState?.Name || 'Unknown';
+      groups[stateName] = (groups[stateName] || 0) + 1;
+    });
+    
+    return groups;
+  }
+
+  /**
+   * Generate intelligent suggestions
+   */
+  private generateSuggestions(tasks: any[], context: ExecutionContext): string[] {
     const suggestions: string[] = [];
     
-    if (tasks.length === 0) {
-      // No tasks - suggest discovery
-      suggestions.push('search_entities type:Task - Find available tasks');
-      suggestions.push('show-my-bugs - Check for bugs instead');
-      suggestions.push('inspect_object type:Task - Learn about task properties');
-    } else {
-      // Have tasks - suggest actions
-      const openTasks = tasks.filter(t => t.EntityState?.IsInitial || (!t.EntityState?.IsFinal && !t.EntityState?.IsInitial));
-      if (openTasks.length > 0) {
-        suggestions.push(`start-working-on ${openTasks[0].Id} - Begin work on highest priority task`);
-      }
-
-      // In-progress tasks (not initial, not final)
-      const inProgress = tasks.filter(t => !t.EntityState?.IsInitial && !t.EntityState?.IsFinal);
-      if (inProgress.length > 0) {
-        suggestions.push('update-progress - Update task progress');
-        suggestions.push('log-time - Record time spent');
-      }
-
-      // Discovery suggestions
-      suggestions.push('search_entities type:EntityState where:EntityType.Name=="Task" - See all task states');
+    // Find highest priority unblocked task
+    const highPriorityTask = tasks
+      .filter(t => !this.isBlocked(t) && !t.EntityState?.IsFinal)
+      .sort((a, b) => (a.Priority?.Importance || 999) - (b.Priority?.Importance || 999))[0];
+    
+    if (highPriorityTask) {
+      suggestions.push(`start-working-on entityType:${highPriorityTask.EntityType?.Name || 'Task'} entityId:${highPriorityTask.Id} - Start highest priority task`);
     }
-
+    
+    // Blocked tasks
+    const blockedTask = tasks.find(t => this.isBlocked(t));
+    if (blockedTask) {
+      suggestions.push(`show-comments entityType:${blockedTask.EntityType?.Name || 'Task'} entityId:${blockedTask.Id} - Check blocked task discussion`);
+    }
+    
+    // Overdue tasks
+    const overdueTask = tasks.find(t => this.isOverdue(t));
+    if (overdueTask) {
+      suggestions.push(`update-entity type:${overdueTask.EntityType?.Name || 'Task'} id:${overdueTask.Id} fields:{} - Update overdue task`);
+    }
+    
+    // Filter variations
+    if (tasks.length > 5) {
+      suggestions.push('show-my-tasks priority:high - Focus on high priority only');
+    }
+    
+    suggestions.push('show-my-bugs - View assigned bugs');
+    
     return suggestions;
+  }
+
+  /**
+   * Build empty response
+   */
+  private buildEmptyResponse(params: ShowMyTasksParams): OperationResult {
+    const filters = [];
+    if (params.priority) filters.push(`priority: ${params.priority}`);
+    if (params.project) filters.push(`project: ${params.project}`);
+    if (params.dueIn) filters.push(`due in ${params.dueIn} days`);
+    
+    const filterText = filters.length > 0 ? ` with filters: ${filters.join(', ')}` : '';
+    
+    return {
+      content: [{
+        type: 'text' as const,
+        text: `📋 **No tasks found**${filterText}\n\nYou don't have any ${params.state === 'all' ? '' : 'active '}assigned tasks${filterText}.`
+      }],
+      suggestions: [
+        'show-my-tasks state:all - Show all tasks including completed',
+        'search-entities type:Task - Search for unassigned tasks',
+        'create-entity type:Task fields:{Name:"New task"} - Create a new task'
+      ]
+    };
+  }
+
+  /**
+   * Build error response with helpful guidance
+   */
+  private buildErrorResponse(error: unknown): OperationResult {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    
+    return {
+      content: [
+        {
+          type: 'text' as const,
+          text: '❌ **Failed to fetch tasks**'
+        },
+        {
+          type: 'text' as const,
+          text: `Error: ${message}\n\nThis might be due to:\n• Invalid user configuration (check TP_USER_ID)\n• API connectivity issues\n• Invalid filter parameters`
+        }
+      ],
+      suggestions: [
+        'search-entities type:Task where:"AssignedUser.Id = YOUR_ID" - Manual task search',
+        'get-entity type:GeneralUser id:YOUR_ID - Verify your user ID'
+      ]
+    };
   }
 }
