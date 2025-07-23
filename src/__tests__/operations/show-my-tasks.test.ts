@@ -290,14 +290,12 @@ describe('ShowMyTasksOperation', () => {
 
   describe('execute - visual indicators', () => {
     it('should show correct priority indicators', async () => {
-      mockService.searchEntities
-        .mockResolvedValueOnce(mockEntityStates)
-        .mockResolvedValueOnce(mockPriorities)
-        .mockResolvedValueOnce([
-          createMockTask({ Priority: { Id: 1, Name: 'Must Have', Importance: 1 } }),
-          createMockTask({ Id: 124, Priority: { Id: 3, Name: 'Nice to Have', Importance: 3 } }),
-          createMockTask({ Id: 125, Priority: { Id: 5, Name: 'Very Low', Importance: 5 } })
-        ]);
+      setupDiscoveryMocks();
+      setupUserWithTasks([
+        createMockTask({ Priority: { Id: 1, Name: 'Must Have', Importance: 1 } }),
+        createMockTask({ Id: 124, Priority: { Id: 3, Name: 'Nice to Have', Importance: 3 } }),
+        createMockTask({ Id: 125, Priority: { Id: 5, Name: 'Very Low', Importance: 5 } })
+      ]);
 
       const result = await operation.execute(createMockContext(), {} as any);
 
@@ -312,10 +310,8 @@ describe('ShowMyTasksOperation', () => {
         EndDate: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString() // Yesterday
       });
 
-      mockService.searchEntities
-        .mockResolvedValueOnce(mockEntityStates)
-        .mockResolvedValueOnce(mockPriorities)
-        .mockResolvedValueOnce([overdueTask]);
+      setupDiscoveryMocks();
+      setupUserWithTasks([overdueTask]);
 
       const result = await operation.execute(createMockContext(), {} as any);
 
@@ -328,10 +324,8 @@ describe('ShowMyTasksOperation', () => {
         Tags: { Items: [{ Name: 'blocked' }] }
       });
 
-      mockService.searchEntities
-        .mockResolvedValueOnce(mockEntityStates)
-        .mockResolvedValueOnce(mockPriorities)
-        .mockResolvedValueOnce([blockedTask]);
+      setupDiscoveryMocks();
+      setupUserWithTasks([blockedTask]);
 
       const result = await operation.execute(createMockContext(), {} as any);
 
@@ -344,10 +338,8 @@ describe('ShowMyTasksOperation', () => {
         Impediments: { Items: [{ Id: 1, Name: 'Technical issue' }] }
       });
 
-      mockService.searchEntities
-        .mockResolvedValueOnce(mockEntityStates)
-        .mockResolvedValueOnce(mockPriorities)
-        .mockResolvedValueOnce([impedimentTask]);
+      setupDiscoveryMocks();
+      setupUserWithTasks([impedimentTask]);
 
       const result = await operation.execute(createMockContext(), {} as any);
 
@@ -374,10 +366,8 @@ describe('ShowMyTasksOperation', () => {
         })
       ];
 
-      mockService.searchEntities
-        .mockResolvedValueOnce(mockEntityStates)
-        .mockResolvedValueOnce(mockPriorities)
-        .mockResolvedValueOnce(tasks);
+      setupDiscoveryMocks();
+      setupUserWithTasks(tasks);
 
       const result = await operation.execute(createMockContext(), {} as any);
 
@@ -397,10 +387,8 @@ describe('ShowMyTasksOperation', () => {
         TimeRemain: 4
       });
 
-      mockService.searchEntities
-        .mockResolvedValueOnce(mockEntityStates)
-        .mockResolvedValueOnce(mockPriorities)
-        .mockResolvedValueOnce([taskWithEffort]);
+      setupDiscoveryMocks();
+      setupUserWithTasks([taskWithEffort]);
 
       const result = await operation.execute(createMockContext(), {} as any);
 
@@ -417,7 +405,8 @@ describe('ShowMyTasksOperation', () => {
 
       // First call - should perform discovery
       await operation.execute(createMockContext(), {} as any);
-      expect(mockService.searchEntities).toHaveBeenCalledTimes(3);
+      expect(mockService.searchEntities).toHaveBeenCalledTimes(2);
+      expect(mockService.getEntity).toHaveBeenCalledTimes(1);
 
       // Reset mock
       jest.clearAllMocks();
@@ -462,10 +451,8 @@ describe('ShowMyTasksOperation', () => {
         })
       ];
 
-      mockService.searchEntities
-        .mockResolvedValueOnce(mockEntityStates)
-        .mockResolvedValueOnce(mockPriorities)
-        .mockResolvedValueOnce(tasks);
+      setupDiscoveryMocks();
+      setupUserWithTasks(tasks);
 
       const result = await operation.execute(createMockContext(), {} as any);
 
@@ -478,10 +465,8 @@ describe('ShowMyTasksOperation', () => {
         Tags: { Items: [{ Name: 'blocked' }] }
       });
 
-      mockService.searchEntities
-        .mockResolvedValueOnce(mockEntityStates)
-        .mockResolvedValueOnce(mockPriorities)
-        .mockResolvedValueOnce([blockedTask]);
+      setupDiscoveryMocks();
+      setupUserWithTasks([blockedTask]);
 
       const result = await operation.execute(createMockContext(), {} as any);
 
@@ -493,10 +478,8 @@ describe('ShowMyTasksOperation', () => {
         EndDate: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
       });
 
-      mockService.searchEntities
-        .mockResolvedValueOnce(mockEntityStates)
-        .mockResolvedValueOnce(mockPriorities)
-        .mockResolvedValueOnce([overdueTask]);
+      setupDiscoveryMocks();
+      setupUserWithTasks([overdueTask]);
 
       const result = await operation.execute(createMockContext(), {} as any);
 
@@ -506,10 +489,8 @@ describe('ShowMyTasksOperation', () => {
 
   describe('execute - performance', () => {
     it('should complete within 1 second', async () => {
-      mockService.searchEntities
-        .mockResolvedValueOnce(mockEntityStates)
-        .mockResolvedValueOnce(mockPriorities)
-        .mockResolvedValueOnce(Array(25).fill(null).map((_, i) => createMockTask({ Id: i })));
+      setupDiscoveryMocks();
+      setupUserWithTasks(Array(25).fill(null).map((_, i) => createMockTask({ Id: i })));
 
       const startTime = Date.now();
       const result = await operation.execute(createMockContext(), {} as any);
@@ -560,10 +541,8 @@ describe('ShowMyTasksOperation', () => {
       const freshOperation = new ShowMyTasksOperation(mockService);
       const task = createMockTask();
 
-      mockService.searchEntities
-        .mockResolvedValueOnce(mockEntityStates)
-        .mockResolvedValueOnce(mockPriorities)
-        .mockResolvedValueOnce([task]);
+      setupDiscoveryMocks();
+      setupUserWithTasks([task]);
 
       const result = await freshOperation.execute(createMockContext(), {} as any);
 
@@ -595,10 +574,8 @@ describe('ShowMyTasksOperation', () => {
         })
       ];
 
-      mockService.searchEntities
-        .mockResolvedValueOnce(mockEntityStates)
-        .mockResolvedValueOnce(mockPriorities)
-        .mockResolvedValueOnce(tasks);
+      setupDiscoveryMocks();
+      setupUserWithTasks(tasks);
 
       const result = await freshOperation.execute(createMockContext(), {} as any);
 
