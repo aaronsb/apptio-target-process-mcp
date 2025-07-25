@@ -11,11 +11,12 @@ export default {
       'ts-jest',
       {
         useESM: true,
+        tsconfig: 'tsconfig.test.json',
       },
     ],
   },
   testMatch: [
-    '**/src/**/__tests__/**/*.ts',
+    '**/src/**/__tests__/**/*.test.ts',
     '**/src/**/*.test.ts'
   ],
   testPathIgnorePatterns: [
