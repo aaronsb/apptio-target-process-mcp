@@ -53,7 +53,7 @@ export const agentTestScenarios: IAgentTestScenario[] = [
           parameters: {
             type: 'Bug',
             id: 12345,
-            include: expect => expect.includes('Project') && expect.includes('AssignedUser')
+            include: (expect: string[]) => expect.includes('Project') && expect.includes('AssignedUser')
           }
         }
       }
@@ -82,7 +82,7 @@ export const agentTestScenarios: IAgentTestScenario[] = [
           toolName: 'search_entities',
           parameters: {
             type: 'Project',
-            where: expect => expect.includes('Backend API')
+            where: (expect: string) => expect.includes('Backend API')
           }
         }
       },
@@ -93,7 +93,7 @@ export const agentTestScenarios: IAgentTestScenario[] = [
           toolName: 'search_entities',
           parameters: {
             type: 'GeneralUser',
-            where: expect => expect.includes('Sarah Johnson')
+            where: (expect: string) => expect.includes('Sarah Johnson')
           }
         }
       },
@@ -167,7 +167,7 @@ export const agentTestScenarios: IAgentTestScenario[] = [
           toolName: 'search_entities',
           parameters: {
             type: 'UserStory',
-            where: expect => 
+            where: (expect: string) => 
               expect.includes('Priority') && 
               expect.includes('High') &&
               expect.includes('EntityState.Name') &&
@@ -182,7 +182,7 @@ export const agentTestScenarios: IAgentTestScenario[] = [
           toolName: 'search_entities',
           parameters: {
             type: 'Bug',
-            where: expect => 
+            where: (expect: string) => 
               expect.includes('Priority') && 
               (expect.includes('High') || expect.includes('Critical'))
           }
@@ -227,7 +227,7 @@ export const agentTestScenarios: IAgentTestScenario[] = [
         validation: {
           toolName: 'search_entities',
           parameters: {
-            where: expect => expect.includes('contains')
+            where: (expect: string) => expect.includes('contains')
           }
         }
       }

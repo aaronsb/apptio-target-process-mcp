@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import { SearchTool } from '../../tools/search/search.tool.js';
-import { createMockTPService, createMockEntity, createMockSearchResponse } from '../mocks/tp-service.mock.js';
+import { createMockTPService, createMockEntity, createMockSearchResponse } from '../mocks/tp-service.mock-utils.js';
 
 describe('SearchTool', () => {
   let searchTool: SearchTool;
