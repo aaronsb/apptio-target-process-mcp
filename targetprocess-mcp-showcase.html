@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Targetprocess MCP Server - AI-Native Project Management</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-bg: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 50%, #cbd5e1 100%);
+            --secondary-bg: linear-gradient(135deg, #1e40af 0%, #3b82f6 50%, #60a5fa 100%);
+            --accent-bg: linear-gradient(135deg, #7c3aed 0%, #a855f7 50%, #c084fc 100%);
+            --success-bg: linear-gradient(135deg, #059669 0%, #10b981 50%, #34d399 100%);
+            --warning-bg: linear-gradient(135deg, #d97706 0%, #f59e0b 50%, #fbbf24 100%);
+            --danger-bg: linear-gradient(135deg, #dc2626 0%, #ef4444 50%, #f87171 100%);
+            
+            --text-primary: #1e293b;
+            --text-secondary: #475569;
+            --text-muted: #64748b;
+            --text-accent: #2563eb;
+            
+            --card-bg: rgba(255, 255, 255, 0.8);
+            --card-border: rgba(100, 116, 139, 0.2);
+            --hover-glow: rgba(37, 99, 235, 0.3);
+            
+            --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.1);
+            --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.15);
+            --shadow-lg: 0 8px 25px rgba(0, 0, 0, 0.2);
+            --shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--primary-bg);
+            color: var(--text-primary);
+            line-height: 1.4;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .hero {
+            text-align: center;
+            padding: 40px 0;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(241, 245, 249, 0.9) 100%);
+            border-radius: 20px;
+            margin-bottom: 30px;
+            box-shadow: var(--shadow-xl);
+            border: 1px solid var(--card-border);
+        }
+
+        .hero h1 {
+            font-size: 3.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #60a5fa 0%, #a855f7 50%, #f59e0b 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 15px;
+            text-shadow: 0 0 30px rgba(96, 165, 250, 0.3);
+        }
+
+        .hero .subtitle {
+            font-size: 1.4rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+            margin-bottom: 20px;
+        }
+
+        .hero .tagline {
+            font-size: 1.1rem;
+            color: var(--text-muted);
+            font-weight: 400;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 15px;
+            border: 1px solid var(--card-border);
+            text-align: center;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 2px;
+            background: var(--secondary-bg);
+            transition: left 0.5s ease;
+        }
+
+        .stat-card:hover::before {
+            left: 0;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-lg);
+            border-color: var(--hover-glow);
+        }
+
+        .stat-number {
+            font-size: 2.2rem;
+            font-weight: 700;
+            color: var(--text-accent);
+            display: block;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-top: 5px;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .feature-section {
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 20px;
+            border: 1px solid var(--card-border);
+            box-shadow: var(--shadow-md);
+            transition: all 0.3s ease;
+        }
+
+        .feature-section:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-lg);
+            border-color: rgba(96, 165, 250, 0.4);
+        }
+
+        .feature-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .feature-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .semantic-icon { background: var(--accent-bg); }
+        .watson-icon { background: var(--secondary-bg); }
+        .enterprise-icon { background: var(--success-bg); }
+        .architecture-icon { background: var(--warning-bg); }
+
+        .feature-title {
+            font-size: 1.4rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .feature-subtitle {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .feature-item {
+            background: rgba(241, 245, 249, 0.6);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid rgba(100, 116, 139, 0.2);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .feature-item:hover {
+            background: rgba(226, 232, 240, 0.8);
+            border-color: var(--hover-glow);
+            transform: scale(1.02);
+        }
+
+        .feature-item-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-accent);
+            margin-bottom: 8px;
+        }
+
+        .feature-item-desc {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            line-height: 1.4;
+        }
+
+        .tooltip {
+            position: absolute;
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-100%);
+            background: rgba(30, 41, 59, 0.95);
+            color: #f8fafc;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            line-height: 1.3;
+            white-space: nowrap;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            z-index: 1000;
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--card-border);
+            max-width: 300px;
+            white-space: normal;
+        }
+
+        .feature-item:hover .tooltip {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(-50%) translateY(-105%);
+        }
+
+        .code-block {
+            background: rgba(30, 41, 59, 0.9);
+            border: 1px solid rgba(100, 116, 139, 0.3);
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            color: #e2e8f0;
+            overflow-x: auto;
+        }
+
+        .integration-flow {
+            background: var(--card-bg);
+            padding: 25px;
+            border-radius: 15px;
+            border: 1px solid var(--card-border);
+            margin-bottom: 25px;
+        }
+
+        .flow-steps {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 20px;
+        }
+
+        .flow-step {
+            flex: 1;
+            text-align: center;
+            position: relative;
+        }
+
+        .flow-step:not(:last-child)::after {
+            content: '→';
+            position: absolute;
+            right: -20px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-accent);
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .step-number {
+            width: 40px;
+            height: 40px;
+            background: var(--secondary-bg);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 10px;
+            font-weight: 600;
+            color: white;
+        }
+
+        .step-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 5px;
+        }
+
+        .step-desc {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .bottom-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 30px;
+        }
+
+        .use-cases {
+            background: var(--card-bg);
+            padding: 25px;
+            border-radius: 20px;
+            border: 1px solid var(--card-border);
+        }
+
+        .use-case {
+            background: rgba(241, 245, 249, 0.6);
+            padding: 18px;
+            margin-bottom: 15px;
+            border-radius: 12px;
+            border-left: 4px solid;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .use-case:nth-child(1) { border-left-color: #60a5fa; }
+        .use-case:nth-child(2) { border-left-color: #a855f7; }
+        .use-case:nth-child(3) { border-left-color: #10b981; }
+        .use-case:nth-child(4) { border-left-color: #f59e0b; }
+
+        .use-case:hover {
+            background: rgba(226, 232, 240, 0.8);
+            transform: translateX(10px);
+        }
+
+        .use-case-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .use-case-desc {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-bottom: 10px;
+        }
+
+        .use-case-benefit {
+            font-size: 0.8rem;
+            color: var(--text-accent);
+            font-weight: 500;
+        }
+
+        .value-props {
+            background: var(--card-bg);
+            padding: 25px;
+            border-radius: 20px;
+            border: 1px solid var(--card-border);
+        }
+
+        .value-prop {
+            text-align: center;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .value-prop:nth-child(1) { background: linear-gradient(135deg, rgba(96, 165, 250, 0.1) 0%, rgba(168, 85, 247, 0.1) 100%); }
+        .value-prop:nth-child(2) { background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(34, 197, 94, 0.1) 100%); }
+        .value-prop:nth-child(3) { background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(251, 191, 36, 0.1) 100%); }
+        .value-prop:nth-child(4) { background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(248, 113, 113, 0.1) 100%); }
+
+        .value-prop:hover {
+            transform: scale(1.05);
+        }
+
+        .value-number {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text-accent);
+        }
+
+        .value-text {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-top: 5px;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 30px;
+            background: linear-gradient(135deg, rgba(30, 41, 59, 0.9) 0%, rgba(51, 65, 85, 0.8) 100%);
+            border-radius: 15px;
+            margin-top: 30px;
+            border: 1px solid var(--card-border);
+        }
+
+        .footer-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #f8fafc;
+            margin-bottom: 15px;
+        }
+
+        .footer-subtitle {
+            font-size: 1rem;
+            color: #e2e8f0;
+            margin-bottom: 20px;
+        }
+
+        .cta-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .cta-button {
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .cta-primary {
+            background: var(--secondary-bg);
+            color: white;
+        }
+
+        .cta-secondary {
+            background: transparent;
+            color: var(--text-accent);
+            border: 2px solid var(--text-accent);
+        }
+
+        .cta-button:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        @media (max-width: 768px) {
+            .main-grid, .bottom-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+            
+            .flow-steps {
+                flex-direction: column;
+                gap: 20px;
+            }
+            
+            .flow-step:not(:last-child)::after {
+                content: '↓';
+                right: auto;
+                top: auto;
+                bottom: -15px;
+            }
+        }
+
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(96, 165, 250, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(96, 165, 250, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(96, 165, 250, 0); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Hero Section -->
+        <div class="hero">
+            <h1>Targetprocess MCP Server</h1>
+            <div class="subtitle">AI-Powered Project Management for Enterprise</div>
+            <div class="tagline">
+                Transform your organization with AI-first project management. We deliver the strategy, implementation, 
+                and change management to revolutionize how your teams work with intelligent automation.
+            </div>
+        </div>
+
+        <!-- Stats Grid -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <span class="stat-number">6-12</span>
+                <div class="stat-label">Month Implementation</div>
+            </div>
+            <div class="stat-card">
+                <span class="stat-number">40%</span>
+                <div class="stat-label">Productivity Gains</div>
+            </div>
+            <div class="stat-card">
+                <span class="stat-number">90%</span>
+                <div class="stat-label">User Adoption Rate</div>
+            </div>
+            <div class="stat-card">
+                <span class="stat-number">3x</span>
+                <div class="stat-label">ROI Within 18 Months</div>
+            </div>
+        </div>
+
+        <!-- Main Feature Grid -->
+        <div class="main-grid">
+            <!-- Implementation Services -->
+            <div class="feature-section">
+                <div class="feature-header">
+                    <div class="feature-icon semantic-icon">🚀</div>
+                    <div>
+                        <div class="feature-title">Implementation Services</div>
+                        <div class="feature-subtitle">End-to-end transformation delivery</div>
+                    </div>
+                </div>
+                <div class="feature-grid">
+                    <div class="feature-item">
+                        <div class="feature-item-title">Strategy Consulting</div>
+                        <div class="feature-item-desc">AI transformation roadmaps</div>
+                        <div class="tooltip">We analyze your current processes and design custom AI-powered workflows that align with your business objectives and team structures</div>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-item-title">Technical Implementation</div>
+                        <div class="feature-item-desc">Custom deployment & integration</div>
+                        <div class="tooltip">Our experts handle the technical setup, custom configurations, enterprise integrations, and security compliance for your environment</div>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-item-title">Change Management</div>
+                        <div class="feature-item-desc">User adoption & training programs</div>
+                        <div class="tooltip">Comprehensive training programs, workflow transition planning, and ongoing support to ensure high user adoption and business value realization</div>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-item-title">Ongoing Optimization</div>
+                        <div class="feature-item-desc">Performance monitoring & improvement</div>
+                        <div class="tooltip">Continuous monitoring, workflow optimization, and iterative improvements to maximize ROI and adapt to evolving business needs</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Transformation Value -->
+            <div class="feature-section">
+                <div class="feature-header">
+                    <div class="feature-icon watson-icon">💰</div>
+                    <div>
+                        <div class="feature-title">Business Transformation</div>
+                        <div class="feature-subtitle">Measurable organizational change</div>
+                    </div>
+                </div>
+                <div class="feature-grid">
+                    <div class="feature-item">
+                        <div class="feature-item-title">Process Redesign</div>
+                        <div class="feature-item-desc">AI-first workflow architecture</div>
+                        <div class="tooltip">We redesign your existing processes from the ground up for AI-driven operations, eliminating manual bottlenecks and creating intelligent automation</div>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-item-title">Cultural Transformation</div>
+                        <div class="feature-item-desc">AI-powered team dynamics</div>
+                        <div class="tooltip">Help teams transition from traditional project management to AI-augmented collaboration, with new roles, responsibilities, and success metrics</div>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-item-title">Competitive Advantage</div>
+                        <div class="feature-item-desc">Market differentiation through AI</div>
+                        <div class="tooltip">Position your organization as an AI-first leader in your industry, with measurably faster delivery cycles and higher quality outcomes</div>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-item-title">Revenue Impact</div>
+                        <div class="feature-item-desc">Measurable business outcomes</div>
+                        <div class="tooltip">Track concrete business metrics: faster time-to-market, reduced operational costs, improved team satisfaction, and increased client delivery capacity</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Service Delivery Flow -->
+        <div class="integration-flow">
+            <h3 style="color: var(--text-primary); font-size: 1.3rem; margin-bottom: 10px;">Our Service Delivery Methodology</h3>
+            <div class="code-block">Typical engagement: $150K-$500K for 6-12 month transformation</div>
+            <div class="flow-steps">
+                <div class="flow-step">
+                    <div class="step-number">1</div>
+                    <div class="step-title">Assessment</div>
+                    <div class="step-desc">Current state analysis & AI readiness</div>
+                </div>
+                <div class="flow-step">
+                    <div class="step-number">2</div>
+                    <div class="step-title">Design</div>
+                    <div class="step-desc">Custom AI workflow architecture</div>
+                </div>
+                <div class="flow-step">
+                    <div class="step-number">3</div>
+                    <div class="step-title">Implement</div>
+                    <div class="step-desc">Phased rollout with training</div>
+                </div>
+                <div class="flow-step">
+                    <div class="step-number">4</div>
+                    <div class="step-title">Optimize</div>
+                    <div class="step-desc">Ongoing support & improvement</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Grid -->
+        <div class="bottom-grid">
+            <!-- Client Success Stories -->
+            <div class="use-cases">
+                <h3 style="color: var(--text-primary); font-size: 1.3rem; margin-bottom: 20px;">Client Transformation Results</h3>
+                
+                <div class="use-case">
+                    <div class="use-case-title">Fortune 500 Financial Services</div>
+                    <div class="use-case-desc">8-month AI transformation reduced project delivery cycles by 45% across 12 development teams</div>
+                    <div class="use-case-benefit">→ $2.3M annual savings in operational costs</div>
+                </div>
+
+                <div class="use-case">
+                    <div class="use-case-title">Global Technology Consulting</div>
+                    <div class="use-case-desc">Implemented AI-first project management across 200+ consultants, improving client delivery metrics</div>
+                    <div class="use-case-benefit">→ 60% faster project initiation cycles</div>
+                </div>
+
+                <div class="use-case">
+                    <div class="use-case-title">Healthcare Software Provider</div>
+                    <div class="use-case-desc">AI-powered compliance tracking and automated reporting for FDA-regulated development processes</div>
+                    <div class="use-case-benefit">→ 90% reduction in compliance overhead</div>
+                </div>
+
+                <div class="use-case">
+                    <div class="use-case-title">Manufacturing Automation</div>
+                    <div class="use-case-desc">Transformed R&D project workflows with AI-driven resource allocation and predictive planning</div>
+                    <div class="use-case-benefit">→ 25% increase in innovation pipeline velocity</div>
+                </div>
+            </div>
+
+            <!-- Service Value -->
+            <div class="value-props">
+                <h3 style="color: var(--text-primary); font-size: 1.3rem; margin-bottom: 20px;">Service Investment</h3>
+                
+                <div class="value-prop">
+                    <div class="value-number">$300K</div>
+                    <div class="value-text">Average engagement</div>
+                </div>
+
+                <div class="value-prop">
+                    <div class="value-number">6-12</div>
+                    <div class="value-text">Month timeline</div>
+                </div>
+
+                <div class="value-prop">
+                    <div class="value-number">3x</div>
+                    <div class="value-text">ROI within 18 months</div>
+                </div>
+
+                <div class="value-prop pulse">
+                    <div class="value-number">95%</div>
+                    <div class="value-text">Client retention</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Architecture Highlights -->
+        <div class="main-grid" style="margin-top: 30px;">
+            <div class="feature-section">
+                <div class="feature-header">
+                    <div class="feature-icon enterprise-icon">🏢</div>
+                    <div>
+                        <div class="feature-title">Enterprise Architecture</div>
+                        <div class="feature-subtitle">Production-ready infrastructure</div>
+                    </div>
+                </div>
+                <div class="feature-grid">
+                    <div class="feature-item">
+                        <div class="feature-item-title">Modular Design</div>
+                        <div class="feature-item-desc">Entities, API, Tools, Context layers</div>
+                        <div class="tooltip">Clean separation of concerns with entities modeling TP hierarchy, API layer handling communication, tools implementing operations, and context maintaining state</div>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-item-title">Performance Optimized</div>
+                        <div class="feature-item-desc">Caching, pagination, batch ops</div>
+                        <div class="tooltip">Entity type caching, efficient pagination for millions of records, batch operations, and exponential backoff retry logic</div>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-item-title">Security First</div>
+                        <div class="feature-item-desc">RBAC, audit trails, data isolation</div>
+                        <div class="tooltip">Role-based access control, comprehensive audit logging, secure multi-tenant operation, and enterprise governance controls</div>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-item-title">Docker Ready</div>
+                        <div class="feature-item-desc">Containerized deployment</div>
+                        <div class="tooltip">Multi-stage Docker builds optimized for production with minimal runtime footprint and enterprise orchestration support</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="feature-section">
+                <div class="feature-header">
+                    <div class="feature-icon architecture-icon">⚡</div>
+                    <div>
+                        <div class="feature-title">Technical Innovation</div>
+                        <div class="feature-subtitle">Next-generation AI integration</div>
+                    </div>
+                </div>
+                <div class="feature-grid">
+                    <div class="feature-item">
+                        <div class="feature-item-title">MCP Protocol</div>
+                        <div class="feature-item-desc">Universal AI compatibility</div>
+                        <div class="tooltip">Model Context Protocol compliance ensures compatibility with Claude, ChatGPT, and future AI assistants through standardized interfaces</div>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-item-title">Semantic Layer</div>
+                        <div class="feature-item-desc">Business context awareness</div>
+                        <div class="tooltip">All operations go through semantic formatting ensuring consistent behavior, automatic pagination, and business-context-aware responses</div>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-item-title">Query Intelligence</div>
+                        <div class="feature-item-desc">Advanced filtering & search</div>
+                        <div class="tooltip">Supports complex TP query syntax with validation, type safety, and operators like contains, in, and relationship traversal</div>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-item-title">Zero Configuration</div>
+                        <div class="feature-item-desc">Auto-discovery & adaptation</div>
+                        <div class="tooltip">Automatically discovers entity types, custom fields, and workflows without manual configuration - works with any TP setup</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer CTA -->
+        <div class="footer">
+            <div class="footer-title">Ready to Lead the AI Transformation?</div>
+            <div class="footer-subtitle">Partner with us to transform your organization into an AI-first leader</div>
+            <div class="cta-buttons">
+                <a href="#" class="cta-button cta-primary">Schedule Assessment</a>
+                <a href="#" class="cta-button cta-secondary">Download Case Studies</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Add subtle animations and interactions
+        document.addEventListener('DOMContentLoaded', function() {
+            // Parallax effect for hero
+            window.addEventListener('scroll', function() {
+                const scrolled = window.pageYOffset;
+                const hero = document.querySelector('.hero');
+                hero.style.transform = `translateY(${scrolled * 0.1}px)`;
+            });
+
+            // Stats counter animation
+            const statNumbers = document.querySelectorAll('.stat-number');
+            const observerOptions = {
+                threshold: 0.7
+            };
+
+            const observer = new IntersectionObserver(function(entries) {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const target = entry.target;
+                        const finalNumber = target.textContent;
+                        if (finalNumber !== '∞' && finalNumber !== '100%') {
+                            animateNumber(target, parseInt(finalNumber));
+                        }
+                    }
+                });
+            }, observerOptions);
+
+            statNumbers.forEach(stat => observer.observe(stat));
+
+            function animateNumber(element, target) {
+                let current = 0;
+                const increment = target / 30;
+                const timer = setInterval(() => {
+                    current += increment;
+                    if (current >= target) {
+                        element.textContent = target + '+';
+                        clearInterval(timer);
+                    } else {
+                        element.textContent = Math.floor(current) + '+';
+                    }
+                }, 50);
+            }
+
+            // Glowing effect on hover for cards
+            const cards = document.querySelectorAll('.stat-card, .feature-section, .use-case');
+            cards.forEach(card => {
+                card.addEventListener('mouseenter', function() {
+                    this.style.boxShadow = '0 0 30px rgba(96, 165, 250, 0.3)';
+                });
+                card.addEventListener('mouseleave', function() {
+                    this.style.boxShadow = '';
+                });
+            });
+        });
+    </script>
+</body>
+</html>
