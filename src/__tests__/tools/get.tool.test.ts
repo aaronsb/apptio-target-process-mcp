@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import { GetEntityTool } from '../../tools/entity/get.tool.js';
-import { createMockTPService, createMockEntity } from '../mocks/tp-service.mock.js';
+import { createMockTPService, createMockEntity } from '../mocks/tp-service.mock-utils.js';
 
 describe('GetEntityTool', () => {
   let getTool: GetEntityTool;
