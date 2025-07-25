@@ -47,7 +47,7 @@
     "mcp": "node build/index.js"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.15.0",
+    "@modelcontextprotocol/sdk": "^1.17.0",
     "axios": "^1.10.0",
     "dotenv": "^17.2.0",
     "node-fetch": "^3.3.2",
