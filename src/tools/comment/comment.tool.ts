@@ -90,7 +90,72 @@ export class CommentTool {
     return {
       name: 'comment',
       description: 'Unified comment tool for adding, viewing, deleting, and analyzing comments on work items. Provides intelligent workflow suggestions and cross-operation semantic hints.',
-      inputSchema: commentToolSchema
+      inputSchema: {
+        type: 'object',
+        properties: {
+          operation: {
+            type: 'string',
+            enum: ['add', 'show', 'delete', 'analyze'],
+            description: 'The comment operation to perform'
+          },
+          entityType: {
+            type: 'string',
+            description: 'Type of entity (Task, Bug, UserStory, etc.) - required for add/show/analyze operations'
+          },
+          entityId: {
+            type: 'number',
+            description: 'ID of the entity - required for add/show/analyze operations'
+          },
+          comment: {
+            type: 'string',
+            description: 'Comment text to add - required for add operation'
+          },
+          commentId: {
+            type: 'number',
+            description: 'ID of the comment to delete - required for delete operation'
+          },
+          isPrivate: {
+            type: 'boolean',
+            description: 'Whether the comment should be private (add operation only)',
+            default: false
+          },
+          parentCommentId: {
+            type: 'number',
+            description: 'ID of the parent comment to reply to (add operation only)'
+          },
+          filter: {
+            type: 'string',
+            enum: ['all', 'recent', 'mine', 'mentions', 'unread'],
+            description: 'Filter comments by criteria (show operation only)',
+            default: 'all'
+          },
+          groupBy: {
+            type: 'string',
+            enum: ['none', 'date', 'author', 'type'],
+            description: 'Group comments by criteria (show operation only)',
+            default: 'none'
+          },
+          sortOrder: {
+            type: 'string',
+            enum: ['newest', 'oldest', 'relevance'],
+            description: 'Sort order for comments (show operation only)',
+            default: 'newest'
+          },
+          limit: {
+            type: 'number',
+            description: 'Maximum number of comments to retrieve (show operation only)',
+            default: 50
+          },
+          analysisType: {
+            type: 'string',
+            enum: ['sentiment', 'patterns', 'blockers', 'decisions'],
+            description: 'Type of analysis to perform (analyze operation only)',
+            default: 'patterns'
+          }
+        },
+        required: ['operation'],
+        additionalProperties: false
+      }
     };
   }
 
