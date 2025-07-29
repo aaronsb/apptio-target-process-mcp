@@ -15,9 +15,9 @@ export default {
       },
     ],
   },
-  globals: {
-    fetch: global.fetch
-  },
+  transformIgnorePatterns: [
+    'node_modules/(?!(@modelcontextprotocol|axios|node-fetch)/)'
+  ],
   testMatch: [
     '**/src/**/__tests__/**/*.test.ts',
     '**/src/**/*.test.ts'
