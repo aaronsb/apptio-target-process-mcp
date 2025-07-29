@@ -225,10 +225,9 @@ describe('TPService', () => {
 
   describe('comment methods', () => {
     // Mock fetch globally for comment methods that use fetch instead of axios
-    const mockFetch = jest.fn() as jest.MockedFunction<typeof global.fetch>;
+    const mockFetch = jest.fn() as jest.MockedFunction<typeof globalThis.fetch>;
     // @ts-ignore - global fetch mock for tests
-    // eslint-disable-next-line no-undef
-    (global as any).fetch = mockFetch;
+    (globalThis as any).fetch = mockFetch;
 
     beforeEach(() => {
       mockFetch.mockClear();
