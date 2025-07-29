@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import axios from 'axios';
 import { TPService } from '../../api/client/tp.service.js';
 import { McpError } from '@modelcontextprotocol/sdk/types.js';
+import { testConfig, getExpectedUrl } from '../config/test-config.js';
 
 jest.mock('axios');
 const mockedAxios = axios as jest.Mocked<typeof axios>;
@@ -12,10 +13,10 @@ describe('TPService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     service = new TPService({
-      domain: 'test.tpondemand.com',
+      domain: testConfig.domain,
       credentials: {
-        username: 'testuser',
-        password: 'testpass'
+        username: testConfig.username,
+        password: testConfig.password
       }
     });
   });
@@ -23,12 +24,12 @@ describe('TPService', () => {
   describe('constructor', () => {
     it('should initialize with basic auth credentials', () => {
       expect(service).toBeDefined();
-      expect((service as any).config.domain).toBe('test.tpondemand.com');
+      expect((service as any).baseUrl).toBe(`https://${testConfig.domain}/api/v1`);
     });
 
     it('should initialize with API key', () => {
       const apiKeyService = new TPService({
-        domain: 'test.tpondemand.com',
+        domain: testConfig.domain,
         apiKey: 'test-api-key'
       });
       expect(apiKeyService).toBeDefined();
@@ -36,7 +37,7 @@ describe('TPService', () => {
 
     it('should throw error without credentials', () => {
       expect(() => new TPService({
-        domain: 'test.tpondemand.com'
+        domain: testConfig.domain
       } as any)).toThrow('Either credentials or apiKey must be provided');
     });
   });
@@ -53,7 +54,7 @@ describe('TPService', () => {
       const result = await service.searchEntities('UserStory', undefined, undefined, 10);
 
       expect(mockedAxios.get).toHaveBeenCalledWith(
-        'https://test.tpondemand.com/api/v1/UserStory',
+        getExpectedUrl('/UserStory'),
         expect.objectContaining({
           params: { take: 10, format: 'json' }
         })
@@ -69,7 +70,7 @@ describe('TPService', () => {
       await service.searchEntities('Bug', "Priority.Name = 'High'");
 
       expect(mockedAxios.get).toHaveBeenCalledWith(
-        'https://test.tpondemand.com/api/v1/Bug',
+        getExpectedUrl('/Bug'),
         expect.objectContaining({
           params: {
             where: "Priority.Name = 'High'",
@@ -114,7 +115,7 @@ describe('TPService', () => {
       const result = await service.getEntity('UserStory', 123);
 
       expect(mockedAxios.get).toHaveBeenCalledWith(
-        'https://test.tpondemand.com/api/v1/UserStory/123',
+        getExpectedUrl('/UserStory/123'),
         expect.objectContaining({
           params: { format: 'json' }
         })
@@ -130,7 +131,7 @@ describe('TPService', () => {
       await service.getEntity('Bug', 1, ['Project', 'AssignedUser']);
 
       expect(mockedAxios.get).toHaveBeenCalledWith(
-        'https://test.tpondemand.com/api/v1/Bug/1',
+        getExpectedUrl('/Bug/1'),
         expect.objectContaining({
           params: {
             include: 'Project,AssignedUser',
@@ -152,7 +153,7 @@ describe('TPService', () => {
       });
 
       expect(mockedAxios.post).toHaveBeenCalledWith(
-        'https://test.tpondemand.com/api/v1/UserStory',
+        getExpectedUrl('/UserStory'),
         {
           Name: 'New Story',
           Project: { Id: 1 }
@@ -175,7 +176,7 @@ describe('TPService', () => {
       });
 
       expect(mockedAxios.post).toHaveBeenCalledWith(
-        'https://test.tpondemand.com/api/v1/Task/789',
+        getExpectedUrl('/Task/789'),
         { Name: 'Updated' },
         expect.objectContaining({
           params: { format: 'json' }
@@ -258,7 +259,7 @@ describe('TPService', () => {
 
         expect(result).toEqual(mockResponse.Items);
         expect(mockFetch).toHaveBeenCalledWith(
-          'https://test.tpondemand.com/api/v1/UserStory/54356/Comments',
+          getExpectedUrl('/UserStory/54356/Comments'),
           expect.objectContaining({
             headers: expect.objectContaining({
               'Authorization': expect.stringContaining('Basic')
@@ -325,7 +326,7 @@ describe('TPService', () => {
 
         expect(result).toEqual(mockComment);
         expect(mockFetch).toHaveBeenCalledWith(
-          'https://test.tpondemand.com/api/v1/Comments',
+          getExpectedUrl('/Comments'),
           expect.objectContaining({
             method: 'POST',
             headers: expect.objectContaining({
@@ -356,7 +357,7 @@ describe('TPService', () => {
         await service.createComment(54356, 'Private comment', true);
 
         expect(mockFetch).toHaveBeenCalledWith(
-          'https://test.tpondemand.com/api/v1/Comments',
+          getExpectedUrl('/Comments'),
           expect.objectContaining({
             body: JSON.stringify({
               General: { Id: 54356 },
@@ -383,7 +384,7 @@ describe('TPService', () => {
         await service.createComment(54356, 'Reply comment', false, 207220);
 
         expect(mockFetch).toHaveBeenCalledWith(
-          'https://test.tpondemand.com/api/v1/Comments',
+          getExpectedUrl('/Comments'),
           expect.objectContaining({
             body: JSON.stringify({
               General: { Id: 54356 },
@@ -411,7 +412,7 @@ describe('TPService', () => {
         await service.createComment(54356, 'Private reply', true, 207220);
 
         expect(mockFetch).toHaveBeenCalledWith(
-          'https://test.tpondemand.com/api/v1/Comments',
+          getExpectedUrl('/Comments'),
           expect.objectContaining({
             body: JSON.stringify({
               General: { Id: 54356 },
@@ -469,7 +470,7 @@ describe('TPService', () => {
 
         expect(result).toBe(true);
         expect(mockFetch).toHaveBeenCalledWith(
-          'https://test.tpondemand.com/api/v1/Comments/207220',
+          getExpectedUrl('/Comments/207220'),
           expect.objectContaining({
             method: 'DELETE',
             headers: expect.objectContaining({

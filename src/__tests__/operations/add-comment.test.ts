@@ -2,6 +2,7 @@ import { jest } from '@jest/globals';
 import { AddCommentOperation } from '../../operations/work/add-comment.js';
 import { TPService } from '../../api/client/tp.service.js';
 import { ExecutionContext } from '../../core/interfaces/semantic-operation.interface.js';
+import { testConfig } from '../config/test-config.js';
 
 // Mock logger to avoid console output during tests
 jest.mock('../../utils/logger.js', () => ({
@@ -23,9 +24,9 @@ const mockService = {
 // Helper to create mock execution context with different roles
 const createMockContext = (role: string = 'developer'): ExecutionContext => ({
   user: {
-    id: 101734,
+    id: parseInt(testConfig.userId),
     name: 'Test User',
-    email: 'test@example.com',
+    email: testConfig.userEmail,
     role: role,
     teams: [],
     permissions: []
@@ -44,7 +45,7 @@ const createMockContext = (role: string = 'developer'): ExecutionContext => ({
     intent: 'test'
   },
   config: {
-    apiUrl: 'https://test.tpondemand.com',
+    apiUrl: testConfig.apiUrl,
     maxResults: 25,
     timeout: 30000
   }
@@ -62,10 +63,10 @@ const mockTask = {
   },
   Project: { Id: 1, Name: 'Test Project' },
   AssignedUser: { 
-    Id: 101734, 
+    Id: parseInt(testConfig.userId), 
     FirstName: 'Test', 
     LastName: 'User',
-    Items: [{ Id: 101734, FirstName: 'Test', LastName: 'User' }]
+    Items: [{ Id: parseInt(testConfig.userId), FirstName: 'Test', LastName: 'User' }]
   },
   Priority: { Name: 'High', Importance: 1 },
   Tags: { Items: [] },
