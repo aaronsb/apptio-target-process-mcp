@@ -1,6 +1,7 @@
 import { jest } from '@jest/globals';
 import { DeleteCommentOperation, deleteCommentSchema } from '../../operations/work/delete-comment.js';
 import { TPService } from '../../api/client/tp.service.js';
+import { testConfig } from '../config/test-config.js';
 
 // Mock TPService
 const mockService = {
@@ -11,9 +12,9 @@ const mockService = {
 // Mock execution context
 const mockContext = {
   user: {
-    id: 101734,
+    id: parseInt(testConfig.userId),
     name: 'Test User',
-    email: 'test@example.com',
+    email: testConfig.userEmail,
     role: 'developer',
     teams: [],
     permissions: []
@@ -32,7 +33,7 @@ const mockContext = {
     intent: 'test'
   },
   config: {
-    apiUrl: 'https://test.tpondemand.com',
+    apiUrl: testConfig.apiUrl,
     maxResults: 25,
     timeout: 30000
   }
