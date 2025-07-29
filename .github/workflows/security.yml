@@ -8,6 +8,14 @@ on:
   schedule:
     - cron: '0 6 * * 1'  # Weekly on Mondays
 
+env:
+  TP_USERNAME: ${{ secrets.TP_USERNAME }}
+  TP_PASSWORD: ${{ secrets.TP_PASSWORD }}
+  TP_DOMAIN: ${{ secrets.TP_DOMAIN }}
+  TP_USER_ID: ${{ secrets.TP_USER_ID }}
+  TP_USER_EMAIL: ${{ secrets.TP_USER_EMAIL }}
+  MCP_STRICT_MODE: ${{ secrets.MCP_STRICT_MODE }}
+
 permissions:
   contents: read
   security-events: write
