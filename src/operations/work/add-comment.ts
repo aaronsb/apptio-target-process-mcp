@@ -725,7 +725,7 @@ Try these alternatives:`
   }
 
   private createValidationErrorResponse(error: z.ZodError): OperationResult {
-    const issues = error.errors.map(e => `• ${e.path.join('.')}: ${e.message}`).join('\n');
+    const issues = error.issues.map((e: z.ZodIssue) => `• ${e.path.join('.')}: ${e.message}`).join('\n');
     
     return {
       content: [{
