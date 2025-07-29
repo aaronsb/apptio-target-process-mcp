@@ -1,5 +1,6 @@
 import { jest } from '@jest/globals';
 import { TPService } from '../../api/client/tp.service.js';
+import { testConfig } from '../config/test-config.js';
 
 export const createMockTPService = (): jest.Mocked<TPService> => {
   const mockService = {
@@ -18,12 +19,12 @@ export const createMockTPService = (): jest.Mocked<TPService> => {
     // Entity type validation
     getValidEntityTypes: jest.fn(),
     
-    // Configuration
+    // Configuration - use environment variables
     config: {
-      domain: 'test.tpondemand.com',
+      domain: testConfig.domain,
       credentials: {
-        username: 'test',
-        password: 'test'
+        username: testConfig.username,
+        password: testConfig.password
       }
     }
   } as unknown as jest.Mocked<TPService>;
