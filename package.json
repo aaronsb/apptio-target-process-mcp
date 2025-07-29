@@ -38,7 +38,7 @@
     "watch": "tsc --watch",
     "inspector": "npx @modelcontextprotocol/inspector build/index.js",
     "lint": "eslint 'src/**/*.ts' > /tmp/apptio-mcp-lint.log 2>&1 && echo '✓ Linting passed' || (echo '✗ Linting failed - see /tmp/apptio-mcp-lint.log' && cat /tmp/apptio-mcp-lint.log && exit 1)",
-    "test": "jest",
+    "test": "NODE_OPTIONS=\"--experimental-vm-modules\" jest",
     "check:secrets": "node scripts/check-secrets.cjs",
     "prebuild": "rm -rf build && npm run lint",
     "precommit": "npm run check:secrets && npm run lint",
