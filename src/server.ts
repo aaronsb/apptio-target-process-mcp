@@ -28,6 +28,7 @@ import { GeneralOperations } from './operations/general/index.js';
 import { paginateText } from './utils/paginator.js';
 import { ShowMoreTool } from './tools/pagination/show-more.tool.js';
 import { ShowAllTool } from './tools/pagination/show-all.tool.js';
+import { CommentTool } from './tools/comment/comment.tool.js';
 
 function loadConfig(): TPServiceConfig {
   // Try API key authentication
@@ -102,6 +103,7 @@ export class TargetProcessServer {
     create: CreateEntityTool;
     update: UpdateEntityTool;
     inspect: InspectObjectTool;
+    comment: CommentTool;
     [key: string]: any; // Allow dynamic semantic tools
   };
   private userRole: string;
@@ -127,6 +129,7 @@ export class TargetProcessServer {
       create: new CreateEntityTool(this.service),
       update: new UpdateEntityTool(this.service),
       inspect: new InspectObjectTool(this.service),
+      comment: new CommentTool(this.service),
       show_more: new ShowMoreTool(),
       show_all: new ShowAllTool()
     };
@@ -213,10 +216,16 @@ export class TargetProcessServer {
       // Get operations for the current user role
       const availableOperations = operationRegistry.getOperationsForPersonality(this.userRole);
       
-      logger.info(`Initializing ${availableOperations.length} semantic tools for role: ${this.userRole}`);
+      // Filter out comment operations since we have a unified comment tool
+      const excludedOperations = ['add-comment', 'show-comments', 'delete-comment'];
+      const filteredOperations = availableOperations.filter(operation => 
+        !excludedOperations.includes(operation.metadata.id)
+      );
       
-      // Create individual MCP tools for each semantic operation
-      availableOperations.forEach(operation => {
+      logger.info(`Initializing ${filteredOperations.length} semantic tools for role: ${this.userRole} (excluded ${availableOperations.length - filteredOperations.length} comment operations)`);
+      
+      // Create individual MCP tools for each semantic operation (except comment operations)
+      filteredOperations.forEach(operation => {
         const toolName = operation.metadata.id.replace(/-/g, '_'); // Convert to snake_case for MCP
         this.tools[toolName] = this.createSemanticTool(operation);
         logger.info(`Registered semantic tool: ${toolName}`);
@@ -412,13 +421,14 @@ export class TargetProcessServer {
         this.getEnhancedCreateDefinition(contextDescription),
         this.getEnhancedUpdateDefinition(contextDescription),
         this.getEnhancedInspectDefinition(contextDescription),
+        CommentTool.getDefinition(),
         this.getShowMoreDefinition(),
         this.getShowAllDefinition(),
       ];
 
       // Add semantic tools for the current role
       Object.keys(this.tools).forEach(toolName => {
-        if (!['search', 'get', 'create', 'update', 'inspect', 'show_more', 'show_all'].includes(toolName)) {
+        if (!['search', 'get', 'create', 'update', 'inspect', 'comment', 'show_more', 'show_all'].includes(toolName)) {
           const tool = (this.tools as any)[toolName];
           if (tool && tool.description) {
             tools.push({
@@ -482,6 +492,16 @@ export class TargetProcessServer {
             return await this.tools.update.execute(request.params.arguments);
           case 'inspect_object':
             return await this.tools.inspect.execute(request.params.arguments);
+          case 'comment': {
+            const commentResult = await this.tools.comment.execute(request.params.arguments || {}, {});
+            const formattedResult = this.formatSemanticResult(commentResult);
+            return {
+              content: [{
+                type: 'text',
+                text: formattedResult
+              }]
+            };
+          }
         }
 
         // Handle pagination tools
