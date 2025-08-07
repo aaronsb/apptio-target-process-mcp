@@ -23,7 +23,7 @@ describe('GetEntityTool', () => {
       mockService.getEntity.mockResolvedValue(mockStory);
 
       const result = await getTool.execute({
-        entityType: 'UserStory',
+        type: 'UserStory',
         id: 123
       });
 
@@ -33,7 +33,7 @@ describe('GetEntityTool', () => {
         undefined
       );
       
-      expect(result).toEqual(mockStory);
+      expect(result.content[0].text).toContain('Test Story');
     });
 
     it('should get entity with includes', async () => {
@@ -49,20 +49,18 @@ describe('GetEntityTool', () => {
       mockService.getEntity.mockResolvedValue(mockBug);
 
       const result = await getTool.execute({
-        entityType: 'Bug',
+        type: 'Bug',
         id: 456,
-        include: 'Project,AssignedUser,AttachedFiles'
+        include: ['Project', 'AssignedUser', 'AttachedFiles']
       });
 
       expect(mockService.getEntity).toHaveBeenCalledWith(
         'Bug',
         456,
-        'Project,AssignedUser,AttachedFiles'
+        ['Project', 'AssignedUser', 'AttachedFiles']
       );
       
-      expect(result.Project).toBeDefined();
-      expect(result.AssignedUser).toBeDefined();
-      expect(result.AttachedFiles).toHaveLength(1);
+      expect(result.content[0].text).toContain('Test Project');
     });
 
     it('should handle entity not found', async () => {
@@ -71,20 +69,20 @@ describe('GetEntityTool', () => {
       );
 
       await expect(getTool.execute({
-        entityType: 'Task',
+        type: 'Task',
         id: 99999
       })).rejects.toThrow('Entity not found');
     });
 
     it('should validate entity type', async () => {
-      mockService.validateEntityType.mockRejectedValue(
-        new Error('Invalid entity type: InvalidType')
+      mockService.getEntity.mockRejectedValue(
+        new Error('Entity type InvalidType is not supported')
       );
 
       await expect(getTool.execute({
-        entityType: 'InvalidType',
+        type: 'InvalidType',
         id: 1
-      })).rejects.toThrow('Invalid entity type');
+      })).rejects.toThrow('Entity type InvalidType is not supported');
     });
 
     it('should handle different entity types', async () => {
@@ -105,12 +103,11 @@ describe('GetEntityTool', () => {
         mockService.getEntity.mockResolvedValue(mockEntity);
 
         const result = await getTool.execute({
-          entityType: testCase.type,
+          type: testCase.type,
           id: testCase.id
         });
 
-        expect(result.EntityType.Name).toBe(testCase.type);
-        expect(result.Id).toBe(testCase.id);
+        expect(result.content[0].text).toContain(testCase.id.toString());
       }
     });
 
@@ -131,19 +128,18 @@ describe('GetEntityTool', () => {
       mockService.getEntity.mockResolvedValue(mockFeature);
 
       const result = await getTool.execute({
-        entityType: 'Feature',
+        type: 'Feature',
         id: 789,
-        include: 'Project[Program],UserStories'
+        include: ['Project[Program]', 'UserStories']
       });
 
       expect(mockService.getEntity).toHaveBeenCalledWith(
         'Feature',
         789,
-        'Project[Program],UserStories'
+        ['Project[Program]', 'UserStories']
       );
       
-      expect(result.Project.Program).toBeDefined();
-      expect(result.UserStories).toHaveLength(2);
+      expect(result.content[0].text).toContain('Test Program');
     });
   });
 
@@ -154,7 +150,7 @@ describe('GetEntityTool', () => {
       );
 
       await expect(getTool.execute({
-        entityType: 'UserStory',
+        type: 'UserStory',
         id: 1
       })).rejects.toThrow('Network timeout');
     });
@@ -165,7 +161,7 @@ describe('GetEntityTool', () => {
       mockService.getEntity.mockRejectedValue(error);
 
       await expect(getTool.execute({
-        entityType: 'Project',
+        type: 'Project',
         id: 1
       })).rejects.toThrow('Unauthorized');
     });
