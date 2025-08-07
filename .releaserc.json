@@ -1,0 +1,90 @@
+{
+  "branches": [
+    "main",
+    {
+      "name": "develop",
+      "prerelease": "beta"
+    },
+    {
+      "name": "alpha",
+      "prerelease": true
+    }
+  ],
+  "plugins": [
+    [
+      "@semantic-release/commit-analyzer",
+      {
+        "preset": "conventionalcommits",
+        "releaseRules": [
+          {"type": "feat", "release": "minor"},
+          {"type": "fix", "release": "patch"},
+          {"type": "perf", "release": "patch"},
+          {"type": "refactor", "release": "minor"},
+          {"type": "docs", "release": false},
+          {"type": "test", "release": false},
+          {"type": "ci", "release": false},
+          {"type": "chore", "release": false},
+          {"scope": "no-release", "release": false},
+          {"breaking": true, "release": "major"}
+        ]
+      }
+    ],
+    [
+      "@semantic-release/release-notes-generator",
+      {
+        "preset": "conventionalcommits",
+        "presetConfig": {
+          "types": [
+            {"type": "feat", "section": "✨ Features"},
+            {"type": "fix", "section": "🐛 Bug Fixes"},
+            {"type": "perf", "section": "⚡ Performance Improvements"},
+            {"type": "refactor", "section": "♻️ Code Refactoring"},
+            {"type": "docs", "section": "📚 Documentation", "hidden": false},
+            {"type": "test", "section": "🧪 Tests", "hidden": true},
+            {"type": "ci", "section": "🔧 Continuous Integration", "hidden": true},
+            {"type": "chore", "section": "🏠 Chores", "hidden": true}
+          ]
+        }
+      }
+    ],
+    [
+      "@semantic-release/changelog",
+      {
+        "changelogFile": "CHANGELOG.md",
+        "changelogTitle": "# Changelog\n\nAll notable changes to this project will be documented in this file. See [Conventional Commits](https://conventionalcommits.org) for commit guidelines."
+      }
+    ],
+    [
+      "@semantic-release/npm",
+      {
+        "npmPublish": false
+      }
+    ],
+    [
+      "@semantic-release/github",
+      {
+        "assets": [
+          {
+            "path": "build/**/*",
+            "label": "Built application"
+          },
+          {
+            "path": "package.json",
+            "label": "Package manifest"
+          }
+        ]
+      }
+    ],
+    [
+      "@semantic-release/git",
+      {
+        "assets": [
+          "CHANGELOG.md",
+          "package.json",
+          "package-lock.json"
+        ],
+        "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
+      }
+    ]
+  ]
+}
