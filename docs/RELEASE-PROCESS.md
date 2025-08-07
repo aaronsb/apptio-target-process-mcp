@@ -2,16 +2,28 @@
 
 This project uses **Semantic Release** for automatic versioning and release management based on conventional commit messages.
 
+## ✅ Validated Workflow (August 2025)
+
+**Status**: ✅ **Production Ready** - Successfully tested with v0.10.1 release
+
+The automatic release system was thoroughly tested and validated through:
+1. **Real functional improvements**: Fixed GetEntityTool test coverage (Issue #128)
+2. **End-to-end workflow**: PR creation → merge → automatic release
+3. **Branch protection compatibility**: Works with protected main branch
+4. **Multiple commit analysis**: Correctly analyzed 4 commits since v0.10.0 baseline
+
+**Test Results**: https://github.com/aaronsb/apptio-target-process-mcp/releases/tag/v0.10.1
+
 ## How It Works
 
 When PRs are merged to the `main` branch, the release workflow:
 
 1. **Analyzes commits** since the last release
-2. **Determines version bump** based on conventional commit types
+2. **Determines version bump** based on conventional commit types  
 3. **Creates git tags** automatically
-4. **Generates release notes**
-5. **Updates CHANGELOG.md**
-6. **Creates GitHub releases**
+4. **Generates release notes** with emoji categorization
+5. **Creates GitHub releases** with build assets
+6. **Publishes draft releases** for review
 
 ## Commit Message Format
 
@@ -128,6 +140,61 @@ The release workflow needs these permissions (already configured):
 - `contents: write` - Create tags and releases
 - `issues: write` - Update issues with release info  
 - `pull-requests: write` - Update PRs with release info
+
+## Implementation History & Lessons Learned
+
+### August 2025 Implementation
+
+**Context**: Set up automatic semantic release workflow and tested with real project improvements.
+
+#### Setup Process
+
+1. **Initial Configuration**
+   - Added `.github/workflows/release.yml` with semantic-release action
+   - Created `.releaserc.json` with conventional commits configuration
+   - Added dev dependencies: `semantic-release`, `@semantic-release/changelog`, etc.
+
+2. **Branch Protection Resolution** 
+   - **Issue**: Semantic-release tried to push version commits to protected main branch
+   - **Solution**: Removed `@semantic-release/git` plugin to avoid branch protection conflicts
+   - **Result**: Tags and releases created without pushing version commits back
+
+3. **Baseline Tag Creation**
+   - **Issue**: Initial run tried to tag all 219 commits since repository start
+   - **Solution**: Manually created `v0.10.0` baseline tag on semantic release implementation commit
+   - **Result**: Future releases only analyze recent commits
+
+#### Test Validation (PR #198)
+
+**Functional Change**: Fixed GetEntityTool test coverage (Issue #128)
+- Fixed parameter naming: `entityType` → `type`
+- Updated array handling for include parameters  
+- All 8 GetEntityTool tests now passing
+
+**Release Results**:
+- **Version**: v0.10.1 (patch bump from `fix:` commits)
+- **Commits analyzed**: 4 commits since v0.10.0
+- **Release notes**: Auto-generated with emoji categorization
+- **Assets**: Built application files attached to release
+
+#### Key Learnings
+
+✅ **What Works**:
+- Conventional commits are analyzed correctly
+- Branch protection doesn't block the workflow
+- Multiple `fix:` commits result in single patch release
+- Real project improvements validate the process
+
+⚠️ **Gotchas Avoided**:
+- Don't use `@semantic-release/git` with protected branches
+- Always establish proper baseline tag before first run
+- Asset conflicts in GitHub releases are cosmetic (workflow still succeeds)
+
+### Configuration Files
+
+**Core workflow**: `.github/workflows/release.yml`
+**Release config**: `.releaserc.json`  
+**Dependencies**: Added to `package.json` devDependencies
 
 ## Optional: NPM Publishing
 
