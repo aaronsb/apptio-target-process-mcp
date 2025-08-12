@@ -7,8 +7,10 @@ export const showMyTasksSchema = z.object({
   priority: z.enum(['high', 'medium', 'low']).optional().describe('Filter by priority level'),
   state: z.enum(['active', 'all']).optional().default('active').describe('Filter by task state'),
   project: z.coerce.number().optional().describe('Filter by project ID'),
+  sprintFilter: z.coerce.number().optional().describe('Filter by sprint/iteration ID'),
   dueIn: z.coerce.number().optional().describe('Filter tasks due within X days'),
-  limit: z.coerce.number().optional().default(25).describe('Maximum number of tasks to return')
+  limit: z.coerce.number().optional().default(25).describe('Maximum number of tasks to return'),
+  sortBy: z.enum(['priority', 'dueDate', 'effort']).optional().default('priority').describe('Sort tasks by specified field')
 });
 
 export type ShowMyTasksParams = z.infer<typeof showMyTasksSchema>;
@@ -164,6 +166,14 @@ export class ShowMyTasksOperation implements SemanticOperation<ShowMyTasksParams
         tasks = tasks.filter((task: any) => task.Project?.Id === params.project);
       }
       
+      // Sprint/Iteration filter
+      if (params.sprintFilter) {
+        tasks = tasks.filter((task: any) => 
+          task.Iteration?.Id === params.sprintFilter ||
+          task.TeamIteration?.Id === params.sprintFilter
+        );
+      }
+      
       // Due date filter
       if (params.dueIn) {
         const futureDate = new Date();
@@ -175,13 +185,35 @@ export class ShowMyTasksOperation implements SemanticOperation<ShowMyTasksParams
         });
       }
       
-      // Sort by priority importance (lower = higher priority)
+      // Apply sorting based on sortBy parameter
       if (tasks.length > 0) {
-        tasks.sort((a: any, b: any) => {
-          const aImportance = a.Priority?.Importance || 999;
-          const bImportance = b.Priority?.Importance || 999;
-          return aImportance - bImportance;
-        });
+        switch (params.sortBy) {
+          case 'dueDate':
+            tasks.sort((a: any, b: any) => {
+              if (!a.EndDate && !b.EndDate) return 0;
+              if (!a.EndDate) return 1; // Tasks without due dates go to end
+              if (!b.EndDate) return -1;
+              return new Date(a.EndDate).getTime() - new Date(b.EndDate).getTime();
+            });
+            break;
+            
+          case 'effort':
+            tasks.sort((a: any, b: any) => {
+              const aEffort = a.TimeRemain || a.Effort || 0;
+              const bEffort = b.TimeRemain || b.Effort || 0;
+              return bEffort - aEffort; // Higher effort first
+            });
+            break;
+            
+          case 'priority':
+          default:
+            tasks.sort((a: any, b: any) => {
+              const aImportance = a.Priority?.Importance || 999;
+              const bImportance = b.Priority?.Importance || 999;
+              return aImportance - bImportance;
+            });
+            break;
+        }
       }
       
       // Priority filter
@@ -241,9 +273,9 @@ export class ShowMyTasksOperation implements SemanticOperation<ShowMyTasksParams
       return this.buildEmptyResponse(params);
     }
     
-    const formattedTasks = tasks.map(task => this.formatSingleTask(task));
     const summary = this.buildTaskSummary(tasks);
     const suggestions = this.generateSuggestions(tasks, context);
+    const groupedTasksText = this.formatGroupedTasks(tasks);
     
     return {
       content: [
@@ -253,7 +285,7 @@ export class ShowMyTasksOperation implements SemanticOperation<ShowMyTasksParams
         },
         {
           type: 'text' as const,
-          text: formattedTasks.join('\n\n')
+          text: groupedTasksText
         },
         {
           type: 'structured-data' as const,
@@ -268,6 +300,124 @@ export class ShowMyTasksOperation implements SemanticOperation<ShowMyTasksParams
       ],
       suggestions
     };
+  }
+
+  /**
+   * Format tasks grouped by priority
+   */
+  private formatGroupedTasks(tasks: any[]): string {
+    const ranges = this.getPriorityRanges();
+    
+    // Group tasks by priority
+    const highPriorityTasks = tasks.filter(t => {
+      const importance = t.Priority?.Importance || 999;
+      return importance <= ranges.high.max;
+    });
+    
+    const mediumPriorityTasks = tasks.filter(t => {
+      const importance = t.Priority?.Importance || 999;
+      return importance > ranges.high.max && importance <= ranges.medium.max;
+    });
+    
+    const lowPriorityTasks = tasks.filter(t => {
+      const importance = t.Priority?.Importance || 999;
+      return importance > ranges.medium.max;
+    });
+    
+    const sections: string[] = [];
+    
+    // Format high priority section
+    if (highPriorityTasks.length > 0) {
+      sections.push(`🔴 **HIGH PRIORITY (${highPriorityTasks.length})**`);
+      highPriorityTasks.forEach((task, index) => {
+        const isLast = index === highPriorityTasks.length - 1;
+        const prefix = isLast ? '└─' : '├─';
+        sections.push(`${prefix} ${this.formatTaskLine(task)}`);
+        const details = this.formatTaskDetails(task, isLast ? '   ' : '│  ');
+        if (details) sections.push(details);
+      });
+    }
+    
+    // Format medium priority section
+    if (mediumPriorityTasks.length > 0) {
+      if (sections.length > 0) sections.push(''); // Add blank line between sections
+      sections.push(`🟡 **MEDIUM PRIORITY (${mediumPriorityTasks.length})**`);
+      mediumPriorityTasks.forEach((task, index) => {
+        const isLast = index === mediumPriorityTasks.length - 1;
+        const prefix = isLast ? '└─' : '├─';
+        sections.push(`${prefix} ${this.formatTaskLine(task)}`);
+        const details = this.formatTaskDetails(task, isLast ? '   ' : '│  ');
+        if (details) sections.push(details);
+      });
+    }
+    
+    // Format low priority section
+    if (lowPriorityTasks.length > 0) {
+      if (sections.length > 0) sections.push(''); // Add blank line between sections
+      sections.push(`🔵 **LOW PRIORITY (${lowPriorityTasks.length})**`);
+      lowPriorityTasks.forEach((task, index) => {
+        const isLast = index === lowPriorityTasks.length - 1;
+        const prefix = isLast ? '└─' : '├─';
+        sections.push(`${prefix} ${this.formatTaskLine(task)}`);
+        const details = this.formatTaskDetails(task, isLast ? '   ' : '│  ');
+        if (details) sections.push(details);
+      });
+    }
+    
+    return sections.join('\n');
+  }
+
+  /**
+   * Format a single task line for grouped display
+   */
+  private formatTaskLine(task: any): string {
+    const status = this.getTaskStatus(task);
+    return `[${task.EntityType?.Name || 'TASK'}-${task.Id}] ${task.Name}${status ? ' ' + status : ''}`;
+  }
+
+  /**
+   * Format task details for grouped display
+   */
+  private formatTaskDetails(task: any, indent: string): string {
+    const parts: string[] = [];
+    
+    // Add project info
+    const projectInfo = `Project: ${task.Project?.Name || 'Unknown'}`;
+    if (task.Release) {
+      parts.push(`${indent}└─ ${projectInfo} | Release: ${task.Release.Name}`);
+    } else if (task.Iteration) {
+      parts.push(`${indent}└─ ${projectInfo} | Sprint: ${task.Iteration.Name}`);
+    } else {
+      parts.push(`${indent}└─ ${projectInfo}`);
+    }
+    
+    // Add timing/effort info
+    const timingParts: string[] = [];
+    if (task.EndDate) {
+      const endDate = new Date(task.EndDate);
+      const now = new Date();
+      const daysUntil = Math.floor((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      
+      if (daysUntil < 0) {
+        timingParts.push(`Due: ${Math.abs(daysUntil)} days ago`);
+      } else if (daysUntil === 0) {
+        timingParts.push('Due: Today');
+      } else if (daysUntil === 1) {
+        timingParts.push('Due: Tomorrow');
+      } else {
+        timingParts.push(`Due: ${daysUntil} days`);
+      }
+    }
+    
+    if (task.TimeRemain) {
+      timingParts.push(`${task.TimeRemain}h remaining`);
+    }
+    
+    if (timingParts.length > 0) {
+      parts.push(`${indent}   ${timingParts.join(' | ')}`);
+    }
+    
+    return parts.join('\n');
   }
 
   /**

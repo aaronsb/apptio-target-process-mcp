@@ -549,8 +549,8 @@ describe('ShowMyTasksOperation', () => {
       const taskText = result.content[1].text;
       
       // Check compact format with key info on separate lines
-      expect(taskText).toMatch(/🔴.*Implement feature X/);
-      expect(taskText).toContain('Task #123');
+      expect(taskText).toContain('🔴 **HIGH PRIORITY (1)**');
+      expect(taskText).toContain('[Task-123] Implement feature X');
       expect(taskText).toContain('Main Project');
       expect(taskText).not.toContain(task.Description); // Long descriptions excluded
     });
