@@ -2,7 +2,7 @@
 
 ## What is this?
 
-The Targetprocess MCP Server enables AI assistants to interact with your Targetprocess data through intelligent semantic operations. Beyond basic data access, it provides workflow-aware tools that understand context, suggest next steps, and adapt to your Targetprocess configuration automatically.
+The Targetprocess MCP Server enables AI assistants to interact with your Targetprocess data through intelligent, context-aware tools. All operations provide semantic hints and workflow suggestions. When configured with a user role, additional role-specific tools become available that streamline common workflows for developers, project managers, and testers.
 
 ## ⚠️ IMPORTANT: Not Just Another API Wrapper!
 
@@ -18,9 +18,9 @@ The Targetprocess MCP Server enables AI assistants to interact with your Targetp
 
 ## Why use it?
 
-- **Intelligent Workflows**: Semantic operations that understand your work context and suggest logical next steps
+- **Semantic Hints on All Tools**: Every operation returns context-aware suggestions and workflow guidance
+- **Role-Specific Tools**: When configured with a role, get additional specialized tools (`show_my_tasks`, `complete_task`, etc.)
 - **Dynamic Discovery**: Automatically adapts to your Targetprocess configuration without hard-coded assumptions
-- **Role-Based Tools**: Operations filtered by your role (developer, project manager, tester, etc.)
 - **Smart Error Handling**: Transforms API failures into actionable guidance and learning opportunities
 - **Stay in Flow**: Complete full workflows without switching to the Targetprocess UI
 - **Enterprise Ready**: Handles complex schemas and millions of records with robust authentication and error handling
@@ -52,7 +52,7 @@ docker run -i --rm \
   -e TP_API_KEY=your-api-key \
   ghcr.io/aaronsb/apptio-target-process-mcp
 
-# With semantic operations and strict mode (recommended for MCP clients)
+# With role-specific tools and strict mode (recommended for MCP clients)
 docker run -i --rm \
   -e TP_DOMAIN=your-domain.tpondemand.com \
   -e TP_USERNAME=your-username \
@@ -75,7 +75,7 @@ TP_DOMAIN=your-domain.tpondemand.com TP_USERNAME=your-username TP_PASSWORD=your-
 TP_DOMAIN=your-domain.tpondemand.com TP_API_KEY=your-api-key \
   npx -y https://github.com/aaronsb/apptio-target-process-mcp.git
 
-# With semantic operations and strict mode (recommended for MCP clients)
+# With role-specific tools and strict mode (recommended for MCP clients)
 TP_DOMAIN=your-domain.tpondemand.com TP_USERNAME=your-username TP_PASSWORD=your-password \
 TP_USER_ROLE=developer TP_USER_ID=your-user-id TP_USER_EMAIL=your-email \
 MCP_STRICT_MODE=true \
@@ -104,7 +104,7 @@ claude mcp add targetprocess node ./build/index.js \
   -e TP_DOMAIN=your-domain.tpondemand.com \
   -e TP_API_KEY=your-api-key
 
-# With semantic operations (recommended)
+# With role-specific tools (recommended)
 claude mcp add targetprocess node ./build/index.js \
   -e TP_DOMAIN=your-domain.tpondemand.com \
   -e TP_USERNAME=your-username \

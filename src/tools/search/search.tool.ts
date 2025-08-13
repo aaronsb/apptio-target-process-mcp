@@ -52,6 +52,50 @@ export type SearchToolInput = z.infer<typeof searchToolSchema>;
 export class SearchTool {
   constructor(private service: TPService) {}
 
+  /**
+   * Get date values for filter substitution
+   */
+  private getDateValues() {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    // Get start of week (Monday)
+    const weekStart = new Date(today);
+    const dayOfWeek = weekStart.getDay();
+    const daysToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    weekStart.setDate(weekStart.getDate() + daysToMonday);
+    
+    return {
+      todayDate: `'${today.toISOString().split('T')[0]}'`,
+      tomorrowDate: `'${tomorrow.toISOString().split('T')[0]}'`,
+      weekStartDate: `'${weekStart.toISOString().split('T')[0]}'`
+    };
+  }
+
+  /**
+   * Process orderBy to handle various input formats
+   * Converts to single field or array format based on what's provided
+   */
+  private processOrderBy(orderBy?: string[]): string[] | undefined {
+    if (!orderBy || orderBy.length === 0) {
+      return undefined;
+    }
+
+    // If only one field, return as-is (TargetProcess handles single fields well)
+    if (orderBy.length === 1) {
+      // Strip any desc/asc keywords
+      const field = orderBy[0].replace(/\s+(desc|asc)$/i, '').trim();
+      return [field];
+    }
+
+    // For multiple fields, we'll need special handling in the query builder
+    // Just clean them up here
+    return orderBy.map(field => field.replace(/\s+(desc|asc)$/i, '').trim());
+  }
+
   async execute(args: unknown) {
     try {
       const { type, where, include, take, orderBy } = searchToolSchema.parse(args);
@@ -63,9 +107,17 @@ export class SearchTool {
         if (presetName in searchPresets) {
           processedWhere = searchPresets[presetName];
           
-          // Apply variable substitution if needed (basic implementation)
+          // Apply variable substitution
+          const dateValues = this.getDateValues();
+          
+          // Replace date variables
+          for (const [key, value] of Object.entries(dateValues)) {
+            processedWhere = processedWhere.replace(`\${${key}}`, value);
+          }
+          
+          // Replace user variable (should be enhanced with actual user context)
           if (processedWhere.includes('${currentUser}')) {
-            // For now, use a placeholder - should be enhanced with actual user context
+            // TODO: Get actual user email from context
             processedWhere = processedWhere.replace('${currentUser}', 'system');
           }
         } else {
@@ -76,12 +128,15 @@ export class SearchTool {
         }
       }
 
+      // Process orderBy for compatibility
+      const processedOrderBy = this.processOrderBy(orderBy);
+
       const results = await this.service.searchEntities(
         type,
         processedWhere,
         include,
         take,
-        orderBy
+        processedOrderBy
       );
 
       return {
