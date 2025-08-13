@@ -148,7 +148,7 @@ export class ShowMyTasksOperation implements SemanticOperation<ShowMyTasksParams
         'GeneralUser',
         userId,
         [
-          'Assignables[Id,Name,Description,Priority[Id,Name,Importance],NumericPriority,EntityState,EndDate,Project,Release,Iteration,TeamIteration]'
+          'Assignables[Id,Name,Description,Priority,NumericPriority,EntityState,EndDate,Project,Release,Iteration,TeamIteration]'
         ]
       );
       
