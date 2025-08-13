@@ -72,7 +72,7 @@ jobs:
         run: npm test -- --coverage --coverageReporters=lcov || echo "Coverage collection skipped due to ESM test issues"
         
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage/lcov.info
