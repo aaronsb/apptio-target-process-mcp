@@ -39,11 +39,17 @@ Each registry maintains its own configuration branch with platform-specific sett
 ### Docker (Recommended for Containerized Environments)
 
 ```bash
-# Basic usage
+# Basic usage with username/password
 docker run -i --rm \
   -e TP_DOMAIN=your-domain.tpondemand.com \
   -e TP_USERNAME=your-username \
   -e TP_PASSWORD=your-password \
+  ghcr.io/aaronsb/apptio-target-process-mcp
+
+# Basic usage with API key
+docker run -i --rm \
+  -e TP_DOMAIN=your-domain.tpondemand.com \
+  -e TP_API_KEY=your-api-key \
   ghcr.io/aaronsb/apptio-target-process-mcp
 
 # With semantic operations and strict mode (recommended for MCP clients)
@@ -61,8 +67,12 @@ docker run -i --rm \
 ### NPX (No Installation Required)
 
 ```bash
-# Basic usage
+# Basic usage with username/password
 TP_DOMAIN=your-domain.tpondemand.com TP_USERNAME=your-username TP_PASSWORD=your-password \
+  npx -y https://github.com/aaronsb/apptio-target-process-mcp.git
+
+# Basic usage with API key
+TP_DOMAIN=your-domain.tpondemand.com TP_API_KEY=your-api-key \
   npx -y https://github.com/aaronsb/apptio-target-process-mcp.git
 
 # With semantic operations and strict mode (recommended for MCP clients)
@@ -81,12 +91,18 @@ MCP_STRICT_MODE=true \
 # Quick setup for development
 ./scripts/dev-setup.sh
 
-# Basic manual setup
+# Basic manual setup with username/password
 npm install && npm run build
 claude mcp add targetprocess node ./build/index.js \
   -e TP_DOMAIN=your-domain.tpondemand.com \
   -e TP_USERNAME=your-username \
   -e TP_PASSWORD=your-password
+
+# Basic manual setup with API key
+npm install && npm run build
+claude mcp add targetprocess node ./build/index.js \
+  -e TP_DOMAIN=your-domain.tpondemand.com \
+  -e TP_API_KEY=your-api-key
 
 # With semantic operations (recommended)
 claude mcp add targetprocess node ./build/index.js \
@@ -134,12 +150,22 @@ TP_USER_EMAIL=your-email      # Identity for semantic operations
 #### 1. NPX (No Installation Required)
 
 ```bash
-# Basic usage
+# Basic usage with username/password
 TP_DOMAIN=your-domain.tpondemand.com TP_USERNAME=your-username TP_PASSWORD=your-password \
+  npx -y https://github.com/aaronsb/apptio-target-process-mcp.git
+
+# Basic usage with API key
+TP_DOMAIN=your-domain.tpondemand.com TP_API_KEY=your-api-key \
   npx -y https://github.com/aaronsb/apptio-target-process-mcp.git
 
 # With semantic operations (recommended)
 TP_DOMAIN=your-domain.tpondemand.com TP_USERNAME=your-username TP_PASSWORD=your-password \
+TP_USER_ROLE=developer TP_USER_ID=your-user-id TP_USER_EMAIL=your-email \
+MCP_STRICT_MODE=true \
+  npx -y https://github.com/aaronsb/apptio-target-process-mcp.git
+
+# With semantic operations using API key (recommended)
+TP_DOMAIN=your-domain.tpondemand.com TP_API_KEY=your-api-key \
 TP_USER_ROLE=developer TP_USER_ID=your-user-id TP_USER_EMAIL=your-email \
 MCP_STRICT_MODE=true \
   npx -y https://github.com/aaronsb/apptio-target-process-mcp.git
@@ -148,11 +174,17 @@ MCP_STRICT_MODE=true \
 #### 2. Docker
 
 ```bash
-# Basic usage
+# Basic usage with username/password
 docker run -i --rm \
   -e TP_DOMAIN=your-domain.tpondemand.com \
   -e TP_USERNAME=your-username \
   -e TP_PASSWORD=your-password \
+  ghcr.io/aaronsb/apptio-target-process-mcp
+
+# Basic usage with API key
+docker run -i --rm \
+  -e TP_DOMAIN=your-domain.tpondemand.com \
+  -e TP_API_KEY=your-api-key \
   ghcr.io/aaronsb/apptio-target-process-mcp
 
 # With semantic operations (recommended)
@@ -165,13 +197,23 @@ docker run -i --rm \
   -e TP_USER_EMAIL=your-email \
   -e MCP_STRICT_MODE=true \
   ghcr.io/aaronsb/apptio-target-process-mcp
+
+# With semantic operations using API key (recommended)
+docker run -i --rm \
+  -e TP_DOMAIN=your-domain.tpondemand.com \
+  -e TP_API_KEY=your-api-key \
+  -e TP_USER_ROLE=developer \
+  -e TP_USER_ID=your-user-id \
+  -e TP_USER_EMAIL=your-email \
+  -e MCP_STRICT_MODE=true \
+  ghcr.io/aaronsb/apptio-target-process-mcp
 ```
 
 #### 3. Claude Desktop Configuration
 
 Add to your Claude Desktop configuration file (`~/.config/Claude/claude_desktop_config.json`):
 
-**Using Docker:**
+**Using Docker with Username/Password:**
 ```json
 {
   "mcpServers": {
@@ -204,7 +246,38 @@ Add to your Claude Desktop configuration file (`~/.config/Claude/claude_desktop_
 }
 ```
 
-**Using NPX:**
+**Using Docker with API Key:**
+```json
+{
+  "mcpServers": {
+    "targetprocess": {
+      "command": "docker",
+      "args": [
+        "run", "-i", "--rm",
+        "-e", "TP_API_KEY",
+        "-e", "TP_DOMAIN",
+        "-e", "TP_USER_ROLE",
+        "-e", "TP_USER_ID",
+        "-e", "TP_USER_EMAIL",
+        "-e", "MCP_STRICT_MODE",
+        "ghcr.io/aaronsb/apptio-target-process-mcp:latest"
+      ],
+      "env": {
+        "TP_API_KEY": "your-api-key",
+        "TP_DOMAIN": "your-domain.tpondemand.com",
+        "TP_USER_ROLE": "developer",
+        "TP_USER_ID": "your-user-id",
+        "TP_USER_EMAIL": "your-email@company.com",
+        "MCP_STRICT_MODE": "true"
+      },
+      "disabled": false,
+      "transportType": "stdio"
+    }
+  }
+}
+```
+
+**Using NPX with Username/Password:**
 ```json
 {
   "mcpServers": {
@@ -227,13 +300,35 @@ Add to your Claude Desktop configuration file (`~/.config/Claude/claude_desktop_
 }
 ```
 
+**Using NPX with API Key:**
+```json
+{
+  "mcpServers": {
+    "targetprocess": {
+      "command": "npx",
+      "args": ["-y", "https://github.com/aaronsb/apptio-target-process-mcp.git"],
+      "env": {
+        "TP_API_KEY": "your-api-key",
+        "TP_DOMAIN": "your-domain.tpondemand.com",
+        "TP_USER_ROLE": "developer",
+        "TP_USER_ID": "your-user-id",
+        "TP_USER_EMAIL": "your-email@company.com",
+        "MCP_STRICT_MODE": "true"
+      },
+      "disabled": false,
+      "transportType": "stdio"
+    }
+  }
+}
+```
+
 #### 4. Claude Code Integration
 
 ```bash
 # Quick setup for development
 ./scripts/dev-setup.sh
 
-# Manual setup with Docker
+# Manual setup with Docker (username/password)
 claude mcp add targetprocess docker \
   -a "run" -a "-i" -a "--rm" \
   -a "-e" -a "TP_DOMAIN" \
@@ -252,12 +347,39 @@ claude mcp add targetprocess docker \
   -e TP_USER_EMAIL=your-email \
   -e MCP_STRICT_MODE=true
 
-# Manual setup with local build
+# Manual setup with Docker (API key)
+claude mcp add targetprocess docker \
+  -a "run" -a "-i" -a "--rm" \
+  -a "-e" -a "TP_DOMAIN" \
+  -a "-e" -a "TP_API_KEY" \
+  -a "-e" -a "TP_USER_ROLE" \
+  -a "-e" -a "TP_USER_ID" \
+  -a "-e" -a "TP_USER_EMAIL" \
+  -a "-e" -a "MCP_STRICT_MODE" \
+  -a "ghcr.io/aaronsb/apptio-target-process-mcp:latest" \
+  -e TP_DOMAIN=your-domain.tpondemand.com \
+  -e TP_API_KEY=your-api-key \
+  -e TP_USER_ROLE=developer \
+  -e TP_USER_ID=your-user-id \
+  -e TP_USER_EMAIL=your-email \
+  -e MCP_STRICT_MODE=true
+
+# Manual setup with local build (username/password)
 npm install && npm run build
 claude mcp add targetprocess node ./build/index.js \
   -e TP_DOMAIN=your-domain.tpondemand.com \
   -e TP_USERNAME=your-username \
   -e TP_PASSWORD=your-password \
+  -e TP_USER_ROLE=developer \
+  -e TP_USER_ID=your-user-id \
+  -e TP_USER_EMAIL=your-email \
+  -e MCP_STRICT_MODE=true
+
+# Manual setup with local build (API key)
+npm install && npm run build
+claude mcp add targetprocess node ./build/index.js \
+  -e TP_DOMAIN=your-domain.tpondemand.com \
+  -e TP_API_KEY=your-api-key \
   -e TP_USER_ROLE=developer \
   -e TP_USER_ID=your-user-id \
   -e TP_USER_EMAIL=your-email \
