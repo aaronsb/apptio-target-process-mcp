@@ -1,51 +1,68 @@
-# Targetprocess MCP Server
+# 🎯 Targetprocess MCP Server
 
-## What is this?
+[<img src="https://github.com/user-attachments/assets/a32b59f5-da64-4597-935f-5e3d973f72e9" width="100%">](https://www.targetprocess.com)
 
-The Targetprocess MCP Server enables AI assistants to interact with your Targetprocess data through intelligent semantic operations. Beyond basic data access, it provides workflow-aware tools that understand context, suggest next steps, and adapt to your Targetprocess configuration automatically.
+An [MCP](https://github.com/modelcontextprotocol/specification) (Model Context Protocol) server implementation for [Targetprocess](https://www.targetprocess.com/) project management platform, providing semantic AI-powered operations alongside traditional API access.
 
-## ⚠️ IMPORTANT: Not Just Another API Wrapper!
+Turn your AI assistant into a Targetprocess power user - manage projects, track work, and update tasks through natural conversation.
 
-> **This project implements SEMANTIC OPERATIONS** - intelligent, context-aware workflows that understand how people actually work. We're not building simple API wrappers; we're building tools that think.
-> 
-> **Before contributing**, you MUST understand our semantic operations philosophy:
-> - 📖 Read [CONTRIBUTING.md](CONTRIBUTING.md) - Mandatory reading for all contributors
-> - 🧠 Study [Semantic Operations Documentation](docs/semantic-operations/) - The heart of this project
-> - 🎯 Operations adapt to user context, not just expose CRUD endpoints
-> - 🔄 Dynamic discovery over hard-coded assumptions
-> 
-> **If you're here to add "just another API endpoint wrapper" - please reconsider.** We need contributors who understand and embrace the semantic operations approach.
+## Installation
 
-## Why use it?
+Choose your preferred method:
 
-- **Intelligent Workflows**: Semantic operations that understand your work context and suggest logical next steps
-- **Dynamic Discovery**: Automatically adapts to your Targetprocess configuration without hard-coded assumptions
-- **Role-Based Tools**: Operations filtered by your role (developer, project manager, tester, etc.)
-- **Smart Error Handling**: Transforms API failures into actionable guidance and learning opportunities
-- **Stay in Flow**: Complete full workflows without switching to the Targetprocess UI
-- **Enterprise Ready**: Handles complex schemas and millions of records with robust authentication and error handling
+### 🤖 [Claude Desktop](docs/configuration/claude-desktop.md)
+Native integration with Anthropic's Claude Desktop app.
 
-## MCP Registry Support
+```json
+{
+  "mcpServers": {
+    "targetprocess": {
+      "command": "npx",
+      "args": ["-y", "https://github.com/aaronsb/apptio-target-process-mcp.git"],
+      "env": {
+        "TP_DOMAIN": "your-domain.tpondemand.com",
+        "TP_API_KEY": "your-api-key"
+      }
+    }
+  }
+}
+```
 
-This MCP server is available through multiple MCP registries:
+[Full Claude Desktop guide →](docs/configuration/claude-desktop.md)
 
-- **[Smithery.ai](https://smithery.ai)** - Install directly from the Smithery registry
-- **[Cprime](https://cprime.com)** - Available through Cprime's MCP catalog
+### 📂 [Claude Code](docs/configuration/claude-code.md)
+Use with Anthropic's Claude Code IDE (claude.ai/code)
 
-Each registry maintains its own configuration branch with platform-specific settings while staying synchronized with the latest features and updates.
+```bash
+# Add to project
+claude mcp add targetprocess npm run targetprocess
 
-## Quick Start
+# Configure .env
+TP_DOMAIN=your-domain.tpondemand.com
+TP_API_KEY=your-api-key
+```
 
-Choose your preferred setup method:
+[Full Claude Code guide →](docs/configuration/claude-code.md)
 
 ### 🐳 [Docker](docs/configuration/docker.md)
-Best for production and containerized environments. No local installation required.
+Run in an isolated container environment.
 
 ```bash
 # With API key (recommended)
 docker run -i --rm \
   -e TP_DOMAIN=your-domain.tpondemand.com \
   -e TP_API_KEY=your-api-key \
+  ghcr.io/aaronsb/apptio-target-process-mcp
+
+# With role-specific tools and strict mode (recommended for MCP clients)
+docker run -i --rm \
+  -e TP_DOMAIN=your-domain.tpondemand.com \
+  -e TP_USERNAME=your-username \
+  -e TP_PASSWORD=your-password \
+  -e TP_USER_ROLE=developer \
+  -e TP_USER_ID=your-user-id \
+  -e TP_USER_EMAIL=your-email \
+  -e MCP_STRICT_MODE=true \
   ghcr.io/aaronsb/apptio-target-process-mcp
 ```
 
@@ -58,36 +75,65 @@ Zero installation required. Perfect for trying out the server.
 # With API key (recommended)
 TP_DOMAIN=your-domain.tpondemand.com TP_API_KEY=your-api-key \
   npx -y https://github.com/aaronsb/apptio-target-process-mcp.git
+
+# With role-specific tools and strict mode (recommended for MCP clients)
+TP_DOMAIN=your-domain.tpondemand.com TP_USERNAME=your-username TP_PASSWORD=your-password \
+TP_USER_ROLE=developer TP_USER_ID=your-user-id TP_USER_EMAIL=your-email \
+MCP_STRICT_MODE=true \
+  npx -y https://github.com/aaronsb/apptio-target-process-mcp.git
 ```
 
 [Full NPX configuration guide →](docs/configuration/npx.md)
 
-### 🖥️ [Claude Desktop](docs/configuration/claude-desktop.md)
-Integrate with Claude Desktop app for a seamless AI assistant experience.
-
-[Full Claude Desktop configuration guide →](docs/configuration/claude-desktop.md)
-
-### 💻 [Claude Code](docs/configuration/claude-code.md)
-Development-focused integration with Claude Code.
+### 💻 [Local Development](docs/configuration/local-development.md)
+Clone and run locally for development.
 
 ```bash
-# Quick setup
-./scripts/dev-setup.sh
+# Clone and setup
+git clone https://github.com/aaronsb/apptio-target-process-mcp.git
+cd apptio-target-process-mcp
+npm install
+
+# Configure
+cp .env.example .env
+# Edit .env with your credentials
+
+# With role-specific tools and strict mode
+TP_USER_ROLE=developer \
+  TP_USER_ID=your-user-id \
+  TP_USER_EMAIL=your-email \
+  MCP_STRICT_MODE=true
 ```
-
-[Full Claude Code configuration guide →](docs/configuration/claude-code.md)
-
-### 🛠️ [Local Development](docs/configuration/local-development.md)
-For contributors and developers who want to modify the server.
 
 [Full local development guide →](docs/configuration/local-development.md)
 
-## Configuration Options
+## Configuration
 
-### Authentication Methods
+### API Authentication
 
-- **API Key** (Recommended): Use `TP_API_KEY` for secure, token-based authentication
-- **Username/Password**: Use `TP_USERNAME` and `TP_PASSWORD` for basic authentication
+#### Option 1: API Key (Recommended)
+1. Go to Targetprocess → Settings → Access Tokens
+2. Create a new token
+3. Set `TP_API_KEY` environment variable
+
+#### Option 2: Basic Auth
+Set both:
+- `TP_USERNAME`: Your Targetprocess username
+- `TP_PASSWORD`: Your Targetprocess password
+
+⚠️ **Security Note**: Never commit credentials to version control. Use environment variables or `.env` files (gitignored).
+
+### Available Tools
+
+The server provides these MCP tools to AI assistants:
+
+| Tool | Description |
+|------|-------------|
+| **search_entities** | Search with powerful filtering, sorting, and includes |
+| **get_entity** | Retrieve detailed entity information |
+| **create_entity** | Create new work items with validation |
+| **update_entity** | Update existing entities |
+| **inspect_object** | Explore entity types and properties |
 
 ### Role-Specific Tools
 

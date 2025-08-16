@@ -20,10 +20,11 @@ export const searchPresets = {
   highPriority: 'Priority.Name eq "High"',
   
   // Time-based filters
-  createdToday: 'CreateDate gt @Today',
-  modifiedToday: 'ModifyDate gt @Today',
-  createdThisWeek: 'CreateDate gt @StartOfWeek',
-  modifiedThisWeek: 'ModifyDate gt @StartOfWeek',
+  // Note: These will be dynamically replaced with actual ISO dates in the search tool
+  createdToday: 'CreateDate gte ${todayDate} and CreateDate lt ${tomorrowDate}',
+  modifiedToday: 'ModifyDate gte ${todayDate} and ModifyDate lt ${tomorrowDate}',
+  createdThisWeek: 'CreateDate gte ${weekStartDate}',
+  modifiedThisWeek: 'ModifyDate gte ${weekStartDate}',
   
   // Combined filters
   myOpenTasks: 'AssignedUser.Email eq "${currentUser}" and EntityState.Name eq "Open"',
