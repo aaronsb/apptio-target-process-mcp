@@ -145,7 +145,7 @@ describe('SearchTool', () => {
       const mockBugs = [];
       mockService.searchEntities.mockResolvedValue(mockBugs);
 
-      const result = await searchTool.execute({
+      await searchTool.execute({
         type: 'Bug',
         where: 'searchPresets.highPriority',
         take: 5
@@ -164,7 +164,7 @@ describe('SearchTool', () => {
       const mockTasks = [];
       mockService.searchEntities.mockResolvedValue(mockTasks);
 
-      const result = await searchTool.execute({
+      await searchTool.execute({
         type: 'Task',
         where: 'searchPresets.createdToday',
         take: 5
