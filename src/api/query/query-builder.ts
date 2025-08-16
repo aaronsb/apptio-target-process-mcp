@@ -100,9 +100,18 @@ export class QueryBuilder {
       params.append('include', this.validateInclude(this.queryOptions.include));
     }
 
-    // Add orderBy parameters
+    // Add orderBy parameters - handle multiple fields with array syntax
     if (this.queryOptions.orderBy?.length) {
-      params.append('orderBy', this.formatOrderBy(this.queryOptions.orderBy as OrderByOption[]));
+      const orderByFields = this.queryOptions.orderBy as string[];
+      if (orderByFields.length === 1) {
+        // Single field - use standard orderBy parameter
+        params.append('orderBy', this.formatSingleOrderBy(orderByFields[0]));
+      } else {
+        // Multiple fields - use array syntax: orderBy[0]=field1&orderBy[1]=field2
+        orderByFields.forEach((field, index) => {
+          params.append(`orderBy[${index}]`, this.formatSingleOrderBy(field));
+        });
+      }
     }
 
     // Add authentication if using API key
@@ -115,9 +124,54 @@ export class QueryBuilder {
 
   /**
    * Build query string for API requests
+   * Special handling for array-style parameters that URLSearchParams doesn't handle well
    */
   buildQueryString(): string {
+    // For queries with multiple orderBy fields, build manually to avoid encoding issues
+    if (this.queryOptions.orderBy && (this.queryOptions.orderBy as string[]).length > 1) {
+      return this.buildQueryStringManual();
+    }
     return this.buildParams().toString();
+  }
+
+  /**
+   * Manually build query string to handle array-style parameters
+   */
+  private buildQueryStringManual(): string {
+    const parts: string[] = [];
+
+    // Add format
+    parts.push(`format=${this.queryOptions.format || 'json'}`);
+
+    // Add take
+    if (this.queryOptions.take) {
+      parts.push(`take=${this.queryOptions.take}`);
+    }
+
+    // Add where (encode it)
+    if (this.queryOptions.where) {
+      parts.push(`where=${encodeURIComponent(this.queryOptions.where)}`);
+    }
+
+    // Add include (encode it)
+    if (this.queryOptions.include?.length) {
+      parts.push(`include=${encodeURIComponent(this.validateInclude(this.queryOptions.include))}`);
+    }
+
+    // Add orderBy fields with array syntax (no encoding on field names)
+    if (this.queryOptions.orderBy?.length) {
+      const orderByFields = this.queryOptions.orderBy as string[];
+      orderByFields.forEach((field, index) => {
+        parts.push(`orderBy[${index}]=${this.formatSingleOrderBy(field)}`);
+      });
+    }
+
+    // Add auth token if needed
+    if (this.authConfig.type === 'apikey') {
+      parts.push(`access_token=${this.authConfig.token}`);
+    }
+
+    return parts.join('&');
   }
 
   /**
@@ -253,18 +307,23 @@ export class QueryBuilder {
   }
 
   /**
-   * Formats orderBy parameters according to TargetProcess rules
+   * Format a single orderBy field
    * TargetProcess API only accepts field names, no direction keywords
    */
+  private formatSingleOrderBy(field: string | OrderByOption): string {
+    if (typeof field === 'string') {
+      // Remove any direction keywords that might be present
+      return field.replace(/\s+(desc|asc)$/i, '').trim();
+    }
+    return field.field; // For object format, just return the field name
+  }
+
+  /**
+   * Formats orderBy parameters according to TargetProcess rules
+   * @deprecated Use formatSingleOrderBy instead
+   */
   private formatOrderBy(orderBy: OrderByOption[]): string {
-    return orderBy.map(item => {
-      if (typeof item === 'string') {
-        // Remove any direction keywords that might be present
-        const fieldName = item.replace(/\s+(desc|asc)$/i, '').trim();
-        return fieldName; // Don't use formatWhereField for orderBy - just return clean field name
-      }
-      return item.field; // For object format, just return the field name
-    }).join(',');
+    return orderBy.map(item => this.formatSingleOrderBy(item)).join(',');
   }
 
   /**

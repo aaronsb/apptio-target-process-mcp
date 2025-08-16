@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import { SearchTool } from '../../tools/search/search.tool.js';
-import { createMockTPService, createMockEntity, createMockSearchResponse } from '../mocks/tp-service.mock-utils.js';
+import { createMockTPService, createMockEntity } from '../mocks/tp-service.mock-utils.js';
+import { McpError } from '@modelcontextprotocol/sdk/types.js';
 
 describe('SearchTool', () => {
   let searchTool: SearchTool;
@@ -22,7 +23,7 @@ describe('SearchTool', () => {
       mockService.searchEntities.mockResolvedValue(mockStories);
 
       const result = await searchTool.execute({
-        entityType: 'UserStory',
+        type: 'UserStory',
         take: 10
       });
 
@@ -55,21 +56,22 @@ describe('SearchTool', () => {
       mockService.searchEntities.mockResolvedValue(mockBugs);
 
       const result = await searchTool.execute({
-        entityType: 'Bug',
-        where: "Priority.Name = 'Critical'",
+        type: 'Bug',
+        where: "Priority.Name eq 'Critical'",
         take: 25
       });
 
       expect(mockService.searchEntities).toHaveBeenCalledWith(
         'Bug',
-        { 
-          where: "Priority.Name = 'Critical'",
-          take: 25 
-        }
+        "Priority.Name eq 'Critical'",
+        undefined,  // include
+        25,         // take
+        undefined   // orderBy
       );
       
-      expect(result.entities).toHaveLength(1);
-      expect(result.entities[0].Priority.Name).toBe('Critical');
+      const parsedResult = JSON.parse(result.content[0].text);
+      expect(parsedResult).toHaveLength(1);
+      expect(parsedResult[0].Priority.Name).toBe('Critical');
     });
 
     it('should search with includes', async () => {
@@ -80,150 +82,170 @@ describe('SearchTool', () => {
         })
       ];
       
-      mockService.searchEntities.mockResolvedValue(
-        createMockSearchResponse(mockTasks)
-      );
+      mockService.searchEntities.mockResolvedValue(mockTasks);
 
       const result = await searchTool.execute({
-        entityType: 'Task',
-        include: 'UserStory,AssignedUser',
+        type: 'Task',
+        include: ['UserStory', 'AssignedUser'],
         take: 10
       });
 
       expect(mockService.searchEntities).toHaveBeenCalledWith(
         'Task',
-        { 
-          include: 'UserStory,AssignedUser',
-          take: 10 
-        }
-      );
-    });
-
-    it('should handle pagination', async () => {
-      const mockProjects = Array(25).fill(null).map((_, i) => 
-        createMockEntity('Project', { Name: `Project ${i}` })
-      );
-      
-      mockService.searchEntities.mockResolvedValue(
-        createMockSearchResponse(mockProjects, 50)
-      );
-
-      const result = await searchTool.execute({
-        entityType: 'Project',
-        take: 25,
-        skip: 0
-      });
-
-      expect(result.hasMore).toBe(true);
-      expect(result.total).toBe(50);
-      expect(result.entities).toHaveLength(25);
-    });
-
-    it('should handle complex where clauses', async () => {
-      mockService.searchEntities.mockResolvedValue(
-        createMockSearchResponse([])
-      );
-
-      await searchTool.execute({
-        entityType: 'UserStory',
-        where: "(Project.Id = 123) and (EntityState.Name != 'Done') and (Priority.Name in ['High', 'Critical'])"
-      });
-
-      expect(mockService.searchEntities).toHaveBeenCalledWith(
-        'UserStory',
-        { 
-          where: "(Project.Id = 123) and (EntityState.Name != 'Done') and (Priority.Name in ['High', 'Critical'])",
-          take: 25 
-        }
-      );
-    });
-
-    it('should handle errors gracefully', async () => {
-      mockService.searchEntities.mockRejectedValue(
-        new Error('Network error')
-      );
-
-      await expect(searchTool.execute({
-        entityType: 'UserStory'
-      })).rejects.toThrow('Network error');
-    });
-
-    it('should validate entity type', async () => {
-      mockService.validateEntityType.mockRejectedValue(
-        new Error('Invalid entity type: InvalidType')
-      );
-
-      await expect(searchTool.execute({
-        entityType: 'InvalidType'
-      })).rejects.toThrow('Invalid entity type');
-    });
-
-    it('should apply default take value', async () => {
-      mockService.searchEntities.mockResolvedValue(
-        createMockSearchResponse([])
-      );
-
-      await searchTool.execute({
-        entityType: 'Epic'
-      });
-
-      expect(mockService.searchEntities).toHaveBeenCalledWith(
-        'Epic',
-        { take: 25 }
+        undefined,                        // where
+        ['UserStory', 'AssignedUser'],  // include
+        10,                              // take
+        undefined                        // orderBy
       );
     });
 
     it('should handle orderBy parameter', async () => {
-      mockService.searchEntities.mockResolvedValue(
-        createMockSearchResponse([])
-      );
+      const mockFeatures = [
+        createMockEntity('Feature', { Name: 'Feature 1' })
+      ];
+      
+      mockService.searchEntities.mockResolvedValue(mockFeatures);
 
       await searchTool.execute({
-        entityType: 'Feature',
-        orderBy: 'CreateDate desc'
+        type: 'Feature',
+        orderBy: ['CreateDate desc']
       });
 
       expect(mockService.searchEntities).toHaveBeenCalledWith(
         'Feature',
-        { 
-          orderBy: 'CreateDate desc',
-          take: 25 
-        }
+        undefined,      // where
+        undefined,      // include
+        undefined,      // take
+        ['CreateDate']  // orderBy cleaned (desc removed)
+      );
+    });
+
+    it('should handle multiple orderBy fields', async () => {
+      const mockBugs = [
+        createMockEntity('Bug', { Name: 'Bug 1' })
+      ];
+      
+      mockService.searchEntities.mockResolvedValue(mockBugs);
+
+      await searchTool.execute({
+        type: 'Bug',
+        orderBy: ['CreateDate', 'ModifyDate']
+      });
+
+      expect(mockService.searchEntities).toHaveBeenCalledWith(
+        'Bug',
+        undefined,                      // where
+        undefined,                      // include
+        undefined,                      // take
+        ['CreateDate', 'ModifyDate']   // orderBy
+      );
+    });
+
+    it('should process search presets', async () => {
+      const mockBugs = [];
+      mockService.searchEntities.mockResolvedValue(mockBugs);
+
+      const result = await searchTool.execute({
+        type: 'Bug',
+        where: 'searchPresets.highPriority',
+        take: 5
+      });
+
+      expect(mockService.searchEntities).toHaveBeenCalledWith(
+        'Bug',
+        'Priority.Name eq "High"',  // Expanded from preset
+        undefined,                   // include
+        5,                          // take
+        undefined                   // orderBy
+      );
+    });
+
+    it('should process date presets with actual dates', async () => {
+      const mockTasks = [];
+      mockService.searchEntities.mockResolvedValue(mockTasks);
+
+      const result = await searchTool.execute({
+        type: 'Task',
+        where: 'searchPresets.createdToday',
+        take: 5
+      });
+
+      // Check that the where clause has been expanded with real dates
+      const callArgs = mockService.searchEntities.mock.calls[0];
+      expect(callArgs[0]).toBe('Task');
+      expect(callArgs[1]).toMatch(/CreateDate gte '\d{4}-\d{2}-\d{2}' and CreateDate lt '\d{4}-\d{2}-\d{2}'/);
+      expect(callArgs[3]).toBe(5);
+    });
+
+    it('should handle invalid entity type', async () => {
+      await expect(
+        searchTool.execute({
+          type: '',
+          take: 10
+        })
+      ).rejects.toThrow(McpError);
+    });
+
+    it('should handle invalid take parameter', async () => {
+      await expect(
+        searchTool.execute({
+          type: 'UserStory',
+          take: -1
+        })
+      ).rejects.toThrow('Invalid search parameters');
+    });
+
+    it('should handle invalid preset name', async () => {
+      await expect(
+        searchTool.execute({
+          type: 'UserStory',
+          where: 'searchPresets.invalidPreset'
+        })
+      ).rejects.toThrow('Unknown search preset: invalidPreset');
+    });
+
+    it('should handle API errors gracefully', async () => {
+      mockService.searchEntities.mockRejectedValue(
+        new Error('Network error')
+      );
+
+      await expect(
+        searchTool.execute({
+          type: 'UserStory'
+        })
+      ).rejects.toThrow('Search failed: Network error');
+    });
+
+    it('should handle complex where clauses', async () => {
+      mockService.searchEntities.mockResolvedValue([]);
+
+      await searchTool.execute({
+        type: 'UserStory',
+        where: "(Project.Id eq 123) and (EntityState.Name ne 'Done') and (Priority.Name eq 'High')"
+      });
+
+      expect(mockService.searchEntities).toHaveBeenCalledWith(
+        'UserStory',
+        "(Project.Id eq 123) and (EntityState.Name ne 'Done') and (Priority.Name eq 'High')",
+        undefined,
+        undefined,
+        undefined
       );
     });
   });
 
-  describe('edge cases', () => {
-    it('should handle empty results', async () => {
-      mockService.searchEntities.mockResolvedValue(
-        createMockSearchResponse([])
-      );
-
-      const result = await searchTool.execute({
-        entityType: 'Bug',
-        where: "Name = 'Non-existent'"
-      });
-
-      expect(result.success).toBe(true);
-      expect(result.entities).toEqual([]);
-      expect(result.total).toBe(0);
-      expect(result.hasMore).toBe(false);
-    });
-
-    it('should handle very large take values', async () => {
-      mockService.searchEntities.mockResolvedValue(
-        createMockSearchResponse([])
-      );
-
-      await searchTool.execute({
-        entityType: 'Task',
-        take: 1000
-      });
-
-      expect(mockService.searchEntities).toHaveBeenCalledWith(
-        'Task',
-        { take: 1000 }
-      );
+  describe('getDefinition', () => {
+    it('should return proper tool definition', () => {
+      const definition = SearchTool.getDefinition();
+      
+      expect(definition.name).toBe('search_entities');
+      expect(definition.description).toContain('Search Target Process entities');
+      expect(definition.inputSchema.properties).toHaveProperty('type');
+      expect(definition.inputSchema.properties).toHaveProperty('where');
+      expect(definition.inputSchema.properties).toHaveProperty('include');
+      expect(definition.inputSchema.properties).toHaveProperty('take');
+      expect(definition.inputSchema.properties).toHaveProperty('orderBy');
+      expect(definition.inputSchema.required).toEqual(['type']);
     });
   });
 });
