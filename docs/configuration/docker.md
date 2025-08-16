@@ -1,564 +1,878 @@
 # Docker Configuration Guide
 
-This guide covers how to configure and run the Targetprocess MCP server using Docker, including authentication options, role-specific configurations, and troubleshooting.
+This comprehensive guide explains how to integrate the Targetprocess MCP Server using Docker containers, providing a reliable and isolated environment for running the MCP server with consistent behavior across different systems.
 
-## Quick Start
+## Table of Contents
 
-The fastest way to get started is using the provided scripts:
+1. [Prerequisites](#prerequisites)
+2. [Quick Start Examples](#quick-start-examples)
+3. [Authentication Methods](#authentication-methods)
+4. [Role Configuration](#role-configuration)
+5. [Docker Run Examples](#docker-run-examples)
+6. [Docker Compose Examples](#docker-compose-examples)
+7. [Environment Variables Reference](#environment-variables-reference)
+8. [Building Custom Images](#building-custom-images)
+9. [Troubleshooting](#troubleshooting)
+10. [Best Practices](#best-practices)
 
+## Prerequisites
+
+### Docker Installation
+- **Docker Engine 20.10+** or **Docker Desktop**
+- Verify installation:
+  ```bash
+  docker --version
+  docker run hello-world
+  ```
+
+### Targetprocess Access
+- A Targetprocess instance (e.g., `company.tpondemand.com`)
+- Valid credentials (username/password OR API key)
+- Network access to your Targetprocess domain
+
+### Image Availability
+The official Docker image is available from GitHub Container Registry:
 ```bash
-# Build the Docker image
-./scripts/docker-build.sh
+# Pull the latest stable version
+docker pull ghcr.io/aaronsb/apptio-target-process-mcp:latest
 
-# Run with username/password auth
-./scripts/docker-run.sh
-
-# Run with API key auth
-./scripts/docker-run.sh --api-key
+# Verify image is available
+docker images | grep apptio-target-process-mcp
 ```
 
-## Docker Image
+## Quick Start Examples
 
-### Building the Image
-
-The Docker image is built using a multi-stage process for optimal size and security:
-
+### Basic Setup with API Key (Recommended)
 ```bash
-# Standard build (logs saved to /tmp/apptio-target-process-mcp/)
-./scripts/docker-build.sh
-
-# Verbose build (see output in terminal)
-./scripts/docker-build.sh --verbose
-
-# Manual build
-docker build -t apptio-target-process-mcp:local .
+# Run with API key authentication
+docker run -it --rm \
+  -e TP_DOMAIN=your-company.tpondemand.com \
+  -e TP_API_KEY=your-api-key-here \
+  ghcr.io/aaronsb/apptio-target-process-mcp:latest
 ```
 
-The build process includes:
-1. **Dependencies stage**: Installs all dependencies and dev tools
-2. **Build stage**: Compiles TypeScript and runs tests
-3. **Runtime stage**: Minimal production image with only runtime dependencies
-
-## Authentication Configuration
-
-### Method 1: Username/Password Authentication
-
-**Using Environment Variables:**
+### Basic Setup with Username/Password
 ```bash
-docker run --rm -i \
-  -e TP_DOMAIN=company.tpondemand.com \
+# Run with username/password authentication
+docker run -it --rm \
+  -e TP_DOMAIN=your-company.tpondemand.com \
   -e TP_USERNAME=your-username \
   -e TP_PASSWORD=your-password \
-  apptio-target-process-mcp:local
+  ghcr.io/aaronsb/apptio-target-process-mcp:latest
 ```
 
-**Using .env File:**
+### Developer Role Configuration
 ```bash
-# Create .env file
-cat > .env << EOF
-TP_DOMAIN=company.tpondemand.com
-TP_USERNAME=your-username
-TP_PASSWORD=your-password
-EOF
-
-# Run using script
-./scripts/docker-run.sh
+# Run with developer-specific tools enabled
+docker run -it --rm \
+  -e TP_DOMAIN=your-company.tpondemand.com \
+  -e TP_API_KEY=your-api-key-here \
+  -e TP_USER_ROLE=developer \
+  -e TP_USER_ID=12345 \
+  -e TP_USER_EMAIL=dev@company.com \
+  ghcr.io/aaronsb/apptio-target-process-mcp:latest
 ```
 
-### Method 2: API Key Authentication
+## Authentication Methods
 
-**Using Environment Variables:**
+### API Key Authentication (Recommended)
+
+API key authentication is more secure and reliable than username/password combinations.
+
+**Creating an API Key:**
+1. Log into your Targetprocess instance
+2. Navigate to **Settings** → **Access Tokens**
+3. Click **Create Token**
+4. Provide a descriptive name (e.g., "Docker MCP Integration")
+5. Select appropriate permissions (typically "Read/Write" for most operations)
+6. Copy the generated token
+
+**Docker Configuration:**
 ```bash
-docker run --rm -i \
+docker run -it --rm \
   -e TP_DOMAIN=company.tpondemand.com \
-  -e TP_API_KEY=your-api-key \
-  apptio-target-process-mcp:local
+  -e TP_API_KEY=abc123def456789... \
+  ghcr.io/aaronsb/apptio-target-process-mcp:latest
 ```
 
-**Using .env File:**
+### Username/Password Authentication
+
+While supported, username/password authentication is less secure and may be subject to additional rate limiting.
+
+**Docker Configuration:**
 ```bash
-# Create .env file
-cat > .env << EOF
-TP_DOMAIN=company.tpondemand.com
-TP_API_KEY=your-api-key
-EOF
-
-# Run using script
-./scripts/docker-run.sh --api-key
+docker run -it --rm \
+  -e TP_DOMAIN=company.tpondemand.com \
+  -e TP_USERNAME=john.doe \
+  -e TP_PASSWORD=your-secure-password \
+  ghcr.io/aaronsb/apptio-target-process-mcp:latest
 ```
 
-## Role-Based Configuration
+### Environment File Support
 
-The MCP server provides different tools based on the configured user role. **All tools provide semantic hints and intelligent workflow guidance**, but role configuration adds **additional specialized tools** specific to each role.
+For better security, use an environment file:
+
+**Create `.env` file:**
+```bash
+# Authentication (choose one method)
+TP_DOMAIN=company.tpondemand.com
+TP_API_KEY=your-api-key-here
+
+# OR
+# TP_USERNAME=your-username
+# TP_PASSWORD=your-password
+
+# Optional role configuration
+TP_USER_ROLE=developer
+TP_USER_ID=12345
+TP_USER_EMAIL=dev@company.com
+```
+
+**Run with environment file:**
+```bash
+docker run -it --rm --env-file .env \
+  ghcr.io/aaronsb/apptio-target-process-mcp:latest
+```
+
+## Role Configuration
+
+### Understanding Tool Categories
+
+The MCP server provides **two categories of tools**:
+
+1. **Core Tools** - Always available, provide semantic hints and intelligent workflows:
+   - `search_entities` - Search for any Targetprocess entity
+   - `get_entity` - Get detailed information about specific entities
+   - `create_entity` - Create new entities with validation
+   - `update_entity` - Update existing entities
+   - `inspect_object` - Inspect entity types and properties
+   - `comment` - Unified comment management (add, view, delete, analyze)
+
+2. **Role-Specific Tools** - Additional specialized tools when `TP_USER_ROLE` is configured:
+   - Only available when role is properly configured
+   - Provide workflow-optimized operations for specific user types
+   - Include intelligent context and next-action suggestions
+
+**Important:** ALL tools provide semantic hints and intelligent workflow guidance. Role configuration adds ADDITIONAL specialized tools tailored to specific workflows.
 
 ### Available Roles
 
-| Role | Description | Additional Tools |
-|------|-------------|------------------|
-| `developer` | Software developers focused on task completion | `show-my-tasks`, `complete-task`, `start-working-on`, `show-my-bugs`, `log-time` |
-| `project-manager` | Project managers handling planning and oversight | `sprint-planning`, `resource-allocation`, `progress-tracking` |
-| `tester` | QA testers focused on bug tracking and testing | `test-planning`, `bug-reporting`, `test-execution` |
-| `product-owner` | Product owners managing requirements and priorities | `backlog-management`, `priority-setting`, `stakeholder-feedback` |
+#### Developer Role (`TP_USER_ROLE=developer`)
 
-### Developer Role Example
+Adds specialized tools for task management and development workflows:
 
+**Additional Tools:**
+- `show_my_tasks` - View assigned tasks with priority filtering and context
+- `start_working_on` - Begin work on tasks with state transitions
+- `complete_task` - Mark tasks complete with time logging
+- `show_my_bugs` - Analyze assigned bugs with severity insights
+- `log_time` - Record time spent with intelligent entity discovery
+- `add_comment` - Add contextual comments with workflow awareness
+- `show_comments` - View comments with hierarchical organization
+- `delete_comment` - Delete comments with ownership validation
+- `analyze_attachment` - AI-powered attachment analysis with security validation
+
+**Docker Configuration:**
 ```bash
-docker run --rm -i \
+docker run -it --rm \
   -e TP_DOMAIN=company.tpondemand.com \
-  -e TP_USERNAME=your-username \
-  -e TP_PASSWORD=your-password \
+  -e TP_API_KEY=your-api-key \
   -e TP_USER_ROLE=developer \
   -e TP_USER_ID=12345 \
   -e TP_USER_EMAIL=developer@company.com \
-  apptio-target-process-mcp:local
+  ghcr.io/aaronsb/apptio-target-process-mcp:latest
 ```
 
-With `developer` role, you get additional tools like:
-- `show-my-tasks` - View tasks assigned to you with intelligent priority filtering
-- `complete-task` - Mark tasks complete with automatic time logging
-- `start-working-on` - Begin work on tasks with state transitions
-- `show-my-bugs` - View bugs assigned to you with severity insights
-- `log-time` - Record time spent with intelligent context detection
+#### Project Manager Role (`TP_USER_ROLE=project-manager`)
 
-### Project Manager Role Example
+Adds tools for project oversight and team management:
 
+**Additional Tools:**
+- `show_project_status` - Project health dashboard with metrics
+- `show_team_workload` - Team capacity and assignment analysis
+- `create_sprint_plan` - Sprint planning with velocity predictions
+- `show_sprint_progress` - Current sprint burndown and progress tracking
+
+**Docker Configuration:**
 ```bash
-docker run --rm -i \
+docker run -it --rm \
   -e TP_DOMAIN=company.tpondemand.com \
   -e TP_API_KEY=your-api-key \
   -e TP_USER_ROLE=project-manager \
-  -e TP_USER_ID=12345 \
+  -e TP_USER_ID=67890 \
   -e TP_USER_EMAIL=pm@company.com \
-  apptio-target-process-mcp:local
+  ghcr.io/aaronsb/apptio-target-process-mcp:latest
+```
+
+#### Tester Role (`TP_USER_ROLE=tester`)
+
+Adds tools for quality assurance and testing workflows:
+
+**Additional Tools:**
+- `show_my_test_tasks` - Test tasks with execution status
+- `create_bug_report` - Structured bug reporting with templates
+- `show_test_coverage` - Coverage analysis across projects
+- `validate_user_stories` - Story readiness for testing
+
+**Docker Configuration:**
+```bash
+docker run -it --rm \
+  -e TP_DOMAIN=company.tpondemand.com \
+  -e TP_API_KEY=your-api-key \
+  -e TP_USER_ROLE=tester \
+  -e TP_USER_ID=11111 \
+  -e TP_USER_EMAIL=tester@company.com \
+  ghcr.io/aaronsb/apptio-target-process-mcp:latest
+```
+
+#### Product Owner Role (`TP_USER_ROLE=product-owner`)
+
+Adds tools for product management and stakeholder communication:
+
+**Additional Tools:**
+- `show_product_backlog` - Prioritized backlog with insights
+- `analyze_story_readiness` - Story completeness analysis
+- `show_feature_progress` - Feature delivery tracking
+- `stakeholder_summary` - Executive summary generation
+
+**Docker Configuration:**
+```bash
+docker run -it --rm \
+  -e TP_DOMAIN=company.tpondemand.com \
+  -e TP_API_KEY=your-api-key \
+  -e TP_USER_ROLE=product-owner \
+  -e TP_USER_ID=22222 \
+  -e TP_USER_EMAIL=po@company.com \
+  ghcr.io/aaronsb/apptio-target-process-mcp:latest
+```
+
+## Docker Run Examples
+
+### Basic Interactive Testing
+
+For testing and exploration:
+```bash
+# Interactive mode with automatic cleanup
+docker run -it --rm \
+  -e TP_DOMAIN=company.tpondemand.com \
+  -e TP_API_KEY=your-api-key \
+  ghcr.io/aaronsb/apptio-target-process-mcp:latest
+```
+
+### Named Container for Persistent Use
+
+For longer-running scenarios:
+```bash
+# Run with a specific name for easier management
+docker run -d --name targetprocess-mcp \
+  -e TP_DOMAIN=company.tpondemand.com \
+  -e TP_API_KEY=your-api-key \
+  -e TP_USER_ROLE=developer \
+  -e TP_USER_ID=12345 \
+  ghcr.io/aaronsb/apptio-target-process-mcp:latest
+
+# Connect to the running container
+docker attach targetprocess-mcp
+
+# Stop and remove when done
+docker stop targetprocess-mcp
+docker rm targetprocess-mcp
+```
+
+### Volume Mounting for Configuration
+
+Mount local configuration files:
+```bash
+# Mount config directory
+docker run -it --rm \
+  -v $(pwd)/config:/app/config:ro \
+  -e CONFIG_PATH=/app/config/targetprocess-production.json \
+  ghcr.io/aaronsb/apptio-target-process-mcp:latest
+```
+
+### Network Configuration
+
+For specific network requirements:
+```bash
+# Run on specific network
+docker run -it --rm \
+  --network my-custom-network \
+  -e TP_DOMAIN=company.tpondemand.com \
+  -e TP_API_KEY=your-api-key \
+  ghcr.io/aaronsb/apptio-target-process-mcp:latest
+```
+
+### Resource Limits
+
+For production deployments with resource constraints:
+```bash
+# Set memory and CPU limits
+docker run -it --rm \
+  --memory=512m \
+  --cpus=1.0 \
+  -e TP_DOMAIN=company.tpondemand.com \
+  -e TP_API_KEY=your-api-key \
+  ghcr.io/aaronsb/apptio-target-process-mcp:latest
+```
+
+## Docker Compose Examples
+
+### Basic Configuration
+
+Create `docker-compose.yml`:
+```yaml
+version: '3.8'
+
+services:
+  targetprocess-mcp:
+    image: ghcr.io/aaronsb/apptio-target-process-mcp:latest
+    environment:
+      - TP_DOMAIN=company.tpondemand.com
+      - TP_API_KEY=your-api-key-here
+    stdin_open: true
+    tty: true
+    restart: unless-stopped
+```
+
+Run with:
+```bash
+docker-compose up -d
+docker-compose logs -f targetprocess-mcp
+```
+
+### Multi-Role Configuration
+
+For teams with different roles:
+```yaml
+version: '3.8'
+
+services:
+  targetprocess-dev:
+    image: ghcr.io/aaronsb/apptio-target-process-mcp:latest
+    environment:
+      - TP_DOMAIN=company.tpondemand.com
+      - TP_API_KEY=${DEV_API_KEY}
+      - TP_USER_ROLE=developer
+      - TP_USER_ID=${DEV_USER_ID}
+      - TP_USER_EMAIL=${DEV_USER_EMAIL}
+    stdin_open: true
+    tty: true
+    container_name: tp-mcp-dev
+
+  targetprocess-pm:
+    image: ghcr.io/aaronsb/apptio-target-process-mcp:latest
+    environment:
+      - TP_DOMAIN=company.tpondemand.com
+      - TP_API_KEY=${PM_API_KEY}
+      - TP_USER_ROLE=project-manager
+      - TP_USER_ID=${PM_USER_ID}
+      - TP_USER_EMAIL=${PM_USER_EMAIL}
+    stdin_open: true
+    tty: true
+    container_name: tp-mcp-pm
+```
+
+Create `.env` file:
+```bash
+# Developer configuration
+DEV_API_KEY=dev-api-key-here
+DEV_USER_ID=12345
+DEV_USER_EMAIL=dev@company.com
+
+# Project Manager configuration
+PM_API_KEY=pm-api-key-here
+PM_USER_ID=67890
+PM_USER_EMAIL=pm@company.com
+```
+
+### Production Configuration with Health Checks
+
+```yaml
+version: '3.8'
+
+services:
+  targetprocess-mcp:
+    image: ghcr.io/aaronsb/apptio-target-process-mcp:latest
+    environment:
+      - TP_DOMAIN=${TP_DOMAIN}
+      - TP_API_KEY=${TP_API_KEY}
+      - TP_USER_ROLE=${TP_USER_ROLE}
+      - TP_USER_ID=${TP_USER_ID}
+      - TP_USER_EMAIL=${TP_USER_EMAIL}
+      - MCP_STRICT_MODE=true
+    stdin_open: true
+    tty: true
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1.0'
+        reservations:
+          memory: 256M
+          cpus: '0.5'
+    healthcheck:
+      test: ["CMD", "node", "-e", "process.exit(0)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 ```
 
 ## Environment Variables Reference
 
-### Authentication (Required)
+| Variable | Required | Description | Example | Default |
+|----------|----------|-------------|---------|---------|
+| `TP_DOMAIN` | ✅ | Targetprocess domain (without https://) | `company.tpondemand.com` | - |
+| `TP_API_KEY` | ⚠️* | API token (recommended) | `abc123def456...` | - |
+| `TP_USERNAME` | ⚠️* | Username for basic auth | `john.doe` | - |
+| `TP_PASSWORD` | ⚠️* | Password for basic auth | `secretpassword` | - |
+| `TP_USER_ROLE` | ❌ | Role for specialized tools | `developer`, `project-manager`, `tester`, `product-owner` | - |
+| `TP_USER_ID` | ❌ | Your user ID in Targetprocess | `12345` | - |
+| `TP_USER_EMAIL` | ❌ | Your email in Targetprocess | `user@company.com` | - |
+| `MCP_STRICT_MODE` | ❌ | Enable strict validation | `true`, `false` | `false` |
+| `CONFIG_PATH` | ❌ | Path to JSON config file | `/app/config/custom.json` | - |
+| `DEBUG` | ❌ | Enable debug logging | `*`, `mcp:*`, `targetprocess:*` | - |
 
-| Variable | Description | Example | Required |
-|----------|-------------|---------|----------|
-| `TP_DOMAIN` | Targetprocess domain | `company.tpondemand.com` | Yes |
-| `TP_USERNAME` | Username for basic auth | `john.doe` | Yes* |
-| `TP_PASSWORD` | Password for basic auth | `your-password` | Yes* |
-| `TP_API_KEY` | API key for token auth | `abc123...` | Yes** |
+*Either `TP_API_KEY` OR (`TP_USERNAME` + `TP_PASSWORD`) is required.
 
-*Required for username/password auth
-**Required for API key auth
+### Role-Specific Environment Setup
 
-### Role Configuration (Optional)
-
-| Variable | Description | Default | Example |
-|----------|-------------|---------|---------|
-| `TP_USER_ROLE` | User role for specialized tools | `default` | `developer` |
-| `TP_USER_ID` | Targetprocess user ID | `0` | `12345` |
-| `TP_USER_EMAIL` | User email address | - | `user@company.com` |
-
-### Advanced Configuration (Optional)
-
-| Variable | Description | Default | Example |
-|----------|-------------|---------|---------|
-| `NODE_ENV` | Node.js environment | `production` | `development` |
-| `LOG_LEVEL` | Logging level | `info` | `debug` |
-
-## Docker Run Examples
-
-### Basic Usage
-
+**Developer Setup:**
 ```bash
-# Minimal setup with username/password
-docker run --rm -i \
-  -e TP_DOMAIN=company.tpondemand.com \
-  -e TP_USERNAME=user \
-  -e TP_PASSWORD=pass \
-  apptio-target-process-mcp:local
-
-# With API key authentication  
-docker run --rm -i \
-  -e TP_DOMAIN=company.tpondemand.com \
-  -e TP_API_KEY=abc123 \
-  apptio-target-process-mcp:local
-```
-
-### Developer Workflow
-
-```bash
-# Complete developer setup
-docker run --rm -i \
-  -e TP_DOMAIN=company.tpondemand.com \
-  -e TP_USERNAME=developer \
-  -e TP_PASSWORD=dev-password \
-  -e TP_USER_ROLE=developer \
-  -e TP_USER_ID=101734 \
-  -e TP_USER_EMAIL=dev@company.com \
-  apptio-target-process-mcp:local
-```
-
-### With Config File Mount
-
-```bash
-# Mount config file instead of environment variables
-docker run --rm -i \
-  -v $(pwd)/config/targetprocess.json:/app/config/targetprocess.json:ro \
-  -e TP_USER_ROLE=developer \
-  -e TP_USER_ID=12345 \
-  apptio-target-process-mcp:local
-```
-
-### Development Mode
-
-```bash
-# Development with debugging
-docker run --rm -i \
-  -e TP_DOMAIN=company.tpondemand.com \
-  -e TP_API_KEY=your-key \
-  -e NODE_ENV=development \
-  -e LOG_LEVEL=debug \
-  -e TP_USER_ROLE=developer \
-  apptio-target-process-mcp:local
-```
-
-## Docker Compose
-
-For production deployments, use Docker Compose:
-
-### docker-compose.yml
-
-```yaml
-version: '3.8'
-
-services:
-  targetprocess-mcp:
-    image: apptio-target-process-mcp:local
-    container_name: tp-mcp-server
-    restart: unless-stopped
-    environment:
-      - TP_DOMAIN=${TP_DOMAIN}
-      - TP_USERNAME=${TP_USERNAME}
-      - TP_PASSWORD=${TP_PASSWORD}
-      - TP_USER_ROLE=${TP_USER_ROLE:-developer}
-      - TP_USER_ID=${TP_USER_ID}
-      - TP_USER_EMAIL=${TP_USER_EMAIL}
-      - NODE_ENV=production
-    stdin_open: true
-    tty: true
-    volumes:
-      - ./config:/app/config:ro
-    networks:
-      - mcp-network
-
-networks:
-  mcp-network:
-    driver: bridge
-```
-
-### .env for Docker Compose
-
-```bash
-# Authentication
 TP_DOMAIN=company.tpondemand.com
-TP_USERNAME=your-username
-TP_PASSWORD=your-password
-
-# Role Configuration
+TP_API_KEY=your-api-key
 TP_USER_ROLE=developer
 TP_USER_ID=12345
-TP_USER_EMAIL=user@company.com
+TP_USER_EMAIL=dev@company.com
 ```
 
-### Running with Docker Compose
+**Project Manager Setup:**
+```bash
+TP_DOMAIN=company.tpondemand.com
+TP_API_KEY=your-api-key
+TP_USER_ROLE=project-manager
+TP_USER_ID=67890
+TP_USER_EMAIL=pm@company.com
+```
+
+## Building Custom Images
+
+### Using the Provided Build Script
 
 ```bash
-# Start the service
-docker-compose up -d
+# Clone the repository
+git clone https://github.com/aaronsb/apptio-target-process-mcp.git
+cd apptio-target-process-mcp
 
-# View logs
-docker-compose logs -f
+# Build the Docker image (quiet mode)
+./scripts/docker-build.sh
 
-# Stop the service
-docker-compose down
-
-# Update and restart
-docker-compose pull && docker-compose up -d
+# Build with verbose output
+./scripts/docker-build.sh --verbose
 ```
 
-## Alternative Docker Compose (API Key)
+### Manual Docker Build
 
-```yaml
-version: '3.8'
+```bash
+# Build from the repository root
+docker build -t my-targetprocess-mcp:latest .
 
-services:
-  targetprocess-mcp:
-    image: apptio-target-process-mcp:local
-    container_name: tp-mcp-server
-    restart: unless-stopped
-    environment:
-      - TP_DOMAIN=${TP_DOMAIN}
-      - TP_API_KEY=${TP_API_KEY}
-      - TP_USER_ROLE=${TP_USER_ROLE:-developer}
-      - TP_USER_ID=${TP_USER_ID}
-      - TP_USER_EMAIL=${TP_USER_EMAIL}
-      - NODE_ENV=production
-    stdin_open: true
-    tty: true
-    networks:
-      - mcp-network
+# Build with specific tag
+docker build -t my-company/targetprocess-mcp:v1.0.0 .
 
-networks:
-  mcp-network:
-    driver: bridge
+# Build with build arguments
+docker build \
+  --build-arg NODE_VERSION=20 \
+  -t my-targetprocess-mcp:node20 \
+  .
+```
+
+### Multi-Stage Build Customization
+
+You can customize the Dockerfile for specific needs:
+
+```dockerfile
+# Custom Dockerfile extending the base
+FROM ghcr.io/aaronsb/apptio-target-process-mcp:latest
+
+# Add custom configuration
+COPY custom-config.json /app/config/
+ENV CONFIG_PATH=/app/config/custom-config.json
+
+# Add custom entrypoint
+COPY custom-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/custom-entrypoint.sh
+ENTRYPOINT ["custom-entrypoint.sh"]
 ```
 
 ## Troubleshooting
 
-### Common Docker Issues
+### Common Issues
 
-#### 1. Image Not Found
-```
-Error: Docker image 'apptio-target-process-mcp:local' not found
-```
+#### Image Pull Failures
 
-**Solution:**
+**Symptoms:**
 ```bash
-# Build the image first
-./scripts/docker-build.sh
-
-# Or build manually
-docker build -t apptio-target-process-mcp:local .
-```
-
-#### 2. Authentication Failed
-```
-Error: 401 Unauthorized
+Error response from daemon: pull access denied for ghcr.io/aaronsb/apptio-target-process-mcp, repository does not exist or may require 'docker login'
 ```
 
 **Solutions:**
-- Verify credentials in `.env` file
-- Check domain format (should be `company.tpondemand.com`)
-- Test credentials by logging into Targetprocess web interface
-- For API keys, verify the key is active and has required permissions
+1. **Check image name and tag:**
+   ```bash
+   # Verify the correct image name
+   docker pull ghcr.io/aaronsb/apptio-target-process-mcp:latest
+   ```
 
-#### 3. Connection Issues
-```
-Error: ECONNREFUSED or network timeout
-```
+2. **Try alternative registries:**
+   ```bash
+   # If GitHub Container Registry is unavailable, build locally
+   git clone https://github.com/aaronsb/apptio-target-process-mcp.git
+   cd apptio-target-process-mcp
+   ./scripts/docker-build.sh
+   ```
 
-**Solutions:**
-```bash
-# Test network connectivity
-docker run --rm -i alpine ping company.tpondemand.com
+#### Container Startup Failures
 
-# Check if running behind corporate firewall
-docker run --rm -i \
-  -e https_proxy=http://proxy:8080 \
-  -e http_proxy=http://proxy:8080 \
-  apptio-target-process-mcp:local
-```
-
-#### 4. Permission Errors
-```
-Error: Permission denied
-```
+**Symptoms:**
+- Container exits immediately
+- "Authentication failed" errors
+- "Connection refused" errors
 
 **Solutions:**
-```bash
-# Fix script permissions
-chmod +x scripts/docker-*.sh
 
-# Run with proper user
-docker run --rm -i --user $(id -u):$(id -g) \
-  -e TP_DOMAIN=... \
-  apptio-target-process-mcp:local
-```
+1. **Check container logs:**
+   ```bash
+   # For running containers
+   docker logs targetprocess-mcp
+   
+   # For containers that exited
+   docker logs --details $(docker ps -l -q)
+   ```
 
-#### 5. Config File Issues
-```
-Error: Configuration not found
-```
+2. **Test credentials outside Docker:**
+   ```bash
+   curl -H "Authorization: Basic $(echo -n 'token:your-api-key' | base64)" \
+        https://company.tpondemand.com/api/v1/Context
+   ```
 
-**Solutions:**
-```bash
-# Check mounted config file
-docker run --rm -i \
-  -v $(pwd)/config/targetprocess.json:/app/config/targetprocess.json:ro \
-  alpine cat /app/config/targetprocess.json
+3. **Verify environment variables:**
+   ```bash
+   # Run with debug output
+   docker run -it --rm \
+     -e TP_DOMAIN=company.tpondemand.com \
+     -e TP_API_KEY=your-api-key \
+     -e DEBUG=* \
+     ghcr.io/aaronsb/apptio-target-process-mcp:latest
+   ```
 
-# Use environment variables instead
-docker run --rm -i \
-  -e TP_DOMAIN=... \
-  -e TP_USERNAME=... \
-  -e TP_PASSWORD=... \
-  apptio-target-process-mcp:local
-```
+#### Permission Errors
 
-### Role Configuration Issues
-
-#### 1. Role Tools Not Available
-```
-Warning: role-specific tools not found
-```
-
-**Diagnosis:**
-```bash
-# Check environment variables
-docker run --rm -i \
-  -e TP_USER_ROLE=developer \
-  apptio-target-process-mcp:local \
-  env | grep TP_USER
-```
+**Symptoms:**
+- "Access denied" when using tools
+- Limited functionality despite authentication success
 
 **Solutions:**
-- Ensure `TP_USER_ROLE` is set to valid role: `developer`, `project-manager`, `tester`, `product-owner`
-- Set `TP_USER_ID` for user-specific operations
-- Verify role configuration in logs
 
-#### 2. User Identity Issues
-```
-Error: No user identity configured
-```
+1. **Check user permissions in Targetprocess:**
+   - Log into web interface
+   - Verify access to projects and entities
+   - Check role assignments
 
-**Solution:**
+2. **Test API key scope:**
+   ```bash
+   # Test with curl to verify permissions
+   curl -H "Authorization: Basic $(echo -n 'token:your-api-key' | base64)" \
+        "https://company.tpondemand.com/api/v1/UserStories?take=1"
+   ```
+
+#### Performance Issues
+
+**Symptoms:**
+- Slow response times
+- Container using excessive resources
+- Timeouts on operations
+
+**Solutions:**
+
+1. **Set resource limits:**
+   ```bash
+   docker run -it --rm \
+     --memory=512m \
+     --cpus=1.0 \
+     -e TP_DOMAIN=company.tpondemand.com \
+     -e TP_API_KEY=your-api-key \
+     ghcr.io/aaronsb/apptio-target-process-mcp:latest
+   ```
+
+2. **Check network connectivity:**
+   ```bash
+   # Test from within container
+   docker run -it --rm ghcr.io/aaronsb/apptio-target-process-mcp:latest bash
+   # Inside container:
+   ping company.tpondemand.com
+   ```
+
+3. **Monitor container resources:**
+   ```bash
+   docker stats targetprocess-mcp
+   ```
+
+#### Role Configuration Issues
+
+**Symptoms:**
+- Expected role-specific tools not available
+- "Invalid role" errors
+
+**Solutions:**
+
+1. **Verify role spelling:**
+   ```bash
+   # Correct values
+   TP_USER_ROLE=developer          # ✅
+   TP_USER_ROLE=project-manager    # ✅
+   TP_USER_ROLE=tester            # ✅
+   TP_USER_ROLE=product-owner     # ✅
+   
+   # Common mistakes
+   TP_USER_ROLE=dev               # ❌
+   TP_USER_ROLE=pm                # ❌
+   TP_USER_ROLE=qa                # ❌
+   ```
+
+2. **Ensure user context is complete:**
+   ```bash
+   # All role-specific configurations need user context
+   docker run -it --rm \
+     -e TP_DOMAIN=company.tpondemand.com \
+     -e TP_API_KEY=your-api-key \
+     -e TP_USER_ROLE=developer \
+     -e TP_USER_ID=12345 \
+     -e TP_USER_EMAIL=dev@company.com \
+     ghcr.io/aaronsb/apptio-target-process-mcp:latest
+   ```
+
+### Debug Mode
+
+Enable comprehensive logging for troubleshooting:
+
 ```bash
-docker run --rm -i \
-  -e TP_DOMAIN=... \
-  -e TP_USERNAME=... \
-  -e TP_PASSWORD=... \
-  -e TP_USER_ROLE=developer \
-  -e TP_USER_ID=12345 \
-  -e TP_USER_EMAIL=user@company.com \
-  apptio-target-process-mcp:local
-```
+# Enable all debug output
+docker run -it --rm \
+  -e TP_DOMAIN=company.tpondemand.com \
+  -e TP_API_KEY=your-api-key \
+  -e DEBUG=* \
+  ghcr.io/aaronsb/apptio-target-process-mcp:latest
 
-### Debugging Commands
-
-```bash
-# Check container status
-docker ps -a
-
-# View container logs
-docker logs <container-id>
-
-# Interactive shell in container
-docker run --rm -it --entrypoint /bin/sh apptio-target-process-mcp:local
-
-# Test environment inside container
-docker run --rm -i \
-  -e TP_DOMAIN=... \
-  apptio-target-process-mcp:local \
-  env | grep TP_
-
-# Check config file creation
-docker run --rm -i \
-  -e TP_DOMAIN=... \
-  -e TP_USERNAME=... \
-  -e TP_PASSWORD=... \
-  --entrypoint /bin/sh \
-  apptio-target-process-mcp:local \
-  -c "ls -la /app/config/ && cat /app/config/targetprocess.json"
-```
-
-### Build Issues
-
-#### 1. Build Failures
-```bash
-# Check build logs
-cat /tmp/apptio-target-process-mcp/docker-build.log
-
-# Build with verbose output
-./scripts/docker-build.sh --verbose
-
-# Clean build (remove cache)
-docker build --no-cache -t apptio-target-process-mcp:local .
-```
-
-#### 2. Test Failures During Build
-```bash
-# Skip tests during build (not recommended for production)
-docker build --build-arg SKIP_TESTS=true -t apptio-target-process-mcp:local .
-```
-
-### Performance Issues
-
-#### 1. Slow Startup
-```bash
-# Check resource usage
-docker stats
-
-# Allocate more resources (Docker Desktop)
-docker run --rm -i \
-  --memory=2g \
-  --cpus=2 \
-  -e TP_DOMAIN=... \
-  apptio-target-process-mcp:local
-```
-
-#### 2. Memory Issues
-```bash
-# Monitor memory usage
-docker run --rm -i \
-  --memory=1g \
-  --memory-swap=2g \
-  -e TP_DOMAIN=... \
-  apptio-target-process-mcp:local
-```
-
-## Advanced Configuration
-
-### Custom Entrypoint
-```bash
-# Use custom entrypoint script
-docker run --rm -i \
-  -v $(pwd)/custom-entrypoint.sh:/custom-entrypoint.sh:ro \
-  --entrypoint /custom-entrypoint.sh \
-  apptio-target-process-mcp:local
+# Enable specific debug categories
+docker run -it --rm \
+  -e TP_DOMAIN=company.tpondemand.com \
+  -e TP_API_KEY=your-api-key \
+  -e DEBUG=mcp:*,targetprocess:* \
+  ghcr.io/aaronsb/apptio-target-process-mcp:latest
 ```
 
 ### Health Checks
-```yaml
-# In docker-compose.yml
-services:
-  targetprocess-mcp:
-    # ... other config
-    healthcheck:
-      test: ["CMD", "node", "-e", "console.log('healthy')"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
-```
 
-### Secrets Management
-```bash
-# Using Docker secrets (Swarm mode)
-echo "your-password" | docker secret create tp_password -
-docker service create \
-  --secret tp_password \
-  --env TP_PASSWORD_FILE=/run/secrets/tp_password \
-  apptio-target-process-mcp:local
-```
-
-## Security Best Practices
-
-1. **Never expose credentials in logs or commands**
-2. **Use API keys instead of passwords when possible**
-3. **Run containers with non-root user when possible**
-4. **Use Docker secrets or mounted files for credentials**
-5. **Regularly update the base image and dependencies**
-6. **Scan images for vulnerabilities**
+Implement health checks for production deployments:
 
 ```bash
-# Security scan (if available)
-docker scan apptio-target-process-mcp:local
+# Manual health check
+docker exec targetprocess-mcp node -e "
+  console.log('Container health check passed');
+  process.exit(0);
+"
 
-# Run as non-root user
-docker run --rm -i --user 1000:1000 \
-  -e TP_DOMAIN=... \
-  apptio-target-process-mcp:local
+# Test MCP functionality
+docker exec targetprocess-mcp node -e "
+  const { execSync } = require('child_process');
+  try {
+    execSync('echo \'{\"action\": \"list_types\"}\' | node build/index.js');
+    console.log('MCP health check passed');
+    process.exit(0);
+  } catch (error) {
+    console.error('MCP health check failed:', error.message);
+    process.exit(1);
+  }
+"
 ```
+
+## Best Practices
+
+### Security
+
+1. **Use API keys instead of passwords:**
+   ```bash
+   # Preferred
+   -e TP_API_KEY=your-api-key
+   
+   # Avoid when possible
+   -e TP_USERNAME=user -e TP_PASSWORD=pass
+   ```
+
+2. **Use environment files for sensitive data:**
+   ```bash
+   # Create .env file with credentials
+   echo "TP_API_KEY=your-secret-key" > .env
+   chmod 600 .env
+   
+   # Use with docker-compose
+   docker-compose --env-file .env up
+   ```
+
+3. **Regular credential rotation:**
+   - Rotate API keys quarterly
+   - Monitor access logs in Targetprocess
+   - Use separate keys for different environments
+
+### Resource Management
+
+1. **Set appropriate resource limits:**
+   ```yaml
+   # In docker-compose.yml
+   deploy:
+     resources:
+       limits:
+         memory: 512M
+         cpus: '1.0'
+       reservations:
+         memory: 256M
+         cpus: '0.5'
+   ```
+
+2. **Use restart policies:**
+   ```yaml
+   restart: unless-stopped
+   ```
+
+3. **Implement health checks:**
+   ```yaml
+   healthcheck:
+     test: ["CMD", "node", "-e", "process.exit(0)"]
+     interval: 30s
+     timeout: 10s
+     retries: 3
+   ```
+
+### Development Workflow
+
+1. **Use named containers for development:**
+   ```bash
+   docker run -d --name tp-mcp-dev \
+     -e TP_DOMAIN=dev.tpondemand.com \
+     -e TP_API_KEY=dev-key \
+     ghcr.io/aaronsb/apptio-target-process-mcp:latest
+   ```
+
+2. **Volume mount for configuration:**
+   ```bash
+   docker run -it --rm \
+     -v $(pwd)/config:/app/config:ro \
+     -e CONFIG_PATH=/app/config/development.json \
+     ghcr.io/aaronsb/apptio-target-process-mcp:latest
+   ```
+
+3. **Use different tags for environments:**
+   ```bash
+   # Development
+   ghcr.io/aaronsb/apptio-target-process-mcp:dev
+   
+   # Staging
+   ghcr.io/aaronsb/apptio-target-process-mcp:staging
+   
+   # Production
+   ghcr.io/aaronsb/apptio-target-process-mcp:latest
+   ```
+
+### Production Deployment
+
+1. **Use specific image versions:**
+   ```yaml
+   # Instead of 'latest'
+   image: ghcr.io/aaronsb/apptio-target-process-mcp:v0.10.0
+   ```
+
+2. **Implement logging:**
+   ```yaml
+   logging:
+     driver: json-file
+     options:
+       max-size: "10m"
+       max-file: "3"
+   ```
+
+3. **Use secrets management:**
+   ```yaml
+   # Docker Compose with secrets
+   secrets:
+     tp_api_key:
+       external: true
+   services:
+     targetprocess-mcp:
+       secrets:
+         - tp_api_key
+   ```
+
+### Integration with AI Assistants
+
+1. **Configure for Claude Desktop:**
+   ```json
+   {
+     "mcpServers": {
+       "targetprocess": {
+         "command": "docker",
+         "args": [
+           "run", "-i", "--rm",
+           "-e", "TP_DOMAIN",
+           "-e", "TP_API_KEY",
+           "ghcr.io/aaronsb/apptio-target-process-mcp:latest"
+         ],
+         "env": {
+           "TP_DOMAIN": "company.tpondemand.com",
+           "TP_API_KEY": "your-api-key"
+         }
+       }
+     }
+   }
+   ```
+
+2. **Configure for Claude Code:**
+   ```bash
+   claude mcp add targetprocess docker \
+     --image ghcr.io/aaronsb/apptio-target-process-mcp:latest \
+     -e TP_DOMAIN=company.tpondemand.com \
+     -e TP_API_KEY=your-api-key
+   ```
 
 ## Next Steps
 
-- [Integration Guide](../integration/README.md) - Connect with Claude Desktop, Claude Code, or other MCP clients
-- [Semantic Operations](../semantic-operations/README.md) - Learn about role-specific tools and workflows
-- [Use Cases](../use-cases/README.md) - Explore specific workflow examples
-- [Security Guide](../security-and-authentication.md) - Advanced authentication and security configuration
+After successfully configuring Docker deployment:
+
+1. **Test the Integration**: Verify all tools work as expected
+2. **Explore Role-Specific Features**: If configured, test specialized tools
+3. **Review Use Cases**: Check [use cases documentation](../use-cases/README.md) for workflow examples
+4. **Set Up Monitoring**: Implement logging and health checks for production
+5. **Join Community**: Report issues and get help via GitHub issues
+
+## Comparison with Other Methods
+
+| Feature | Docker | NPX | Local Build |
+|---------|--------|-----|-------------|
+| **Setup Complexity** | ⭐⭐ Low | ⭐ Very Low | ⭐⭐⭐ Medium |
+| **Isolation** | ✅ Complete | ❌ None | ❌ Limited |
+| **Consistency** | ✅ Guaranteed | ⚠️ Depends on Node | ⚠️ Variable |
+| **Resource Usage** | ⭐⭐ Medium | ⭐⭐⭐ Low | ⭐⭐⭐ Low |
+| **Update Process** | 🔄 Pull new image | 🔄 Auto-update | 🔄 Manual rebuild |
+| **Debugging** | ⭐⭐ Good | ⭐⭐⭐ Excellent | ⭐⭐⭐ Excellent |
+| **Production Ready** | ✅ Yes | ❌ Limited | ⚠️ Depends |
+
+**Recommendation**: Docker provides the best balance of consistency, isolation, and production readiness, making it ideal for teams and production deployments.
+
+---
+
+**Note**: This guide covers Docker-based deployment of the Targetprocess MCP Server. For other deployment methods, see the [NPX configuration guide](npx.md) or [local development guide](local-development.md).

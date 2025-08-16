@@ -1,455 +1,1035 @@
 # NPX Configuration Guide
 
-This guide explains how to use the Targetprocess MCP Server with NPX, allowing you to run it without local installation.
+This comprehensive guide explains how to integrate the Targetprocess MCP Server using NPX (Node Package eXecute), providing zero-installation access to the latest version directly from the npm registry.
 
-## What is NPX and Why Use It?
+## Table of Contents
 
-NPX (Node Package Execute) is a command-line utility that ships with npm (version 5.2.0+). It allows you to execute packages directly from the npm registry without installing them globally or locally.
+1. [What is NPX and Advantages](#what-is-npx-and-advantages)
+2. [Prerequisites](#prerequisites)
+3. [Quick Start Examples](#quick-start-examples)
+4. [Authentication Methods](#authentication-methods)
+5. [Role Configuration](#role-configuration)
+6. [Environment Variables](#environment-variables)
+7. [Integration Examples](#integration-examples)
+8. [Limitations and Considerations](#limitations-and-considerations)
+9. [Troubleshooting](#troubleshooting)
+10. [Best Practices](#best-practices)
 
-### Advantages of NPX Approach
-- **No Local Installation**: Run the MCP server without cloning or building the repository
-- **Always Latest Version**: NPX fetches the latest published version automatically
-- **Easy Updates**: No need to manually update - just run again to get the latest version
-- **Consistent Environment**: Same version runs across different machines
-- **Quick Testing**: Perfect for trying out the server before committing to a local setup
-- **CI/CD Friendly**: Easily integrate into automated workflows
+## What is NPX and Advantages
 
-### Limitations of NPX Approach
-- **Network Dependency**: Requires internet connection for first run or updates
-- **No Local Development**: Cannot modify source code or contribute changes
-- **Startup Latency**: Slight delay on first run while package downloads
-- **Limited Customization**: Cannot modify configuration beyond environment variables
-- **Version Control**: Less control over which specific version runs
+### What is NPX?
 
-## Basic Usage with Username/Password
+NPX (Node Package eXecute) is a tool that comes bundled with npm 5.2+ that allows you to run packages directly from the npm registry without installing them globally. It downloads and executes packages on-demand.
 
-The simplest way to use the Targetprocess MCP server with basic authentication:
+### Key Advantages
+
+1. **Zero Installation**: No need to clone repositories or build projects locally
+2. **Always Latest**: Automatically uses the most recent published version
+3. **No Dependencies**: Only requires Node.js and npm (which includes npx)
+4. **Instant Updates**: Each run fetches the latest version from npm registry
+5. **Clean Environment**: No leftover files or global installations
+6. **Cross-Platform**: Works identically on Windows, macOS, and Linux
+
+### How It Works
 
 ```bash
+# Traditional approach (install + run)
+npm install -g @aaronsb/targetprocess-mcp
+targetprocess-mcp
+
+# NPX approach (run directly)
 npx @aaronsb/targetprocess-mcp
 ```
 
-Set your credentials via environment variables:
+When you run `npx @aaronsb/targetprocess-mcp`, NPX:
+1. Checks if the package exists in npm registry
+2. Downloads the latest version to a temporary location
+3. Executes the package's main binary
+4. Cleans up temporary files after execution
 
+## Prerequisites
+
+### Node.js and npm
+- **Node.js 18+** (with ES modules support)
+- **npm 9+** (bundled with Node.js, includes npx)
+
+Check your versions:
 ```bash
-export TP_DOMAIN="your-company.tpondemand.com"
-export TP_USERNAME="your-username" 
-export TP_PASSWORD="your-password"
+node --version  # Should be 18.x or higher
+npm --version   # Should be 9.x or higher
+npx --version   # Should be 9.x or higher
+```
+
+### Targetprocess Access
+- A Targetprocess instance (e.g., `company.tpondemand.com`)
+- Valid credentials (username/password OR API key)
+- Network access to your Targetprocess domain
+
+### Network Requirements
+- Access to npm registry (`registry.npmjs.org`)
+- Access to your Targetprocess instance
+- Outbound HTTPS connections (ports 443)
+
+## Quick Start Examples
+
+### Basic Setup with API Key (Recommended)
+```bash
+# Set environment variables and run
+TP_DOMAIN=company.tpondemand.com \
+TP_API_KEY=your-api-key-here \
 npx @aaronsb/targetprocess-mcp
 ```
 
-Or inline:
-
+### Basic Setup with Username/Password
 ```bash
-TP_DOMAIN="your-company.tpondemand.com" \
-TP_USERNAME="your-username" \
-TP_PASSWORD="your-password" \
+# Alternative authentication method
+TP_DOMAIN=company.tpondemand.com \
+TP_USERNAME=your-username \
+TP_PASSWORD=your-password \
 npx @aaronsb/targetprocess-mcp
 ```
-
-## Basic Usage with API Key
-
-API key authentication is the recommended approach for production use:
-
-```bash
-export TP_DOMAIN="your-company.tpondemand.com"
-export TP_API_KEY="your-api-key"
-npx @aaronsb/targetprocess-mcp
-```
-
-Or inline:
-
-```bash
-TP_DOMAIN="your-company.tpondemand.com" \
-TP_API_KEY="your-api-key" \
-npx @aaronsb/targetprocess-mcp
-```
-
-### Obtaining an API Key
-
-1. Log into your Targetprocess instance
-2. Go to **Settings** → **Access Tokens**
-3. Create a new token with appropriate permissions
-4. Use the token as `TP_API_KEY`
-
-## Role-Specific Configuration
-
-### Understanding Tool Types
-
-The Targetprocess MCP server provides two categories of tools:
-
-1. **Core Tools**: Available to all users regardless of role
-   - `search_entities` - Search for any type of Targetprocess entity
-   - `get_entity` - Get detailed information about a specific entity
-   - `create_entity` - Create new entities
-   - `update_entity` - Update existing entities  
-   - `inspect_object` - Explore Targetprocess metadata
-   - `comment` - Unified comment operations
-   - `show_more` / `show_all` - Pagination tools
-
-2. **Role-Specific Semantic Operations**: Additional specialized tools based on your role
-   - **Developer**: `show_my_tasks`, `complete_task`, `show_my_bugs`, `log_time`, etc.
-   - **Project Manager**: Sprint planning tools, team management, reporting tools
-   - **Tester**: Test execution tools, defect tracking, quality metrics
-   - **Product Owner**: Backlog management, story prioritization, roadmap tools
-
-All tools provide **semantic hints** and intelligent guidance, but configuring a role adds specialized workflow tools tailored to your job function.
 
 ### Developer Role Configuration
-
-Perfect for software developers working on tasks and fixing bugs:
-
 ```bash
-export TP_DOMAIN="your-company.tpondemand.com"
-export TP_API_KEY="your-api-key"
-export TP_USER_ROLE="developer"
-export TP_USER_ID="12345"  # Your user ID in Targetprocess
-export TP_USER_EMAIL="you@company.com"
+# Enable developer-specific tools
+TP_DOMAIN=company.tpondemand.com \
+TP_API_KEY=your-api-key \
+TP_USER_ROLE=developer \
+TP_USER_ID=12345 \
+TP_USER_EMAIL=dev@company.com \
 npx @aaronsb/targetprocess-mcp
 ```
 
-**Additional Tools Added:**
-- `show_my_tasks` - View your assigned tasks with priority insights
-- `start_working_on` - Begin work on a task with state transitions
-- `complete_task` - Mark tasks complete with time logging  
-- `show_my_bugs` - Analyze your assigned bugs with severity insights
-- `log_time` - Record time spent with intelligent discovery
-- `add_comment` - Add contextual comments with reply support
-- `show_comments` - View comments with hierarchical organization
-- `delete_comment` - Delete comments with ownership validation
-- `analyze_attachment` - AI-powered analysis of TargetProcess attachments
-
-### Project Manager Role Configuration
-
-Designed for project managers overseeing teams and sprints:
-
+### Using Environment File
 ```bash
-export TP_DOMAIN="your-company.tpondemand.com" 
-export TP_API_KEY="your-api-key"
-export TP_USER_ROLE="project-manager"
-export TP_USER_ID="12345"
-export TP_USER_EMAIL="pm@company.com"
+# Create .env file with credentials
+echo "TP_DOMAIN=company.tpondemand.com" > .env
+echo "TP_API_KEY=your-api-key" >> .env
+
+# Source environment and run
+source .env && npx @aaronsb/targetprocess-mcp
+```
+
+### Always Use Latest Version
+```bash
+# Force download of latest version (bypassing cache)
+npx --yes @aaronsb/targetprocess-mcp
+```
+
+## Authentication Methods
+
+### API Key Authentication (Recommended)
+
+API key authentication is more secure and reliable than username/password combinations.
+
+**Creating an API Key:**
+1. Log into your Targetprocess instance
+2. Navigate to **Settings** → **Access Tokens**
+3. Click **Create Token**
+4. Provide a descriptive name (e.g., "NPX MCP Integration")
+5. Select appropriate permissions (typically "Read/Write" for most operations)
+6. Copy the generated token
+
+**NPX Configuration:**
+```bash
+# Inline environment variables
+TP_DOMAIN=company.tpondemand.com \
+TP_API_KEY=abc123def456789... \
+npx @aaronsb/targetprocess-mcp
+
+# Or export for session
+export TP_DOMAIN=company.tpondemand.com
+export TP_API_KEY=abc123def456789...
 npx @aaronsb/targetprocess-mcp
 ```
 
-**Additional Tools Added:**
-- Sprint planning and management tools
-- Team workload analysis tools  
-- Progress reporting and metrics
-- Resource allocation tools
+### Username/Password Authentication
 
-### Tester Role Configuration
+While supported, username/password authentication is less secure and may be subject to additional rate limiting.
 
-Tailored for QA engineers and testers:
-
+**NPX Configuration:**
 ```bash
-export TP_DOMAIN="your-company.tpondemand.com"
-export TP_API_KEY="your-api-key" 
-export TP_USER_ROLE="tester"
-export TP_USER_ID="12345"
-export TP_USER_EMAIL="tester@company.com"
+# Direct inline usage
+TP_DOMAIN=company.tpondemand.com \
+TP_USERNAME=john.doe \
+TP_PASSWORD=your-secure-password \
+npx @aaronsb/targetprocess-mcp
+
+# Using environment variables
+export TP_DOMAIN=company.tpondemand.com
+export TP_USERNAME=john.doe
+export TP_PASSWORD=your-secure-password
 npx @aaronsb/targetprocess-mcp
 ```
 
-**Additional Tools Added:**
-- Test execution and tracking tools
-- Defect lifecycle management
-- Quality metrics and reporting
-- Test planning tools
+### Environment File Support
 
-### Product Owner Role Configuration
+For better security and convenience, use environment files:
 
-For product owners managing backlogs and roadmaps:
-
+**Create `.env` file:**
 ```bash
-export TP_DOMAIN="your-company.tpondemand.com"
-export TP_API_KEY="your-api-key"
-export TP_USER_ROLE="product-owner" 
-export TP_USER_ID="12345"
-export TP_USER_EMAIL="po@company.com"
-npx @aaronsb/targetprocess-mcp
-```
+# Authentication (choose one method)
+TP_DOMAIN=company.tpondemand.com
+TP_API_KEY=your-api-key-here
 
-**Additional Tools Added:**
-- Backlog prioritization tools
-- Story management and grooming
-- Roadmap planning tools
-- Stakeholder communication tools
+# OR
+# TP_USERNAME=your-username
+# TP_PASSWORD=your-password
 
-## Environment Variables Reference
-
-### Required Variables
-
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `TP_DOMAIN` | Your Targetprocess domain | `company.tpondemand.com` |
-
-### Authentication (Choose One)
-
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `TP_API_KEY` | API token (recommended) | `abc123def456...` |
-| `TP_USERNAME` + `TP_PASSWORD` | Basic auth credentials | `john.doe` + `secretpass` |
-
-### Role Configuration (Optional)
-
-| Variable | Description | Example | Values |
-|----------|-------------|---------|---------|
-| `TP_USER_ROLE` | Your role for specialized tools | `developer` | `developer`, `project-manager`, `tester`, `product-owner` |
-| `TP_USER_ID` | Your Targetprocess user ID | `12345` | Numeric ID |
-| `TP_USER_EMAIL` | Your email for assignments | `you@company.com` | Valid email |
-
-### Advanced Configuration (Optional)
-
-| Variable | Description | Default | Example |
-|----------|-------------|---------|---------|
-| `TP_LOG_LEVEL` | Logging verbosity | `info` | `debug`, `info`, `warn`, `error` |
-| `TP_TIMEOUT` | API request timeout (ms) | `30000` | `60000` |
-| `TP_RETRY_COUNT` | Max retry attempts | `3` | `5` |
-
-## Advanced Examples
-
-### Environment File Approach
-
-Create a `.env` file for reusable configuration:
-
-```bash
-# .env file
-TP_DOMAIN=mycompany.tpondemand.com
-TP_API_KEY=abc123def456ghi789
+# Optional role configuration
 TP_USER_ROLE=developer
 TP_USER_ID=12345
-TP_USER_EMAIL=john.doe@company.com
-TP_LOG_LEVEL=debug
+TP_USER_EMAIL=dev@company.com
 ```
 
-Then run:
-
+**Load and run:**
 ```bash
-set -a && source .env && set +a
+# Method 1: Source the file
+source .env && npx @aaronsb/targetprocess-mcp
+
+# Method 2: Use with env command
+env $(cat .env | xargs) npx @aaronsb/targetprocess-mcp
+
+# Method 3: Use dotenv (if installed)
+npx dotenv npx @aaronsb/targetprocess-mcp
+```
+
+## Role Configuration
+
+### Understanding Tool Categories
+
+The MCP server provides **two categories of tools**:
+
+1. **Core Tools** - Always available, provide semantic hints and intelligent workflows:
+   - `search_entities` - Search for any Targetprocess entity
+   - `get_entity` - Get detailed information about specific entities
+   - `create_entity` - Create new entities with validation
+   - `update_entity` - Update existing entities
+   - `inspect_object` - Inspect entity types and properties
+   - `comment` - Unified comment management (add, view, delete, analyze)
+
+2. **Role-Specific Tools** - Additional specialized tools when `TP_USER_ROLE` is configured:
+   - Only available when role is properly configured
+   - Provide workflow-optimized operations for specific user types
+   - Include intelligent context and next-action suggestions
+
+**Important:** ALL tools provide semantic hints and intelligent workflow guidance. Role configuration adds ADDITIONAL specialized tools tailored to specific workflows.
+
+### Available Roles
+
+#### Developer Role (`TP_USER_ROLE=developer`)
+
+Adds specialized tools for task management and development workflows:
+
+**Additional Tools:**
+- `show_my_tasks` - View assigned tasks with priority filtering and context
+- `start_working_on` - Begin work on tasks with state transitions
+- `complete_task` - Mark tasks complete with time logging
+- `show_my_bugs` - Analyze assigned bugs with severity insights
+- `log_time` - Record time spent with intelligent entity discovery
+- `add_comment` - Add contextual comments with workflow awareness
+- `show_comments` - View comments with hierarchical organization
+- `delete_comment` - Delete comments with ownership validation
+- `analyze_attachment` - AI-powered attachment analysis with security validation
+
+**NPX Configuration:**
+```bash
+TP_DOMAIN=company.tpondemand.com \
+TP_API_KEY=your-api-key \
+TP_USER_ROLE=developer \
+TP_USER_ID=12345 \
+TP_USER_EMAIL=developer@company.com \
 npx @aaronsb/targetprocess-mcp
 ```
 
-### Full Developer Setup
+#### Project Manager Role (`TP_USER_ROLE=project-manager`)
 
-Complete configuration for a developer with all options:
+Adds tools for project oversight and team management:
 
+**Additional Tools:**
+- `show_project_status` - Project health dashboard with metrics
+- `show_team_workload` - Team capacity and assignment analysis
+- `create_sprint_plan` - Sprint planning with velocity predictions
+- `show_sprint_progress` - Current sprint burndown and progress tracking
+
+**NPX Configuration:**
 ```bash
-TP_DOMAIN="mycompany.tpondemand.com" \
-TP_API_KEY="your-secret-api-key" \
-TP_USER_ROLE="developer" \
-TP_USER_ID="12345" \
-TP_USER_EMAIL="john.doe@company.com" \
-TP_LOG_LEVEL="debug" \
-TP_TIMEOUT="60000" \
-TP_RETRY_COUNT="5" \
+TP_DOMAIN=company.tpondemand.com \
+TP_API_KEY=your-api-key \
+TP_USER_ROLE=project-manager \
+TP_USER_ID=67890 \
+TP_USER_EMAIL=pm@company.com \
 npx @aaronsb/targetprocess-mcp
 ```
 
-### Integration with MCP Clients
+#### Tester Role (`TP_USER_ROLE=tester`)
 
-#### Claude Code Integration
+Adds tools for quality assurance and testing workflows:
 
+**Additional Tools:**
+- `show_my_test_tasks` - Test tasks with execution status
+- `create_bug_report` - Structured bug reporting with templates
+- `show_test_coverage` - Coverage analysis across projects
+- `validate_user_stories` - Story readiness for testing
+
+**NPX Configuration:**
 ```bash
-claude mcp add targetprocess npx @aaronsb/targetprocess-mcp \
-  -e TP_DOMAIN=company.tpondemand.com \
-  -e TP_API_KEY=your-api-key \
-  -e TP_USER_ROLE=developer \
-  -e TP_USER_ID=12345 \
-  -e TP_USER_EMAIL=you@company.com
+TP_DOMAIN=company.tpondemand.com \
+TP_API_KEY=your-api-key \
+TP_USER_ROLE=tester \
+TP_USER_ID=11111 \
+TP_USER_EMAIL=tester@company.com \
+npx @aaronsb/targetprocess-mcp
 ```
 
-#### Claude Desktop Integration
+#### Product Owner Role (`TP_USER_ROLE=product-owner`)
 
-Add to your Claude Desktop config file (`config.json`):
+Adds tools for product management and stakeholder communication:
 
+**Additional Tools:**
+- `show_product_backlog` - Prioritized backlog with insights
+- `analyze_story_readiness` - Story completeness analysis
+- `show_feature_progress` - Feature delivery tracking
+- `stakeholder_summary` - Executive summary generation
+
+**NPX Configuration:**
+```bash
+TP_DOMAIN=company.tpondemand.com \
+TP_API_KEY=your-api-key \
+TP_USER_ROLE=product-owner \
+TP_USER_ID=22222 \
+TP_USER_EMAIL=po@company.com \
+npx @aaronsb/targetprocess-mcp
+```
+
+## Environment Variables
+
+### Core Environment Variables
+
+| Variable | Required | Description | Example | Default |
+|----------|----------|-------------|---------|---------|
+| `TP_DOMAIN` | ✅ | Targetprocess domain (without https://) | `company.tpondemand.com` | - |
+| `TP_API_KEY` | ⚠️* | API token (recommended) | `abc123def456...` | - |
+| `TP_USERNAME` | ⚠️* | Username for basic auth | `john.doe` | - |
+| `TP_PASSWORD` | ⚠️* | Password for basic auth | `secretpassword` | - |
+
+*Either `TP_API_KEY` OR (`TP_USERNAME` + `TP_PASSWORD`) is required.
+
+### Role Configuration Variables
+
+| Variable | Required | Description | Example | Default |
+|----------|----------|-------------|---------|---------|
+| `TP_USER_ROLE` | ❌ | Role for specialized tools | `developer`, `project-manager`, `tester`, `product-owner` | - |
+| `TP_USER_ID` | ❌ | Your user ID in Targetprocess | `12345` | - |
+| `TP_USER_EMAIL` | ❌ | Your email in Targetprocess | `user@company.com` | - |
+
+### Advanced Configuration Variables
+
+| Variable | Required | Description | Example | Default |
+|----------|----------|-------------|---------|---------|
+| `MCP_STRICT_MODE` | ❌ | Enable strict validation | `true`, `false` | `false` |
+| `DEBUG` | ❌ | Enable debug logging | `*`, `mcp:*`, `targetprocess:*` | - |
+| `NODE_ENV` | ❌ | Environment mode | `development`, `production` | `production` |
+
+### Setting Environment Variables
+
+**Method 1: Inline (Single Use)**
+```bash
+TP_DOMAIN=company.tpondemand.com TP_API_KEY=your-key npx @aaronsb/targetprocess-mcp
+```
+
+**Method 2: Export (Session-wide)**
+```bash
+export TP_DOMAIN=company.tpondemand.com
+export TP_API_KEY=your-api-key
+export TP_USER_ROLE=developer
+npx @aaronsb/targetprocess-mcp
+```
+
+**Method 3: Environment File**
+```bash
+# Create .env
+cat > .env << EOF
+TP_DOMAIN=company.tpondemand.com
+TP_API_KEY=your-api-key
+TP_USER_ROLE=developer
+TP_USER_ID=12345
+TP_USER_EMAIL=dev@company.com
+EOF
+
+# Load and run
+source .env && npx @aaronsb/targetprocess-mcp
+```
+
+**Method 4: Cross-Platform Script**
+```bash
+#!/bin/bash
+# run-mcp.sh
+
+# Load environment
+source .env 2>/dev/null || echo "No .env file found"
+
+# Set defaults
+TP_DOMAIN=${TP_DOMAIN:-""}
+TP_API_KEY=${TP_API_KEY:-""}
+
+# Validate required variables
+if [ -z "$TP_DOMAIN" ]; then
+    echo "Error: TP_DOMAIN is required"
+    exit 1
+fi
+
+if [ -z "$TP_API_KEY" ] && [ -z "$TP_USERNAME" ]; then
+    echo "Error: Either TP_API_KEY or TP_USERNAME/TP_PASSWORD is required"
+    exit 1
+fi
+
+# Run with npx
+npx @aaronsb/targetprocess-mcp "$@"
+```
+
+## Integration Examples
+
+### Claude Desktop Integration
+
+Configure NPX execution in Claude Desktop:
+
+**`claude_desktop_config.json`:**
 ```json
 {
   "mcpServers": {
     "targetprocess": {
       "command": "npx",
-      "args": ["@aaronsb/targetprocess-mcp"],
+      "args": [
+        "-y",
+        "@aaronsb/targetprocess-mcp"
+      ],
       "env": {
         "TP_DOMAIN": "company.tpondemand.com",
-        "TP_API_KEY": "your-api-key",
+        "TP_API_KEY": "your-api-key-here",
         "TP_USER_ROLE": "developer",
         "TP_USER_ID": "12345",
-        "TP_USER_EMAIL": "you@company.com"
+        "TP_USER_EMAIL": "dev@company.com"
       }
     }
   }
 }
 ```
 
-## Troubleshooting Common NPX Issues
+**Platform-specific locations:**
+- **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+- **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Linux**: `~/.config/Claude/claude_desktop_config.json`
 
-### Package Not Found
+### Claude Code Integration
 
-**Error**: `npm ERR! 404 Not Found - GET https://registry.npmjs.org/@aaronsb/targetprocess-mcp`
+Add NPX-based MCP server to Claude Code:
 
-**Solutions**:
-1. Check the exact package name: `@aaronsb/targetprocess-mcp`
-2. Verify you have internet connection
-3. Try clearing NPX cache: `npx --cache-clean`
-4. Check npm registry: `npm config get registry`
+```bash
+# Basic configuration
+claude mcp add targetprocess npx \
+  -e TP_DOMAIN=company.tpondemand.com \
+  -e TP_API_KEY=your-api-key \
+  @aaronsb/targetprocess-mcp
 
-### Permission Errors
+# With role configuration
+claude mcp add targetprocess npx \
+  -e TP_DOMAIN=company.tpondemand.com \
+  -e TP_API_KEY=your-api-key \
+  -e TP_USER_ROLE=developer \
+  -e TP_USER_ID=12345 \
+  -e TP_USER_EMAIL=dev@company.com \
+  @aaronsb/targetprocess-mcp
 
-**Error**: `EACCES: permission denied`
+# User scope (available across all projects)
+claude mcp add targetprocess npx -s user \
+  -e TP_DOMAIN=company.tpondemand.com \
+  -e TP_API_KEY=your-api-key \
+  @aaronsb/targetprocess-mcp
+```
 
-**Solutions**:
-1. Don't use `sudo` with NPX - it should work without elevated privileges
-2. Check npm permissions: `npm config get prefix`
-3. Fix npm permissions: `npm config set prefix ~/.npm-global`
-4. Add to PATH: `export PATH=~/.npm-global/bin:$PATH`
+### Scripted Integration
 
-### Network/Proxy Issues
+Create reusable scripts for different scenarios:
 
-**Error**: Network timeout or connection refused
+**`scripts/dev-mcp.sh` (Developer Setup):**
+```bash
+#!/bin/bash
+set -e
 
-**Solutions**:
-1. Check corporate proxy settings:
+# Developer-specific configuration
+export TP_DOMAIN="company.tpondemand.com"
+export TP_API_KEY="${DEV_API_KEY:-$(cat ~/.tp-dev-key 2>/dev/null)}"
+export TP_USER_ROLE="developer"
+export TP_USER_ID="12345"
+export TP_USER_EMAIL="dev@company.com"
+
+# Validation
+if [ -z "$TP_API_KEY" ]; then
+    echo "Error: DEV_API_KEY not set and ~/.tp-dev-key not found"
+    exit 1
+fi
+
+echo "🚀 Starting Targetprocess MCP (Developer Mode)..."
+npx --yes @aaronsb/targetprocess-mcp "$@"
+```
+
+**`scripts/pm-mcp.sh` (Project Manager Setup):**
+```bash
+#!/bin/bash
+set -e
+
+# Project Manager configuration
+export TP_DOMAIN="company.tpondemand.com"
+export TP_API_KEY="${PM_API_KEY:-$(cat ~/.tp-pm-key 2>/dev/null)}"
+export TP_USER_ROLE="project-manager"
+export TP_USER_ID="67890"
+export TP_USER_EMAIL="pm@company.com"
+
+# Validation
+if [ -z "$TP_API_KEY" ]; then
+    echo "Error: PM_API_KEY not set and ~/.tp-pm-key not found"
+    exit 1
+fi
+
+echo "🚀 Starting Targetprocess MCP (Project Manager Mode)..."
+npx --yes @aaronsb/targetprocess-mcp "$@"
+```
+
+### Multi-Environment Setup
+
+Manage different environments with NPX:
+
+**`.env.development`:**
+```bash
+TP_DOMAIN=dev-company.tpondemand.com
+TP_API_KEY=dev-api-key-here
+TP_USER_ROLE=developer
+TP_USER_ID=12345
+TP_USER_EMAIL=dev@company.com
+```
+
+**`.env.staging`:**
+```bash
+TP_DOMAIN=staging-company.tpondemand.com
+TP_API_KEY=staging-api-key-here
+TP_USER_ROLE=project-manager
+TP_USER_ID=67890
+TP_USER_EMAIL=pm@company.com
+```
+
+**`.env.production`:**
+```bash
+TP_DOMAIN=company.tpondemand.com
+TP_API_KEY=prod-api-key-here
+TP_USER_ROLE=developer
+TP_USER_ID=12345
+TP_USER_EMAIL=dev@company.com
+```
+
+**Run with specific environment:**
+```bash
+# Development
+source .env.development && npx @aaronsb/targetprocess-mcp
+
+# Staging
+source .env.staging && npx @aaronsb/targetprocess-mcp
+
+# Production
+source .env.production && npx @aaronsb/targetprocess-mcp
+```
+
+## Limitations and Considerations
+
+### Network Dependencies
+
+**NPX Requires Internet Access:**
+- Must be able to reach npm registry (`registry.npmjs.org`)
+- First run downloads the package (subsequent runs may use cache)
+- Corporate firewalls may block npm registry access
+
+**Solutions for Restricted Networks:**
+```bash
+# Configure npm registry proxy
+npm config set registry http://internal-npm-proxy:4873
+
+# Use internal npm registry
+npm config set registry https://nexus.company.com/repository/npm-public/
+
+# Verify connectivity
+npm ping
+```
+
+### Caching Behavior
+
+**NPX Caching:**
+- NPX caches downloaded packages in `~/.npm/_npx/`
+- Cache may become stale between updates
+- Force fresh download with `--yes` flag
+
+**Managing NPX Cache:**
+```bash
+# Force latest version
+npx --yes @aaronsb/targetprocess-mcp
+
+# Clear NPX cache
+npx --clear-cache
+
+# Show cache location
+npm config get cache
+```
+
+### Version Control
+
+**No Version Pinning:**
+- NPX always uses latest published version
+- No control over which version is downloaded
+- May break if new version has breaking changes
+
+**Solutions:**
+```bash
+# Use specific version (if published to npm)
+npx @aaronsb/targetprocess-mcp@0.10.0
+
+# Pin to major version (if semver tags available)
+npx @aaronsb/targetprocess-mcp@^0.10
+
+# Check current version
+npx @aaronsb/targetprocess-mcp --version
+```
+
+### Performance Considerations
+
+**Startup Time:**
+- First run: Download time + startup time
+- Subsequent runs: Cache check + startup time
+- Network latency affects initial download
+
+**Optimization:**
+```bash
+# Pre-warm cache
+npx @aaronsb/targetprocess-mcp --help
+
+# Use in CI/CD with caching
+# (cache ~/.npm directory)
+```
+
+### Security Considerations
+
+**Package Trust:**
+- NPX downloads and executes code from npm registry
+- Verify package publisher and signatures
+- Use corporate npm registry for additional security
+
+**Credential Security:**
+```bash
+# Avoid inline credentials in scripts
+# ❌ Bad
+npx @aaronsb/targetprocess-mcp TP_API_KEY=secret-key
+
+# ✅ Good  
+export TP_API_KEY="secret-key"
+npx @aaronsb/targetprocess-mcp
+```
+
+### Platform Compatibility
+
+**Windows Considerations:**
+```powershell
+# PowerShell environment variables
+$env:TP_DOMAIN="company.tpondemand.com"
+$env:TP_API_KEY="your-api-key"
+npx @aaronsb/targetprocess-mcp
+
+# Command Prompt
+set TP_DOMAIN=company.tpondemand.com
+set TP_API_KEY=your-api-key
+npx @aaronsb/targetprocess-mcp
+```
+
+**macOS/Linux:**
+```bash
+# Standard Unix approach
+export TP_DOMAIN=company.tpondemand.com
+export TP_API_KEY=your-api-key
+npx @aaronsb/targetprocess-mcp
+```
+
+## Troubleshooting
+
+### Common Issues
+
+#### NPX Not Found
+
+**Symptoms:**
+```bash
+npx: command not found
+```
+
+**Solutions:**
+1. **Install/Update Node.js:**
+   ```bash
+   # Check if Node.js is installed
+   node --version
+   
+   # If not installed, download from nodejs.org
+   # Or use package manager:
+   # macOS: brew install node
+   # Ubuntu: sudo apt install nodejs npm
+   # Windows: choco install nodejs
+   ```
+
+2. **Verify NPX is included:**
+   ```bash
+   # NPX comes with npm 5.2+
+   npm --version
+   npx --version
+   ```
+
+3. **Reinstall npm if needed:**
+   ```bash
+   npm install -g npm@latest
+   ```
+
+#### Package Not Found
+
+**Symptoms:**
+```bash
+npm ERR! 404 Not Found - GET https://registry.npmjs.org/@aaronsb%2ftargetprocess-mcp
+```
+
+**Solutions:**
+1. **Check package name:**
+   ```bash
+   # Correct package name
+   npx @aaronsb/targetprocess-mcp
+   
+   # Common typos to avoid
+   npx @aaronsb/target-process-mcp  # ❌
+   npx aaronsb/targetprocess-mcp    # ❌
+   ```
+
+2. **Check npm registry connectivity:**
+   ```bash
+   npm ping
+   npm view @aaronsb/targetprocess-mcp
+   ```
+
+3. **Use alternative registry:**
+   ```bash
+   # If corporate registry is configured
+   npm config get registry
+   ```
+
+#### Authentication Failures
+
+**Symptoms:**
+- "Invalid credentials" errors
+- "Authentication failed" messages
+- "Connection refused" errors
+
+**Solutions:**
+
+1. **Verify credentials:**
+   ```bash
+   # Test with curl
+   curl -H "Authorization: Basic $(echo -n 'token:your-api-key' | base64)" \
+        https://company.tpondemand.com/api/v1/Context
+   ```
+
+2. **Check domain format:**
+   ```bash
+   # ✅ Correct
+   TP_DOMAIN=company.tpondemand.com
+   
+   # ❌ Incorrect  
+   TP_DOMAIN=https://company.tpondemand.com
+   TP_DOMAIN=company.tpondemand.com/api
+   ```
+
+3. **Debug environment variables:**
+   ```bash
+   # Show current environment
+   env | grep TP_
+   
+   # Test variable setting
+   echo $TP_DOMAIN
+   echo $TP_API_KEY
+   ```
+
+#### Permission Errors
+
+**Symptoms:**
+- "Access denied" when using tools
+- Limited functionality despite authentication success
+
+**Solutions:**
+
+1. **Check Targetprocess permissions:**
+   - Log into web interface
+   - Verify access to projects and entities
+   - Check role assignments
+
+2. **Test API scope:**
+   ```bash
+   # Test basic API access
+   curl -H "Authorization: Basic $(echo -n 'token:your-api-key' | base64)" \
+        "https://company.tpondemand.com/api/v1/UserStories?take=1"
+   ```
+
+#### Role Configuration Issues
+
+**Symptoms:**
+- Expected role-specific tools not available
+- "Invalid role" errors
+
+**Solutions:**
+
+1. **Verify role values:**
+   ```bash
+   # Valid roles
+   TP_USER_ROLE=developer          # ✅
+   TP_USER_ROLE=project-manager    # ✅
+   TP_USER_ROLE=tester            # ✅
+   TP_USER_ROLE=product-owner     # ✅
+   
+   # Invalid values
+   TP_USER_ROLE=dev               # ❌
+   TP_USER_ROLE=pm                # ❌
+   TP_USER_ROLE=qa                # ❌
+   ```
+
+2. **Ensure complete user context:**
+   ```bash
+   # All required for role-specific tools
+   export TP_USER_ROLE=developer
+   export TP_USER_ID=12345
+   export TP_USER_EMAIL=dev@company.com
+   ```
+
+#### Network Issues
+
+**Symptoms:**
+- Slow startup times
+- Connection timeouts
+- Download failures
+
+**Solutions:**
+
+1. **Check network connectivity:**
+   ```bash
+   # Test npm registry
+   ping registry.npmjs.org
+   
+   # Test Targetprocess
+   ping company.tpondemand.com
+   ```
+
+2. **Configure proxy if needed:**
    ```bash
    npm config set proxy http://proxy.company.com:8080
    npm config set https-proxy http://proxy.company.com:8080
    ```
-2. Use registry mirror if needed:
+
+3. **Use corporate registry:**
    ```bash
-   npm config set registry https://registry.npmmirror.com/
-   ```
-3. Bypass SSL if necessary (not recommended for production):
-   ```bash
-   npm config set strict-ssl false
+   npm config set registry https://nexus.company.com/repository/npm-public/
    ```
 
-### Version Issues
+### Debug Mode
 
-**Error**: Using old version or unexpected behavior
-
-**Solutions**:
-1. Clear NPX cache: `npx --cache-clean`
-2. Force latest version: `npx @aaronsb/targetprocess-mcp@latest`
-3. Check what's cached: `npm ls -g --depth=0`
-4. Clear npm cache: `npm cache clean --force`
-
-### Authentication Failures
-
-**Error**: `401 Unauthorized` or connection refused
-
-**Solutions**:
-1. Verify domain format (don't include `https://`):
-   - ✅ Correct: `company.tpondemand.com`
-   - ❌ Incorrect: `https://company.tpondemand.com`
-2. Test credentials in browser first
-3. For API key: Check token has proper permissions
-4. For basic auth: Ensure username/password are correct
-5. Check if account is locked or credentials expired
-
-### Memory/Performance Issues
-
-**Error**: Out of memory or slow performance
-
-**Solutions**:
-1. Increase Node.js memory limit:
-   ```bash
-   NODE_OPTIONS="--max-old-space-size=4096" npx @aaronsb/targetprocess-mcp
-   ```
-2. Use production logging level:
-   ```bash
-   TP_LOG_LEVEL="error" npx @aaronsb/targetprocess-mcp
-   ```
-3. Reduce timeout if needed:
-   ```bash
-   TP_TIMEOUT="15000" npx @aaronsb/targetprocess-mcp
-   ```
-
-### Debugging NPX Execution
-
-Enable verbose logging to troubleshoot issues:
+Enable comprehensive logging for troubleshooting:
 
 ```bash
-NPX_DEBUG=1 TP_LOG_LEVEL="debug" npx @aaronsb/targetprocess-mcp
+# Enable all debug output
+DEBUG=* npx @aaronsb/targetprocess-mcp
+
+# Enable specific debug categories
+DEBUG=mcp:*,targetprocess:* npx @aaronsb/targetprocess-mcp
+
+# NPX debug output
+NPX_DEBUG=1 npx @aaronsb/targetprocess-mcp
 ```
 
-Check what NPX is actually running:
+### Verbose NPX Output
+
+Get detailed information about NPX execution:
 
 ```bash
-npx --package @aaronsb/targetprocess-mcp which targetprocess-mcp
+# Verbose NPX output
+npx --loglevel verbose @aaronsb/targetprocess-mcp
+
+# Show what NPX is doing
+npx --verbose @aaronsb/targetprocess-mcp
 ```
-
-## Security Considerations
-
-### Credential Management
-- **Never hardcode credentials** in scripts or configuration files committed to version control
-- Use environment variables or secure credential stores
-- Prefer API keys over username/password combinations
-- Rotate API keys regularly
-
-### Network Security
-- Ensure HTTPS is used for all Targetprocess communications (automatic)
-- Be cautious with proxy configurations that might log credentials
-- Use secure networks when possible, avoid public WiFi for production use
-
-### Access Control
-- Use minimal required permissions for API keys
-- Configure `TP_USER_ID` correctly to ensure proper access controls
-- Regularly audit user permissions in Targetprocess
 
 ## Best Practices
 
-### Production Usage
-1. **Use API Keys**: More secure and easier to rotate than passwords
-2. **Set Appropriate Log Level**: Use `info` or `warn` in production, `debug` only for troubleshooting
-3. **Configure Timeouts**: Adjust `TP_TIMEOUT` based on your network conditions
-4. **Role Configuration**: Set `TP_USER_ROLE` for optimal tool selection
+### Security
 
-### Development Usage
-1. **Use Debug Logging**: Set `TP_LOG_LEVEL=debug` when developing or troubleshooting
-2. **Environment Files**: Use `.env` files for consistent local development
-3. **Version Pinning**: Use specific versions (`@aaronsb/targetprocess-mcp@1.0.0`) for reproducible builds
-
-### Performance Optimization
-1. **Minimal Environment**: Only set environment variables you actually use
-2. **Appropriate Timeouts**: Don't set unnecessarily high timeout values
-3. **Cache Awareness**: Understand that NPX may cache packages between runs
-
-## Migration from Local Installation
-
-If you're currently using a local installation and want to switch to NPX:
-
-1. **Remove local MCP server**:
+1. **Use environment files for credentials:**
    ```bash
-   claude mcp remove targetprocess
+   # Create .env with restricted permissions
+   touch .env
+   chmod 600 .env
+   echo "TP_API_KEY=your-secret-key" > .env
    ```
 
-2. **Add NPX version**:
+2. **Avoid inline credentials:**
    ```bash
-   claude mcp add targetprocess npx @aaronsb/targetprocess-mcp \
-     -e TP_DOMAIN=your-domain \
-     -e TP_API_KEY=your-key \
-     -e TP_USER_ROLE=your-role \
-     -e TP_USER_ID=your-id
+   # ❌ Avoid - credentials visible in process list
+   TP_API_KEY=secret npx @aaronsb/targetprocess-mcp
+   
+   # ✅ Better - use environment files
+   source .env && npx @aaronsb/targetprocess-mcp
    ```
 
-3. **Test the migration**:
+3. **Regular credential rotation:**
    ```bash
-   claude mcp list
-   # Should show targetprocess using npx command
+   # Rotate API keys quarterly
+   # Update .env files across environments
+   # Test new credentials before deployment
    ```
 
-## Getting Help
+### Performance
 
-If you encounter issues with NPX usage:
+1. **Pre-warm NPX cache:**
+   ```bash
+   # Download package during setup
+   npx @aaronsb/targetprocess-mcp --help
+   ```
 
-1. **Check Package Status**: Visit [npmjs.com](https://www.npmjs.com/package/@aaronsb/targetprocess-mcp)
-2. **Review Logs**: Enable debug logging to see detailed execution info
-3. **GitHub Issues**: Report issues at the [project repository](https://github.com/aaronsb/apptio-target-process-mcp/issues)
-4. **Documentation**: Check the [integration guide](../integration/README.md) for additional troubleshooting
+2. **Use --yes flag for automation:**
+   ```bash
+   # Skip interactive prompts
+   npx --yes @aaronsb/targetprocess-mcp
+   ```
 
-## Related Documentation
+3. **Consider local installation for frequent use:**
+   ```bash
+   # For development environments
+   npm install -g @aaronsb/targetprocess-mcp
+   targetprocess-mcp
+   ```
 
-- [Claude Code Integration](../integration/claude-code.md) - Using with Claude Code specifically
-- [Claude Desktop Integration](../integration/claude-desktop.md) - Using with Claude Desktop
-- [Docker Configuration](docker.md) - Alternative containerized approach
-- [Tool Reference](../tools/README.md) - Complete tool documentation
-- [Semantic Operations](../semantic-operations/README.md) - Role-specific operations guide
+### Development Workflow
+
+1. **Use version-specific scripts:**
+   ```bash
+   #!/bin/bash
+   # development.sh
+   source .env.development
+   npx --yes @aaronsb/targetprocess-mcp "$@"
+   ```
+
+2. **Environment validation:**
+   ```bash
+   #!/bin/bash
+   # validate-env.sh
+   required_vars=("TP_DOMAIN" "TP_API_KEY")
+   
+   for var in "${required_vars[@]}"; do
+       if [ -z "${!var}" ]; then
+           echo "Error: $var is not set"
+           exit 1
+       fi
+   done
+   
+   echo "✓ Environment validation passed"
+   ```
+
+3. **Logging and monitoring:**
+   ```bash
+   # Log NPX executions
+   {
+       echo "$(date): Starting MCP server"
+       npx @aaronsb/targetprocess-mcp
+   } >> /var/log/mcp-execution.log 2>&1
+   ```
+
+### Integration Patterns
+
+1. **CI/CD Integration:**
+   ```yaml
+   # .github/workflows/test-mcp.yml
+   name: Test MCP Integration
+   on: [push, pull_request]
+   
+   jobs:
+     test:
+       runs-on: ubuntu-latest
+       steps:
+         - uses: actions/setup-node@v3
+           with:
+             node-version: '18'
+         - name: Test MCP Server
+           env:
+             TP_DOMAIN: ${{ secrets.TP_DOMAIN }}
+             TP_API_KEY: ${{ secrets.TP_API_KEY }}
+           run: |
+             npx --yes @aaronsb/targetprocess-mcp --version
+   ```
+
+2. **Docker alternative:**
+   ```dockerfile
+   # Dockerfile.npx
+   FROM node:18-alpine
+   
+   RUN npm install -g @aaronsb/targetprocess-mcp
+   
+   ENV TP_DOMAIN=""
+   ENV TP_API_KEY=""
+   
+   CMD ["targetprocess-mcp"]
+   ```
+
+3. **Monitoring script:**
+   ```bash
+   #!/bin/bash
+   # monitor-mcp.sh
+   
+   while true; do
+       if ! npx @aaronsb/targetprocess-mcp --health-check 2>/dev/null; then
+           echo "$(date): MCP health check failed"
+           # Send alert
+       fi
+       sleep 300  # Check every 5 minutes
+   done
+   ```
+
+## Comparison with Other Methods
+
+| Feature | NPX | Docker | Local Build |
+|---------|-----|--------|-------------|
+| **Setup Time** | ⭐⭐⭐ Instant | ⭐⭐ Medium | ⭐ Slow |
+| **Dependencies** | ⭐⭐⭐ Node.js only | ⭐⭐ Docker required | ⭐ Multiple tools |
+| **Always Latest** | ✅ Automatic | 🔄 Manual pull | 🔄 Manual update |
+| **Network Required** | ✅ Initial download | ✅ Image pull | ❌ After clone |
+| **Resource Usage** | ⭐⭐⭐ Minimal | ⭐⭐ Medium | ⭐⭐⭐ Minimal |
+| **Consistency** | ⚠️ Depends on npm | ✅ Guaranteed | ⚠️ Variable |
+| **Debugging** | ⭐⭐⭐ Excellent | ⭐⭐ Good | ⭐⭐⭐ Excellent |
+| **Offline Use** | ⚠️ After cache | ✅ Yes | ✅ Yes |
+| **Version Control** | ❌ Always latest | ✅ Tag-based | ✅ Git-based |
+
+**Recommendation**: NPX is ideal for quick starts, testing, and environments where you want the latest version automatically. Use Docker for production stability or local builds for development.
+
+## Next Steps
+
+After successfully configuring NPX deployment:
+
+1. **Test Basic Functionality**: Verify connection and core tools work
+2. **Explore Role Features**: If configured, test specialized tools for your role
+3. **Set Up Automation**: Create scripts for repeated use
+4. **Review Use Cases**: Check [use cases documentation](../use-cases/README.md) for workflow examples
+5. **Consider Production Setup**: Evaluate Docker or local build for production use
+
+## Support and Resources
+
+- **Package Information**: [npm registry page](https://www.npmjs.com/package/@aaronsb/targetprocess-mcp)
+- **Source Code**: [GitHub repository](https://github.com/aaronsb/apptio-target-process-mcp)
+- **Issues**: Report bugs at [GitHub Issues](https://github.com/aaronsb/apptio-target-process-mcp/issues)
+- **Documentation**: Browse `/docs` directory for comprehensive guides
+
+---
+
+**Note**: This guide covers NPX-based deployment of the Targetprocess MCP Server. For other deployment methods, see the [Docker configuration guide](docker.md) or [local development guide](local-development.md).

@@ -1,52 +1,54 @@
-# Targetprocess MCP Server
+# 🎯 Targetprocess MCP Server
 
-## What is this?
+[<img src="https://github.com/user-attachments/assets/a32b59f5-da64-4597-935f-5e3d973f72e9" width="100%">](https://www.targetprocess.com)
 
-The Targetprocess MCP Server enables AI assistants to interact with your Targetprocess data through intelligent, context-aware tools. All operations provide semantic hints and workflow suggestions. When configured with a user role, additional role-specific tools become available that streamline common workflows for developers, project managers, and testers.
+An [MCP](https://github.com/modelcontextprotocol/specification) (Model Context Protocol) server implementation for [Targetprocess](https://www.targetprocess.com/) project management platform, providing semantic AI-powered operations alongside traditional API access.
 
-## ⚠️ IMPORTANT: Not Just Another API Wrapper!
+Turn your AI assistant into a Targetprocess power user - manage projects, track work, and update tasks through natural conversation.
 
-> **This project implements SEMANTIC OPERATIONS** - intelligent, context-aware workflows that understand how people actually work. We're not building simple API wrappers; we're building tools that think.
-> 
-> **Before contributing**, you MUST understand our semantic operations philosophy:
-> - 📖 Read [CONTRIBUTING.md](CONTRIBUTING.md) - Mandatory reading for all contributors
-> - 🧠 Study [Semantic Operations Documentation](docs/semantic-operations/) - The heart of this project
-> - 🎯 Operations adapt to user context, not just expose CRUD endpoints
-> - 🔄 Dynamic discovery over hard-coded assumptions
-> 
-> **If you're here to add "just another API endpoint wrapper" - please reconsider.** We need contributors who understand and embrace the semantic operations approach.
+## Installation
 
-## Why use it?
+Choose your preferred method:
 
-- **Semantic Hints on All Tools**: Every operation returns context-aware suggestions and workflow guidance
-- **Role-Specific Tools**: When configured with a role, get additional specialized tools (`show_my_tasks`, `complete_task`, etc.)
-- **Dynamic Discovery**: Automatically adapts to your Targetprocess configuration without hard-coded assumptions
-- **Smart Error Handling**: Transforms API failures into actionable guidance and learning opportunities
-- **Stay in Flow**: Complete full workflows without switching to the Targetprocess UI
-- **Enterprise Ready**: Handles complex schemas and millions of records with robust authentication and error handling
+### 🤖 [Claude Desktop](docs/configuration/claude-desktop.md)
+Native integration with Anthropic's Claude Desktop app.
 
-## MCP Registry Support
+```json
+{
+  "mcpServers": {
+    "targetprocess": {
+      "command": "npx",
+      "args": ["-y", "https://github.com/aaronsb/apptio-target-process-mcp.git"],
+      "env": {
+        "TP_DOMAIN": "your-domain.tpondemand.com",
+        "TP_API_KEY": "your-api-key"
+      }
+    }
+  }
+}
+```
 
-This MCP server is available through multiple MCP registries:
+[Full Claude Desktop guide →](docs/configuration/claude-desktop.md)
 
-- **[Smithery.ai](https://smithery.ai)** - Install directly from the Smithery registry
-- **[Cprime](https://cprime.com)** - Available through Cprime's MCP catalog
-
-Each registry maintains its own configuration branch with platform-specific settings while staying synchronized with the latest features and updates.
-
-## Quick Start
-
-### Docker (Recommended for Containerized Environments)
+### 📂 [Claude Code](docs/configuration/claude-code.md)
+Use with Anthropic's Claude Code IDE (claude.ai/code)
 
 ```bash
-# Basic usage with username/password
-docker run -i --rm \
-  -e TP_DOMAIN=your-domain.tpondemand.com \
-  -e TP_USERNAME=your-username \
-  -e TP_PASSWORD=your-password \
-  ghcr.io/aaronsb/apptio-target-process-mcp
+# Add to project
+claude mcp add targetprocess npm run targetprocess
 
-# Basic usage with API key
+# Configure .env
+TP_DOMAIN=your-domain.tpondemand.com
+TP_API_KEY=your-api-key
+```
+
+[Full Claude Code guide →](docs/configuration/claude-code.md)
+
+### 🐳 [Docker](docs/configuration/docker.md)
+Run in an isolated container environment.
+
+```bash
+# With API key (recommended)
 docker run -i --rm \
   -e TP_DOMAIN=your-domain.tpondemand.com \
   -e TP_API_KEY=your-api-key \
@@ -64,14 +66,13 @@ docker run -i --rm \
   ghcr.io/aaronsb/apptio-target-process-mcp
 ```
 
-### NPX (No Installation Required)
+[Full Docker configuration guide →](docs/configuration/docker.md)
+
+### 📦 [NPX](docs/configuration/npx.md)
+Zero installation required. Perfect for trying out the server.
 
 ```bash
-# Basic usage with username/password
-TP_DOMAIN=your-domain.tpondemand.com TP_USERNAME=your-username TP_PASSWORD=your-password \
-  npx -y https://github.com/aaronsb/apptio-target-process-mcp.git
-
-# Basic usage with API key
+# With API key (recommended)
 TP_DOMAIN=your-domain.tpondemand.com TP_API_KEY=your-api-key \
   npx -y https://github.com/aaronsb/apptio-target-process-mcp.git
 
@@ -82,342 +83,92 @@ MCP_STRICT_MODE=true \
   npx -y https://github.com/aaronsb/apptio-target-process-mcp.git
 ```
 
-[Full installation guide →](docs/integration/installation.md)
-[CLI usage guide →](docs/integration/cli-usage.md)
+[Full NPX configuration guide →](docs/configuration/npx.md)
 
-### Claude Code Integration
-
-```bash
-# Quick setup for development
-./scripts/dev-setup.sh
-
-# Basic manual setup with username/password
-npm install && npm run build
-claude mcp add targetprocess node ./build/index.js \
-  -e TP_DOMAIN=your-domain.tpondemand.com \
-  -e TP_USERNAME=your-username \
-  -e TP_PASSWORD=your-password
-
-# Basic manual setup with API key
-npm install && npm run build
-claude mcp add targetprocess node ./build/index.js \
-  -e TP_DOMAIN=your-domain.tpondemand.com \
-  -e TP_API_KEY=your-api-key
-
-# With role-specific tools (recommended)
-claude mcp add targetprocess node ./build/index.js \
-  -e TP_DOMAIN=your-domain.tpondemand.com \
-  -e TP_USERNAME=your-username \
-  -e TP_PASSWORD=your-password \
-  -e TP_USER_ROLE=developer \
-  -e TP_USER_ID=your-user-id \
-  -e TP_USER_EMAIL=your-email \
-  -e MCP_STRICT_MODE=true
-```
-
-[Claude Code integration guide →](docs/integration/claude-code.md)
-
-### MCP Client Configuration
-
-**Strict Mode:** For MCP clients that require clean JSON-RPC on stdio (like Claude Desktop), enable strict mode to redirect all logging to stderr:
+### 💻 [Local Development](docs/configuration/local-development.md)
+Clone and run locally for development.
 
 ```bash
-# Environment variable
-MCP_STRICT_MODE=true
+# Clone and setup
+git clone https://github.com/aaronsb/apptio-target-process-mcp.git
+cd apptio-target-process-mcp
+npm install
 
-# Auto-detection also works for:
-# - Claude Desktop (stdio transport)
-# - Non-TTY environments
-# - When --stdio flag is present
+# Configure
+cp .env.example .env
+# Edit .env with your credentials
+
+# With role-specific tools and strict mode
+TP_USER_ROLE=developer \
+  TP_USER_ID=your-user-id \
+  TP_USER_EMAIL=your-email \
+  MCP_STRICT_MODE=true
 ```
 
-**Semantic Operations:** Enable intelligent workflow tools with role-based filtering:
+[Full local development guide →](docs/configuration/local-development.md)
+
+## Configuration
+
+### API Authentication
+
+#### Option 1: API Key (Recommended)
+1. Go to Targetprocess → Settings → Access Tokens
+2. Create a new token
+3. Set `TP_API_KEY` environment variable
+
+#### Option 2: Basic Auth
+Set both:
+- `TP_USERNAME`: Your Targetprocess username
+- `TP_PASSWORD`: Your Targetprocess password
+
+⚠️ **Security Note**: Never commit credentials to version control. Use environment variables or `.env` files (gitignored).
+
+### Available Tools
+
+The server provides these MCP tools to AI assistants:
+
+| Tool | Description |
+|------|-------------|
+| **search_entities** | Search with powerful filtering, sorting, and includes |
+| **get_entity** | Retrieve detailed entity information |
+| **create_entity** | Create new work items with validation |
+| **update_entity** | Update existing entities |
+| **inspect_object** | Explore entity types and properties |
+
+### Role-Specific Tools
+
+All tools provide semantic hints and workflow suggestions. When you configure a user role, you get **additional specialized tools**:
+
+| Role | Additional Tools |
+|------|------------------|
+| `developer` | `show_my_tasks`, `start_working_on`, `complete_task`, `show_my_bugs`, `log_time` |
+| `project-manager` | Project oversight and team management tools |
+| `tester` | Test case and bug management tools |
+| `product-owner` | Backlog and feature prioritization tools |
 
 ```bash
-TP_USER_ROLE=developer        # Options: developer, project-manager, tester
-TP_USER_ID=your-user-id       # For task assignments and time tracking  
-TP_USER_EMAIL=your-email      # Identity for semantic operations
+# Enable role-specific tools
+TP_USER_ROLE=developer        # Your role
+TP_USER_ID=your-user-id       # For assignments
+TP_USER_EMAIL=your-email      # For identification
 ```
 
-**Why Enable Semantic Operations?**
-- **Context-Aware Tools**: Get `show_my_tasks`, `start_working_on`, `complete_task` instead of just raw API calls
-- **Intelligent Discovery**: Operations adapt to your TargetProcess configuration without hard-coded assumptions
-- **Workflow Guidance**: Smart error handling transforms failures into actionable next steps
-- **Role-Based Filtering**: Only see tools relevant to your role (developer, PM, tester)
+### Environment Variables Reference
 
-### Configuration Examples
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `TP_DOMAIN` | Yes | Your Targetprocess domain (e.g., company.tpondemand.com) |
+| `TP_API_KEY` | Yes* | API key for authentication (recommended) |
+| `TP_USERNAME` | Yes* | Username for basic authentication |
+| `TP_PASSWORD` | Yes* | Password for basic authentication |
+| `TP_USER_ROLE` | No | Enable role-specific tools: `developer`, `project-manager`, `tester`, `product-owner` |
+| `TP_USER_ID` | No | Your Targetprocess user ID (for assignments) |
+| `TP_USER_EMAIL` | No | Your email (for identification) |
+| `MCP_STRICT_MODE` | No | Set to `true` for MCP clients requiring clean JSON-RPC |
 
-#### 1. NPX (No Installation Required)
+*Either API key or username/password required
 
-```bash
-# Basic usage with username/password
-TP_DOMAIN=your-domain.tpondemand.com TP_USERNAME=your-username TP_PASSWORD=your-password \
-  npx -y https://github.com/aaronsb/apptio-target-process-mcp.git
-
-# Basic usage with API key
-TP_DOMAIN=your-domain.tpondemand.com TP_API_KEY=your-api-key \
-  npx -y https://github.com/aaronsb/apptio-target-process-mcp.git
-
-# With semantic operations (recommended)
-TP_DOMAIN=your-domain.tpondemand.com TP_USERNAME=your-username TP_PASSWORD=your-password \
-TP_USER_ROLE=developer TP_USER_ID=your-user-id TP_USER_EMAIL=your-email \
-MCP_STRICT_MODE=true \
-  npx -y https://github.com/aaronsb/apptio-target-process-mcp.git
-
-# With semantic operations using API key (recommended)
-TP_DOMAIN=your-domain.tpondemand.com TP_API_KEY=your-api-key \
-TP_USER_ROLE=developer TP_USER_ID=your-user-id TP_USER_EMAIL=your-email \
-MCP_STRICT_MODE=true \
-  npx -y https://github.com/aaronsb/apptio-target-process-mcp.git
-```
-
-#### 2. Docker
-
-```bash
-# Basic usage with username/password
-docker run -i --rm \
-  -e TP_DOMAIN=your-domain.tpondemand.com \
-  -e TP_USERNAME=your-username \
-  -e TP_PASSWORD=your-password \
-  ghcr.io/aaronsb/apptio-target-process-mcp
-
-# Basic usage with API key
-docker run -i --rm \
-  -e TP_DOMAIN=your-domain.tpondemand.com \
-  -e TP_API_KEY=your-api-key \
-  ghcr.io/aaronsb/apptio-target-process-mcp
-
-# With semantic operations (recommended)
-docker run -i --rm \
-  -e TP_DOMAIN=your-domain.tpondemand.com \
-  -e TP_USERNAME=your-username \
-  -e TP_PASSWORD=your-password \
-  -e TP_USER_ROLE=developer \
-  -e TP_USER_ID=your-user-id \
-  -e TP_USER_EMAIL=your-email \
-  -e MCP_STRICT_MODE=true \
-  ghcr.io/aaronsb/apptio-target-process-mcp
-
-# With semantic operations using API key (recommended)
-docker run -i --rm \
-  -e TP_DOMAIN=your-domain.tpondemand.com \
-  -e TP_API_KEY=your-api-key \
-  -e TP_USER_ROLE=developer \
-  -e TP_USER_ID=your-user-id \
-  -e TP_USER_EMAIL=your-email \
-  -e MCP_STRICT_MODE=true \
-  ghcr.io/aaronsb/apptio-target-process-mcp
-```
-
-#### 3. Claude Desktop Configuration
-
-Add to your Claude Desktop configuration file (`~/.config/Claude/claude_desktop_config.json`):
-
-**Using Docker with Username/Password:**
-```json
-{
-  "mcpServers": {
-    "targetprocess": {
-      "command": "docker",
-      "args": [
-        "run", "-i", "--rm",
-        "-e", "TP_USERNAME",
-        "-e", "TP_PASSWORD", 
-        "-e", "TP_DOMAIN",
-        "-e", "TP_USER_ROLE",
-        "-e", "TP_USER_ID",
-        "-e", "TP_USER_EMAIL",
-        "-e", "MCP_STRICT_MODE",
-        "ghcr.io/aaronsb/apptio-target-process-mcp:latest"
-      ],
-      "env": {
-        "TP_USERNAME": "your-username",
-        "TP_PASSWORD": "your-password",
-        "TP_DOMAIN": "your-domain.tpondemand.com",
-        "TP_USER_ROLE": "developer",
-        "TP_USER_ID": "your-user-id",
-        "TP_USER_EMAIL": "your-email@company.com",
-        "MCP_STRICT_MODE": "true"
-      },
-      "disabled": false,
-      "transportType": "stdio"
-    }
-  }
-}
-```
-
-**Using Docker with API Key:**
-```json
-{
-  "mcpServers": {
-    "targetprocess": {
-      "command": "docker",
-      "args": [
-        "run", "-i", "--rm",
-        "-e", "TP_API_KEY",
-        "-e", "TP_DOMAIN",
-        "-e", "TP_USER_ROLE",
-        "-e", "TP_USER_ID",
-        "-e", "TP_USER_EMAIL",
-        "-e", "MCP_STRICT_MODE",
-        "ghcr.io/aaronsb/apptio-target-process-mcp:latest"
-      ],
-      "env": {
-        "TP_API_KEY": "your-api-key",
-        "TP_DOMAIN": "your-domain.tpondemand.com",
-        "TP_USER_ROLE": "developer",
-        "TP_USER_ID": "your-user-id",
-        "TP_USER_EMAIL": "your-email@company.com",
-        "MCP_STRICT_MODE": "true"
-      },
-      "disabled": false,
-      "transportType": "stdio"
-    }
-  }
-}
-```
-
-**Using NPX with Username/Password:**
-```json
-{
-  "mcpServers": {
-    "targetprocess": {
-      "command": "npx",
-      "args": ["-y", "https://github.com/aaronsb/apptio-target-process-mcp.git"],
-      "env": {
-        "TP_USERNAME": "your-username",
-        "TP_PASSWORD": "your-password",
-        "TP_DOMAIN": "your-domain.tpondemand.com",
-        "TP_USER_ROLE": "developer",
-        "TP_USER_ID": "your-user-id",
-        "TP_USER_EMAIL": "your-email@company.com",
-        "MCP_STRICT_MODE": "true"
-      },
-      "disabled": false,
-      "transportType": "stdio"
-    }
-  }
-}
-```
-
-**Using NPX with API Key:**
-```json
-{
-  "mcpServers": {
-    "targetprocess": {
-      "command": "npx",
-      "args": ["-y", "https://github.com/aaronsb/apptio-target-process-mcp.git"],
-      "env": {
-        "TP_API_KEY": "your-api-key",
-        "TP_DOMAIN": "your-domain.tpondemand.com",
-        "TP_USER_ROLE": "developer",
-        "TP_USER_ID": "your-user-id",
-        "TP_USER_EMAIL": "your-email@company.com",
-        "MCP_STRICT_MODE": "true"
-      },
-      "disabled": false,
-      "transportType": "stdio"
-    }
-  }
-}
-```
-
-#### 4. Claude Code Integration
-
-```bash
-# Quick setup for development
-./scripts/dev-setup.sh
-
-# Manual setup with Docker (username/password)
-claude mcp add targetprocess docker \
-  -a "run" -a "-i" -a "--rm" \
-  -a "-e" -a "TP_DOMAIN" \
-  -a "-e" -a "TP_USERNAME" \
-  -a "-e" -a "TP_PASSWORD" \
-  -a "-e" -a "TP_USER_ROLE" \
-  -a "-e" -a "TP_USER_ID" \
-  -a "-e" -a "TP_USER_EMAIL" \
-  -a "-e" -a "MCP_STRICT_MODE" \
-  -a "ghcr.io/aaronsb/apptio-target-process-mcp:latest" \
-  -e TP_DOMAIN=your-domain.tpondemand.com \
-  -e TP_USERNAME=your-username \
-  -e TP_PASSWORD=your-password \
-  -e TP_USER_ROLE=developer \
-  -e TP_USER_ID=your-user-id \
-  -e TP_USER_EMAIL=your-email \
-  -e MCP_STRICT_MODE=true
-
-# Manual setup with Docker (API key)
-claude mcp add targetprocess docker \
-  -a "run" -a "-i" -a "--rm" \
-  -a "-e" -a "TP_DOMAIN" \
-  -a "-e" -a "TP_API_KEY" \
-  -a "-e" -a "TP_USER_ROLE" \
-  -a "-e" -a "TP_USER_ID" \
-  -a "-e" -a "TP_USER_EMAIL" \
-  -a "-e" -a "MCP_STRICT_MODE" \
-  -a "ghcr.io/aaronsb/apptio-target-process-mcp:latest" \
-  -e TP_DOMAIN=your-domain.tpondemand.com \
-  -e TP_API_KEY=your-api-key \
-  -e TP_USER_ROLE=developer \
-  -e TP_USER_ID=your-user-id \
-  -e TP_USER_EMAIL=your-email \
-  -e MCP_STRICT_MODE=true
-
-# Manual setup with local build (username/password)
-npm install && npm run build
-claude mcp add targetprocess node ./build/index.js \
-  -e TP_DOMAIN=your-domain.tpondemand.com \
-  -e TP_USERNAME=your-username \
-  -e TP_PASSWORD=your-password \
-  -e TP_USER_ROLE=developer \
-  -e TP_USER_ID=your-user-id \
-  -e TP_USER_EMAIL=your-email \
-  -e MCP_STRICT_MODE=true
-
-# Manual setup with local build (API key)
-npm install && npm run build
-claude mcp add targetprocess node ./build/index.js \
-  -e TP_DOMAIN=your-domain.tpondemand.com \
-  -e TP_API_KEY=your-api-key \
-  -e TP_USER_ROLE=developer \
-  -e TP_USER_ID=your-user-id \
-  -e TP_USER_EMAIL=your-email \
-  -e MCP_STRICT_MODE=true
-```
-
-#### 5. Local Development (Built from Source)
-
-```bash
-# Build and run locally
-npm install && npm run build
-node ./build/index.js
-
-# For MCP clients requiring JSON config
-```
-
-**JSON Configuration for MCP Clients:**
-```json
-{
-  "mcpServers": {
-    "targetprocess": {
-      "command": "node",
-      "args": ["/path/to/apptio-target-process-mcp/build/index.js"],
-      "env": {
-        "TP_USERNAME": "your-username",
-        "TP_PASSWORD": "your-password",
-        "TP_DOMAIN": "your-domain.tpondemand.com",
-        "TP_USER_ROLE": "developer",
-        "TP_USER_ID": "your-user-id",
-        "TP_USER_EMAIL": "your-email@company.com",
-        "MCP_STRICT_MODE": "true"
-      },
-      "disabled": false,
-      "transportType": "stdio"
-    }
-  }
-}
-```
+For detailed configuration examples, see the guides above.
 
 ### IBM watsonx Orchestrate Integration
 
@@ -460,13 +211,16 @@ orchestrate toolkits import \
 
 ## Features
 
-### Semantic Operations (Workflow Intelligence)
+### Role-Specific Tools (Developer Role)
+When configured with `TP_USER_ROLE=developer`, these additional tools become available:
 - **show_my_tasks**: View assigned tasks with smart filtering and priority analysis
 - **start_working_on**: Begin work on tasks with automatic state transitions
 - **complete_task**: Mark tasks complete with integrated time logging and comments
 - **show_my_bugs**: Analyze assigned bugs with dynamic severity categorization
 - **log_time**: Record time with intelligent entity type discovery and validation
 - **add_comment**: Add contextual comments with workflow-aware follow-up suggestions
+
+Note: All tools (both core and role-specific) provide semantic hints and workflow suggestions.
 
 ### Core API Tools
 - **Entity Management**: Create, read, update, and search Targetprocess entities
